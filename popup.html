@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    :root {
+      --bg: #121212;
+      --text: #e0e0e0;
+      --accent: #818cf8;
+      --muted: #888;
+      --border: #2e2e2e;
+    }
+
+    body {
+      width: 280px;
+      padding: 16px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      margin: 0;
+      line-height: 1.4;
+    }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 12px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 16px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .version {
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    .guide {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .step {
+      display: flex;
+      gap: 10px;
+      font-size: 13px;
+    }
+
+    .step-num {
+      color: var(--accent);
+      font-weight: 700;
+      min-width: 14px;
+    }
+
+    b {
+      color: #fff;
+    }
+
+    .footer {
+      margin-top: 24px;
+      padding-top: 12px;
+      border-top: 1px solid var(--border);
+      text-align: center;
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1><span>✨</span> Ask Gemini</h1>
+    <span class="version" id="version-badge">v1.1.0</span>
+  </div>
+
+  <div class="guide">
+    <div class="step">
+      <span class="step-num">1</span>
+      <span><b>Highlight</b> text on Gemini.</span>
+    </div>
+    <div class="step">
+      <span class="step-num">2</span>
+      <span>Click the <b>Ask Gemini</b> button.</span>
+    </div>
+    <div class="step">
+      <span class="step-num">3</span>
+      <span>Type your reply and hit <b>Enter</b>.</span>
+    </div>
+  </div>
+
+  <div class="footer">
+    <a href="#" id="view-logs">View Logs</a>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

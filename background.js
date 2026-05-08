@@ -1,0 +1,305 @@
+/**
+ * ╔═══════════════════════════════════════════════════════════════════════════╗
+ * ║                       FORTRESS FRAMEWORK v1.0                              ║
+ * ║           Background Service Worker - State & Log Management               ║
+ * ╚═══════════════════════════════════════════════════════════════════════════╝
+ */
+
+/**
+ * AmplitudeWizard - Handles Amplitude HTTP V2 API tracking
+ * Professional implementation of Amplitude for Chrome Extensions
+ */
+class AmplitudeWizard {
+    static API_KEY = '4495bcd2d5c7a66ee74635fd56d16275';
+    static ENDPOINT = 'https://api2.amplitude.com/2/httpapi';
+    static lastTracked = new Map();
+
+    static async getDeviceId() {
+        const result = await chrome.storage.local.get(['amplitude_device_id']);
+        if (result.amplitude_device_id) return result.amplitude_device_id;
+        
+        const newId = `dev_${Math.random().toString(36).substr(2, 9)}`;
+        await chrome.storage.local.set({ amplitude_device_id: newId });
+        return newId;
+    }
+
+    /**
+     * Get unique insert_id for deduplication
+     */
+    static generateInsertId() {
+        return `ins_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
+    }
+
+    /**
+     * Track event to Amplitude
+     */
+    static async trackEvent(name, params = {}) {
+        // Basic rate limiting for high-frequency events
+        const now = Date.now();
+        if (name === 'text_highlight' && (now - (this.lastTracked.get('text_highlight') || 0) < 2000)) {
+            return;
+        }
+        this.lastTracked.set(name, now);
+
+        const deviceId = await this.getDeviceId();
+        
+        const eventBody = {
+            api_key: this.API_KEY,
+            events: [{
+                device_id: deviceId,
+                event_type: name,
+                event_properties: params,
+                time: now, // Epoch ms required
+                insert_id: this.generateInsertId(),
+                session_id: logManager.startTime, // Use background startup as session
+                platform: 'Chrome Extension',
+                os_name: 'Chrome'
+            }]
+        };
+
+        try {
+            const response = await fetch(this.ENDPOINT, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(eventBody)
+            });
+
+            if (response.ok) {
+                console.log(`🏰 [Amplitude] Event Tracked: ${name}`, params);
+            } else {
+                console.warn(`🏰 [Amplitude] API Error: ${response.status}`);
+            }
+        } catch (error) {
+            console.error('🏰 [Amplitude] Network Error', error);
+        }
+    }
+}
+
+
+/**
+ * Centralized log storage for the background script
+ * Maintains logs from all content scripts across tabs
+ */
+class BackgroundLogManager {
+    constructor() {
+        this.logs = [];
+        this.maxLogs = 200;
+        this.sessionId = this.generateSessionId();
+        this.startTime = Date.now();
+    }
+
+    generateSessionId() {
+        return `bg_session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    }
+
+    addLog(event) {
+        if (this.logs.length >= this.maxLogs) {
+            this.logs.shift();
+        }
+        this.logs.push({
+            ...event,
+            receivedAt: new Date().toISOString()
+        });
+    }
+
+    getLogs() {
+        return [...this.logs];
+    }
+
+    getStats() {
+        const errorCount = this.logs.filter(l => l.level === 'ERROR' || l.level === 'CRITICAL').length;
+        const warnCount = this.logs.filter(l => l.level === 'WARN').length;
+        return {
+            totalLogs: this.logs.length,
+            errorCount,
+            warnCount,
+            sessionId: this.sessionId,
+            uptime: Date.now() - this.startTime
+        };
+    }
+
+    clear() {
+        this.logs = [];
+    }
+}
+
+// Initialize log manager
+const logManager = new BackgroundLogManager();
+
+/**
+ * Log a background-specific event
+ */
+function logBackgroundEvent(eventType, context = {}, level = 'INFO') {
+    const event = {
+        timestamp: new Date().toISOString(),
+        sessionId: logManager.sessionId,
+        eventType,
+        level,
+        source: 'background',
+        context
+    };
+    logManager.addLog(event);
+    console.log(`[Fortress/BG/${level}]`, eventType, context);
+}
+
+/**
+ * Handle messages from content scripts and popup
+ */
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    try {
+        switch (message.type) {
+            case 'DIAGNOSTIC_EVENT':
+                // Receive diagnostic events from content scripts
+                if (message.event) {
+                    logManager.addLog({
+                        ...message.event,
+                        tabId: sender.tab?.id,
+                        tabUrl: sender.tab?.url
+                    });
+                }
+                sendResponse({ success: true });
+                break;
+
+            case 'GET_SESSION_LOGS':
+                // Return logs to popup or content script
+                sendResponse({
+                    logs: logManager.getLogs(),
+                    stats: logManager.getStats()
+                });
+                break;
+
+            case 'CLEAR_LOGS':
+                // Clear all stored logs
+                logManager.clear();
+                logBackgroundEvent('LOGS_CLEARED');
+                sendResponse({ success: true });
+                break;
+
+            case 'GET_STATS':
+                // Return statistics only
+                sendResponse({ stats: logManager.getStats() });
+                break;
+
+            case 'DEVELOPER_MODE_CHANGED':
+                // Log developer mode changes
+                logBackgroundEvent('DEVELOPER_MODE_CHANGED', {
+                    enabled: message.enabled
+                });
+                sendResponse({ success: true });
+                break;
+
+            case 'GET_ERROR_REPORT':
+                // Generate comprehensive error report
+                const manifest = chrome.runtime.getManifest();
+                const report = {
+                    reportGeneratedAt: new Date().toISOString(),
+                    extensionVersion: manifest.version,
+                    sessionId: logManager.sessionId,
+                    stats: logManager.getStats(),
+                    logs: logManager.getLogs()
+                };
+                sendResponse({ report });
+                break;
+
+            case 'TRACK_EVENT':
+                // Track user engagement or technical events
+                AmplitudeWizard.trackEvent(message.name, message.params);
+                sendResponse({ success: true });
+                break;
+
+            default:
+                sendResponse({ error: 'Unknown message type' });
+        }
+    } catch (error) {
+        logBackgroundEvent('MESSAGE_HANDLER_ERROR', {
+            messageType: message.type,
+            error: error.message
+        }, 'ERROR');
+        sendResponse({ error: error.message });
+    }
+
+    // Return true to indicate async response
+    return true;
+});
+
+/**
+ * Handle extension installation/update
+ */
+chrome.runtime.onInstalled.addListener((details) => {
+    logBackgroundEvent('EXTENSION_INSTALLED', {
+        reason: details.reason,
+        previousVersion: details.previousVersion
+    });
+
+    if (details.reason === chrome.runtime.OnInstalledReason.INSTALL || details.reason === chrome.runtime.OnInstalledReason.UPDATE) {
+        fetch('https://gemini.google.com/app')
+            .then(response => {
+                // If it redirects to accounts.google.com, the user is signed out of Gemini
+                if (response.url.includes('accounts.google.com') || !response.ok) {
+                    chrome.tabs.create({ url: chrome.runtime.getURL('onboarding.html') });
+                } else {
+                    // User is signed in! Go straight to the live tour.
+                    chrome.storage.local.set({ ask_gemini_tour_active: true, tour_step: 1 }, () => {
+                        chrome.tabs.create({ url: 'https://gemini.google.com/app' });
+                    });
+                }
+            })
+            .catch(() => {
+                // Fallback if fetch fails
+                chrome.tabs.create({ url: chrome.runtime.getURL('onboarding.html') });
+            });
+    }
+
+    // Initialize default settings
+    chrome.storage.local.get(['developerMode'], (result) => {
+        if (result.developerMode === undefined) {
+            chrome.storage.local.set({ developerMode: false });
+            logBackgroundEvent('DEFAULT_SETTINGS_INITIALIZED');
+        }
+    });
+});
+
+/**
+ * Handle extension startup
+ */
+chrome.runtime.onStartup.addListener(() => {
+    logBackgroundEvent('EXTENSION_STARTUP');
+});
+
+/**
+ * Handle tab updates - useful for SPA navigation detection
+ */
+chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+    if (tab.url?.includes('gemini.google.com') && changeInfo.status === 'complete') {
+        logBackgroundEvent('GEMINI_TAB_LOADED', {
+            tabId,
+            url: tab.url
+        });
+    }
+});
+
+/**
+ * Periodic cleanup of old logs (every hour)
+ */
+chrome.alarms.create('logCleanup', { periodInMinutes: 60 });
+
+chrome.alarms.onAlarm.addListener((alarm) => {
+    if (alarm.name === 'logCleanup') {
+        const stats = logManager.getStats();
+        if (stats.totalLogs > 150) {
+            // Trim to keep only the last 100 logs
+            logManager.logs = logManager.logs.slice(-100);
+            logBackgroundEvent('LOGS_TRIMMED', {
+                before: stats.totalLogs,
+                after: 100
+            });
+        }
+    }
+});
+
+// Log that background script has initialized
+logBackgroundEvent('BACKGROUND_INITIALIZED', {
+    version: chrome.runtime.getManifest().version
+});
+
+console.log('🏰 Fortress Framework Background Service Worker initialized');

@@ -1,0 +1,90 @@
+#ag-tour-overlay {
+    position: fixed;
+    top: 0; left: 0; width: 100vw; height: 100vh;
+    z-index: 99990;
+    pointer-events: none; /* Let clicks pass through to highlighted elements */
+    transition: opacity 0.3s ease;
+}
+
+#ag-spotlight-cutout {
+    transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.ag-tour-card {
+    position: fixed;
+    z-index: 99991;
+    background: rgba(30, 41, 59, 1);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255,255,255,0.1);
+    padding: 24px;
+    border-radius: 16px;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.5), 0 0 0 1px rgba(102, 126, 234, 0.3) inset;
+    width: 320px;
+    color: white;
+    font-family: -apple-system, system-ui, Roboto, sans-serif;
+    pointer-events: auto; /* Allow clicking buttons in tooltip */
+    transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.ag-tour-step {
+    font-size: 11px;
+    font-weight: 700;
+    color: #818cf8;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 8px;
+    background: rgba(129, 140, 248, 0.1);
+    display: inline-block;
+    padding: 4px 8px;
+    border-radius: 12px;
+}
+
+.ag-tour-title {
+    font-size: 18px;
+    font-weight: 700;
+    margin: 0 0 12px 0;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background-clip: text;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.ag-tour-text {
+    font-size: 14px;
+    color: #cbd5e1;
+    line-height: 1.5;
+    margin: 0 0 20px 0;
+}
+
+.ag-tour-btn {
+    background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+    color: white;
+    border: none;
+    padding: 10px 16px;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+    transition: transform 0.2s, box-shadow 0.2s;
+    width: 100%;
+    box-shadow: 0 4px 15px rgba(56, 239, 125, 0.2);
+}
+
+.ag-tour-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(56, 239, 125, 0.4);
+}
+
+.ag-tour-btn-skip {
+    background: transparent;
+    color: #94a3b8;
+    border: 1px solid rgba(255,255,255,0.1);
+    margin-top: 8px;
+    box-shadow: none;
+}
+
+.ag-tour-btn-skip:hover {
+    background: rgba(255,255,255,0.05);
+    color: #fff;
+    box-shadow: none;
+}

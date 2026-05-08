@@ -1,0 +1,16 @@
+# Chrome Extension Metadata
+_metadata/
+
+# Zip files
+*.zip
+
+# Redundant or comparison projects
+Quote & Reply for Gemini/
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Gemini/Antigravity specific
+.gemini/
+antigravity/
