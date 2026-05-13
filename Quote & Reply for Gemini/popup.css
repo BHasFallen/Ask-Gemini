@@ -1,0 +1,62 @@
+body {
+  width: 240px;
+  background-color: #1e1f20; /* Gemini Dark Bg */
+  color: #e3e3e3;
+  font-family: 'Google Sans', 'Segoe UI', sans-serif;
+  margin: 0;
+  padding: 16px;
+}
+
+.header {
+  margin-bottom: 20px;
+  border-bottom: 1px solid #444746;
+  padding-bottom: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.title { font-weight: 600; font-size: 16px; }
+.version { font-size: 11px; color: #8e918f; }
+
+.control-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.label { font-size: 14px; }
+
+/* Material Switch Styling */
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 36px;
+  height: 20px;
+}
+
+.switch input { opacity: 0; width: 0; height: 0; }
+
+.slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-color: #444746;
+  transition: .4s;
+  border-radius: 20px;
+}
+
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 14px;
+  width: 14px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  transition: .4s;
+  border-radius: 50%;
+}
+
+input:checked + .slider { background-color: #a8c7fa; }
+input:checked + .slider:before { transform: translateX(16px); background-color: #041e49; }

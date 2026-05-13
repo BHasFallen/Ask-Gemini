@@ -40,13 +40,52 @@
         }
 
         /* Apply variables to existing IDs */
+        /* Floating Button Styles */
         #${BTN_ID} {
-            background-color: var(--ag-bg) !important;
+            position: fixed;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            padding: 8px 18px;
+            background: var(--ag-bg) !important;
+            border: 1px solid var(--ag-border) !important;
+            border-radius: 100px !important;
             color: var(--ag-text) !important;
-            border-color: var(--ag-border) !important;
-            box-shadow: 0 4px 12px var(--ag-shadow) !important;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            z-index: 999999;
+            box-shadow: 0 4px 20px var(--ag-shadow) !important;
+            backdrop-filter: blur(10px);
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            animation: ag-pop-in 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         }
-        #${BTN_ID}:hover { background-color: var(--ag-bg-hover) !important; }
+
+        #${BTN_ID} span {
+            display: flex;
+            align-items: center;
+            gap: 8px; /* Precise space between star and text */
+            pointer-events: none;
+        }
+
+        @keyframes ag-pop-in {
+            from { transform: scale(0.8); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+
+        #${BTN_ID}:hover {
+            background: var(--ag-bg-hover) !important;
+            border-color: var(--ag-primary) !important;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 25px var(--ag-shadow) !important;
+        }
+
+        #${BTN_ID} svg {
+            color: var(--ag-primary);
+            width: 16px;
+            height: 16px;
+        }
         
         #${CHIP_ID} {
             background-color: var(--ag-bg) !important;
@@ -62,6 +101,61 @@
         }
         .ask-gemini-reply-preview { color: var(--ag-text-dim) !important; }
         .ask-gemini-reply-preview:hover { color: var(--ag-text) !important; }
+
+        /* Rating Modal Styles */
+        .ag-rating-modal {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            width: 320px;
+            background: var(--ag-bg);
+            border: 1px solid var(--ag-border);
+            border-radius: 20px;
+            box-shadow: 0 12px 40px var(--ag-shadow);
+            padding: 24px;
+            z-index: 9999999;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            animation: ag-slide-up 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        @keyframes ag-slide-up {
+            from { transform: translateY(100px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        .ag-rating-title { font-size: 18px; font-weight: 600; color: var(--ag-text); margin: 0; }
+        .ag-rating-text { font-size: 14px; color: var(--ag-text-dim); margin: 0; line-height: 1.5; }
+        .ag-rating-buttons { display: flex; gap: 10px; margin-top: 8px; }
+        
+        .ag-rating-btn {
+            flex: 1;
+            padding: 10px;
+            border-radius: 12px;
+            border: 1px solid var(--ag-border);
+            background: var(--ag-bubble-bg);
+            color: var(--ag-text);
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .ag-rating-btn:hover { background: var(--ag-bg-hover); transform: translateY(-1px); }
+        .ag-rating-btn-primary { background: var(--ag-primary) !important; color: white !important; border: none !important; }
+        
+        .ag-rating-close {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            background: transparent;
+            border: none;
+            color: var(--ag-text-dim);
+            cursor: pointer;
+            padding: 4px;
+            border-radius: 50%;
+        }
+        .ag-rating-close:hover { background: var(--ag-bg-hover); color: var(--ag-text); }
     `;
 
     const styleSheet = document.createElement("style");
@@ -122,7 +216,11 @@
                 }, 50);
             });
 
-            trackEvent('context_reply_sent', { length: currentContext.length });
+            trackEvent('context_reply_sent', { 
+                length: currentContext.length,
+                context_text: currentContext,
+                reply_text: originalText
+            });
             return true;
         } catch (err) {
             input.style.color = '';
@@ -176,7 +274,13 @@
         renderContextBox();
         const input = findInputArea();
         if (input) input.focus();
-        trackEvent('text_highlight', { length: text.length });
+        
+        const words = text.trim().split(/\s+/).length;
+        trackEvent('text_highlight', { 
+            length: text.length,
+            word_count: words,
+            highlighted_text: text 
+        });
     }
 
     function renderContextBox() {
@@ -210,6 +314,67 @@
     function clearContext() {
         currentContext = null;
         if (contextBox) contextBox.style.display = 'none';
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════════
+    // SECTION 4.1: SMART RATING UI
+    // ═══════════════════════════════════════════════════════════════════════════════
+
+    function showRatingModal() {
+        if (document.querySelector('.ag-rating-modal')) return;
+
+        const modal = document.createElement('div');
+        modal.className = 'ag-rating-modal';
+        modal.innerHTML = `
+            <button class="ag-rating-close" aria-label="Close">${ICONS.close}</button>
+            <h3 class="ag-rating-title">Enjoying Ask Gemini?</h3>
+            <p class="ag-rating-text">We're working hard to make your AI experience better. Would you mind supporting us?</p>
+            <div class="ag-rating-buttons">
+                <button class="ag-rating-btn" id="ag-rate-no">Not really</button>
+                <button class="ag-rating-btn ag-rating-btn-primary" id="ag-rate-yes">I love it!</button>
+            </div>
+        `;
+
+        document.body.appendChild(modal);
+
+        modal.querySelector('.ag-rating-close').onclick = () => {
+            chrome.runtime.sendMessage({ type: 'SET_RATING_STATUS', status: 'dismissed' });
+            modal.remove();
+        };
+
+        modal.querySelector('#ag-rate-no').onclick = () => {
+            modal.innerHTML = `
+                <button class="ag-rating-close">${ICONS.close}</button>
+                <h3 class="ag-rating-title">What can we do better?</h3>
+                <p class="ag-rating-text">We value your feedback! Tell us how we can improve Ask Gemini for you.</p>
+                <div class="ag-rating-buttons">
+                    <button class="ag-rating-btn ag-rating-btn-primary" id="ag-give-feedback">Send Feedback</button>
+                </div>
+            `;
+            modal.querySelector('.ag-rating-close').onclick = () => modal.remove();
+            modal.querySelector('#ag-give-feedback').onclick = () => {
+                chrome.runtime.sendMessage({ type: 'SET_RATING_STATUS', status: 'feedback_given' });
+                window.open('https://docs.google.com/forms/d/e/1FAIpQLSfr82mMdRgwSPY9ZsQkdRp_HXKKwmVuWO7GmjeZ3fS9XHpqsA/viewform', '_blank');
+                modal.remove();
+            };
+        };
+
+        modal.querySelector('#ag-rate-yes').onclick = () => {
+            modal.innerHTML = `
+                <button class="ag-rating-close">${ICONS.close}</button>
+                <h3 class="ag-rating-title">You're the best! 🌟</h3>
+                <p class="ag-rating-text">A 5-star review helps us keep the extension free and powerful for everyone.</p>
+                <div class="ag-rating-buttons">
+                    <button class="ag-rating-btn ag-rating-btn-primary" id="ag-go-rate">Leave 5 Stars</button>
+                </div>
+            `;
+            modal.querySelector('.ag-rating-close').onclick = () => modal.remove();
+            modal.querySelector('#ag-go-rate').onclick = () => {
+                chrome.runtime.sendMessage({ type: 'SET_RATING_STATUS', status: 'rated' });
+                chrome.runtime.sendMessage({ type: 'OPEN_REVIEW_PAGE' });
+                modal.remove();
+            };
+        };
     }
 
     // ═══════════════════════════════════════════════════════════════════════════════
@@ -310,6 +475,15 @@
     // Watch for new messages to transform
     const observer = new MutationObserver(transformMessages);
     observer.observe(document.body, { childList: true, subtree: true });
+
+    // Listen for rating prompts
+    chrome.runtime.onMessage.addListener((message) => {
+        console.log('📬 Ask Gemini: Message Received', message);
+        if (message.type === 'SHOW_RATING_PROMPT') {
+            console.log('🌟 Ask Gemini: Attempting to show rating modal...');
+            showRatingModal();
+        }
+    });
 
     // Initial run
     transformMessages();

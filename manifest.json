@@ -2,19 +2,20 @@
 "update_url": "https://clients2.google.com/service/update2/crx",
 
   "manifest_version": 3,
-  "name": "Ask Gemini: Contextual Replies",
-  "version": "1.3.0",
-  "description": "Reply with context on Gemini. Now featuring a beautiful minimalist UI and an interactive live guided tour.",
+  "name": "QuoteReply for Gemini",
+  "version": "2.0.0",
+  "description": "Highlight any text in Gemini. Ask a follow-up with that exact context locked in — fewer hallucinations, sharper answers.",
   "permissions": [
     "storage",
     "alarms"
   ],
   "host_permissions": [
-    "https://api2.amplitude.com/*"
+    "https://api2.amplitude.com/*",
+    "https://gemini.google.com/*"
   ],
   "action": {
     "default_popup": "popup.html",
-    "default_title": "Ask Gemini Settings"
+    "default_title": "QuoteReply Settings"
   },
   "background": {
     "service_worker": "background.js"

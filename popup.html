@@ -79,12 +79,57 @@
       color: var(--accent);
       text-decoration: none;
     }
+
+    /* Stats Section Styles */
+    .value-dashboard {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .stat-card {
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px;
+      text-align: center;
+    }
+
+    .stat-value {
+      display: block;
+      font-size: 20px;
+      font-weight: 600;
+      color: #ffffff;
+      margin-bottom: 2px;
+      letter-spacing: -0.2px;
+    }
+
+    .stat-label {
+      display: block;
+      font-size: 9px;
+      font-weight: 500;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
   </style>
 </head>
 <body>
   <div class="header">
-    <h1><span>✨</span> Ask Gemini</h1>
-    <span class="version" id="version-badge">v1.1.0</span>
+    <h1>QuoteReply</h1>
+    <span class="version" id="version-badge">v2.0.0</span>
+  </div>
+
+  <div class="value-dashboard">
+    <div class="stat-card">
+      <span class="stat-value" id="time-saved">0 mins</span>
+      <span class="stat-label">Time Saved</span>
+    </div>
+    <div class="stat-card">
+      <span class="stat-value" id="words-analyzed">0 words</span>
+      <span class="stat-label">Words Analyzed</span>
+    </div>
   </div>
 
   <div class="guide">

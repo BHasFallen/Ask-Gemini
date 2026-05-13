@@ -77,6 +77,148 @@ class AmplitudeWizard {
 
 
 /**
+ * RatingManager - Handles local usage metrics and rating prompt logic
+ * Implements the "Smart Rating" business rules
+ */
+class RatingManager {
+    static DEFAULTS = {
+        activeDays: 0,
+        highlightCount: 0,
+        replyCount: 0,
+        totalWords: 0,
+        isExistingUser: false,
+        postUpdateHighlights: 0,
+        ratingStatus: null, // null, 'rated', 'feedback_given', 'dismissed'
+        dismissedAtActiveDay: 0,
+        dismissedAtHighlightCount: 0,
+        lastPromptVersion: '0.0.0',
+        lastDayActive: null
+    };
+
+    static async getState() {
+        const res = await chrome.storage.local.get(['rating_state']);
+        return res.rating_state || { ...this.DEFAULTS };
+    }
+
+    static async setState(newState) {
+        await chrome.storage.local.set({ rating_state: newState });
+    }
+
+    /**
+     * Record a specific event and potentially trigger evaluation
+     */
+    static async recordEvent(eventName, params = {}) {
+        const state = await this.getState();
+        const now = new Date().toISOString().split('T')[0];
+
+        // 1. Track Active Days
+        if (state.lastDayActive !== now) {
+            state.activeDays += 1;
+            state.lastDayActive = now;
+        }
+
+        // 2. Increment Lifetime Counters
+        if (eventName === 'text_highlight') {
+            state.highlightCount += 1;
+            state.totalWords = (state.totalWords || 0) + (params.word_count || 0);
+            if (state.isExistingUser) {
+                state.postUpdateHighlights += 1;
+            }
+        } else if (eventName === 'context_reply_sent') {
+            state.replyCount += 1;
+        }
+
+        await RatingManager.setState(state);
+        
+        // 3. Evaluate Trigger
+        this.evaluateTrigger(state);
+    }
+
+    /**
+     * Core business logic to determine if the prompt should show
+     */
+    static async evaluateTrigger(state) {
+        // Rule: Never show if already rated
+        if (state.ratingStatus === 'rated') return;
+
+        // Rule: Update Bombardment Buffer
+        if (state.isExistingUser && state.postUpdateHighlights < 5) return;
+
+        // Rule: Redemption Arc check is handled in onInstalled, 
+        // here we just check if status is feedback_given (and not reset)
+        if (state.ratingStatus === 'feedback_given') return;
+
+        const timeCriteria = state.activeDays >= 3;
+        const valueCriteria = state.highlightCount >= 15 || state.replyCount >= 3;
+
+        // Rule: Initial Trigger Thresholds
+        if (state.ratingStatus === null) {
+            if (timeCriteria && valueCriteria) {
+                this.triggerUI();
+            }
+        } 
+        // Rule: Cooldown Phase (Second and Final Time)
+        else if (state.ratingStatus === 'dismissed') {
+            const daysSinceDismissal = state.activeDays >= (state.dismissedAtActiveDay + 7);
+            const highlightsSinceDismissal = state.highlightCount >= (state.dismissedAtHighlightCount + 30);
+            
+            if (daysSinceDismissal && highlightsSinceDismissal) {
+                this.triggerUI();
+            }
+        }
+    }
+
+    static async triggerUI() {
+        try {
+            const tabs = await chrome.tabs.query({ url: 'https://gemini.google.com/*' });
+            console.log(`🎯 RatingManager: Found ${tabs.length} Gemini tabs`);
+            
+            tabs.forEach(tab => {
+                chrome.tabs.sendMessage(tab.id, { type: 'SHOW_RATING_PROMPT' }, (response) => {
+                    if (chrome.runtime.lastError) {
+                        console.warn(`❌ Message failed for tab ${tab.id}:`, chrome.runtime.lastError.message);
+                    } else {
+                        console.log(`✅ Message sent successfully to tab ${tab.id}`);
+                    }
+                });
+            });
+
+            // Track in Amplitude once per trigger attempt
+            AmplitudeWizard.trackEvent('rating_prompt_shown', { 
+                version: chrome.runtime.getManifest().version 
+            });
+        } catch (error) {
+            console.error('Trigger UI Error:', error);
+        }
+    }
+
+    /**
+     * Handle user interaction with the prompt
+     */
+    static async setStatus(status) {
+        const state = await this.getState();
+        state.ratingStatus = status;
+        state.lastPromptVersion = chrome.runtime.getManifest().version;
+
+        if (status === 'dismissed') {
+            state.dismissedAtActiveDay = state.activeDays;
+            state.dismissedAtHighlightCount = state.highlightCount;
+        }
+
+        await this.setState(state);
+        logBackgroundEvent('RATING_STATUS_UPDATED', { status });
+
+        // Track in Amplitude
+        AmplitudeWizard.trackEvent('rating_interaction', {
+            status: status,
+            activeDays: state.activeDays,
+            highlightCount: state.highlightCount
+        });
+    }
+}
+
+
+/**
  * Centralized log storage for the background script
  * Maintains logs from all content scripts across tabs
  */
@@ -204,6 +346,18 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             case 'TRACK_EVENT':
                 // Track user engagement or technical events
                 AmplitudeWizard.trackEvent(message.name, message.params);
+                RatingManager.recordEvent(message.name, message.params);
+                sendResponse({ success: true });
+                break;
+
+            case 'SET_RATING_STATUS':
+                RatingManager.setStatus(message.status);
+                sendResponse({ success: true });
+                break;
+
+            case 'OPEN_REVIEW_PAGE':
+                const reviewUrl = `https://chromewebstore.google.com/detail/jhkodgigeemnmdmdikdkpcbmgbbopgni/reviews`;
+                chrome.tabs.create({ url: reviewUrl, active: true });
                 sendResponse({ success: true });
                 break;
 
@@ -232,6 +386,26 @@ chrome.runtime.onInstalled.addListener((details) => {
     });
 
     if (details.reason === chrome.runtime.OnInstalledReason.INSTALL || details.reason === chrome.runtime.OnInstalledReason.UPDATE) {
+        // Initialize/Update Rating State
+        RatingManager.getState().then(state => {
+            if (details.reason === 'install') {
+                state.isExistingUser = false;
+            } else if (details.reason === 'update') {
+                const oldVersion = state.lastPromptVersion || '0.0.0';
+                const oldMajor = parseInt(oldVersion.split('.')[0]);
+                const newMajor = parseInt(chrome.runtime.getManifest().version.split('.')[0]);
+                
+                state.isExistingUser = true;
+                state.postUpdateHighlights = 0;
+
+                // Redemption Arc: Reset feedback_given if major version increases
+                if (newMajor > oldMajor && state.ratingStatus === 'feedback_given') {
+                    state.ratingStatus = null;
+                }
+            }
+            RatingManager.setState(state);
+        });
+
         fetch('https://gemini.google.com/app')
             .then(response => {
                 // If it redirects to accounts.google.com, the user is signed out of Gemini
@@ -303,3 +477,6 @@ logBackgroundEvent('BACKGROUND_INITIALIZED', {
 });
 
 console.log('🏰 Fortress Framework Background Service Worker initialized');
+
+// Expose to console for testing
+self.RatingManager = RatingManager;
