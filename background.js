@@ -34,14 +34,28 @@ class AmplitudeWizard {
      * Track event to Amplitude
      */
     static async trackEvent(name, params = {}) {
-        // Basic rate limiting for high-frequency events
-        const now = Date.now();
-        if (name === 'text_highlight' && (now - (this.lastTracked.get('text_highlight') || 0) < 2000)) {
+        // Exclude text_highlight from Amplitude completely to be privacy-first
+        if (name === 'text_highlight') {
             return;
         }
-        this.lastTracked.set(name, now);
 
+        // 1. Exclude if running as an unpacked local extension (development mode)
+        const isUnpacked = !('update_url' in chrome.runtime.getManifest());
+        if (isUnpacked) {
+            console.log(`🏰 [Amplitude] [Dev Mode] Event suppressed: ${name}`, params);
+            return;
+        }
+
+        // 2. Exclude if telemetry is explicitly disabled or developerMode is enabled on this profile
+        const result = await chrome.storage.local.get(['disableTelemetry', 'developerMode']);
+        if (result.disableTelemetry || result.developerMode) {
+            console.log(`🏰 [Amplitude] [Telemetry Suppressed] Event: ${name}`, params);
+            return;
+        }
+
+        const now = Date.now();
         const deviceId = await this.getDeviceId();
+        const version = chrome.runtime.getManifest().version;
         
         const eventBody = {
             api_key: this.API_KEY,
@@ -53,7 +67,11 @@ class AmplitudeWizard {
                 insert_id: this.generateInsertId(),
                 session_id: logManager.startTime, // Use background startup as session
                 platform: 'Chrome Extension',
-                os_name: 'Chrome'
+                os_name: 'Chrome',
+                app_version: version,
+                user_properties: {
+                    version: version
+                }
             }]
         };
 
@@ -385,27 +403,35 @@ chrome.runtime.onInstalled.addListener((details) => {
         previousVersion: details.previousVersion
     });
 
-    if (details.reason === chrome.runtime.OnInstalledReason.INSTALL || details.reason === chrome.runtime.OnInstalledReason.UPDATE) {
-        // Initialize/Update Rating State
-        RatingManager.getState().then(state => {
-            if (details.reason === 'install') {
-                state.isExistingUser = false;
-            } else if (details.reason === 'update') {
-                const oldVersion = state.lastPromptVersion || '0.0.0';
-                const oldMajor = parseInt(oldVersion.split('.')[0]);
-                const newMajor = parseInt(chrome.runtime.getManifest().version.split('.')[0]);
-                
-                state.isExistingUser = true;
-                state.postUpdateHighlights = 0;
+    // 1. Initialize/Update Rating State
+    RatingManager.getState().then(state => {
+        if (details.reason === chrome.runtime.OnInstalledReason.INSTALL) {
+            state.isExistingUser = false;
+        } else if (details.reason === chrome.runtime.OnInstalledReason.UPDATE) {
+            const oldVersion = state.lastPromptVersion || '0.0.0';
+            const oldMajor = parseInt(oldVersion.split('.')[0]);
+            const newMajor = parseInt(chrome.runtime.getManifest().version.split('.')[0]);
+            
+            state.isExistingUser = true;
+            state.postUpdateHighlights = 0;
 
-                // Redemption Arc: Reset feedback_given if major version increases
-                if (newMajor > oldMajor && state.ratingStatus === 'feedback_given') {
-                    state.ratingStatus = null;
-                }
+            // Redemption Arc: Reset feedback_given if major version increases
+            if (newMajor > oldMajor && state.ratingStatus === 'feedback_given') {
+                state.ratingStatus = null;
             }
-            RatingManager.setState(state);
-        });
+        }
+        RatingManager.setState(state);
+    });
 
+    // 2. Set uninstall URL with pre-filled device ID to track uninstalls and ask why
+    AmplitudeWizard.getDeviceId().then(deviceId => {
+        const feedbackFormUrl = 'https://docs.google.com/forms/d/e/1FAIpQLSfr82mMdRgwSPY9ZsQkdRp_HXKKwmVuWO7GmjeZ3fS9XHpqsA/viewform';
+        const uninstallUrl = `${feedbackFormUrl}?entry.648517234=${deviceId}&device_id=${deviceId}`;
+        chrome.runtime.setUninstallURL(uninstallUrl);
+    });
+
+    // 3. Launch Onboarding/Live Tour (ONLY on fresh INSTALL, never on UPDATE or dev reloads)
+    if (details.reason === chrome.runtime.OnInstalledReason.INSTALL) {
         fetch('https://gemini.google.com/app')
             .then(response => {
                 // If it redirects to accounts.google.com, the user is signed out of Gemini
@@ -457,6 +483,9 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
  */
 chrome.alarms.create('logCleanup', { periodInMinutes: 60 });
 
+// Fire once per day when extension is active
+chrome.alarms.create('heartbeat', { periodInMinutes: 1440 });
+
 chrome.alarms.onAlarm.addListener((alarm) => {
     if (alarm.name === 'logCleanup') {
         const stats = logManager.getStats();
@@ -468,6 +497,8 @@ chrome.alarms.onAlarm.addListener((alarm) => {
                 after: 100
             });
         }
+    } else if (alarm.name === 'heartbeat') {
+        AmplitudeWizard.trackEvent('extension_active');
     }
 });
 
