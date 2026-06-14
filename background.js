@@ -39,40 +39,52 @@ class AmplitudeWizard {
             return;
         }
 
+        const now = Date.now();
+        const deviceId = await this.getDeviceId();
+        const version = chrome.runtime.getManifest().version;
+        
+        // Retrieve raw email and name from local storage
+        const storageResult = await chrome.storage.local.get(['user_email', 'user_name']);
+        const userId = storageResult.user_email || null;
+        const userName = storageResult.user_name || null;
+        
+        const event = {
+            device_id: deviceId,
+            event_type: name,
+            event_properties: params,
+            time: now, // Epoch ms required
+            insert_id: this.generateInsertId(),
+            session_id: logManager.startTime, // Use background startup as session
+            platform: 'Chrome Extension',
+            os_name: 'Chrome',
+            app_version: version,
+            user_properties: {
+                version: version,
+                name: userName
+            }
+        };
+
+        if (userId) {
+            event.user_id = userId;
+        }
+
         // 1. Exclude if running as an unpacked local extension (development mode)
         const isUnpacked = !('update_url' in chrome.runtime.getManifest());
         if (isUnpacked) {
-            console.log(`🏰 [Amplitude] [Dev Mode] Event suppressed: ${name}`, params);
+            console.log(`🏰 [Amplitude] [Dev Mode] Event suppressed: ${name}`, event);
             return;
         }
 
         // 2. Exclude if telemetry is explicitly disabled or developerMode is enabled on this profile
         const result = await chrome.storage.local.get(['disableTelemetry', 'developerMode']);
         if (result.disableTelemetry || result.developerMode) {
-            console.log(`🏰 [Amplitude] [Telemetry Suppressed] Event: ${name}`, params);
+            console.log(`🏰 [Amplitude] [Telemetry Suppressed] Event: ${name}`, event);
             return;
         }
 
-        const now = Date.now();
-        const deviceId = await this.getDeviceId();
-        const version = chrome.runtime.getManifest().version;
-        
         const eventBody = {
             api_key: this.API_KEY,
-            events: [{
-                device_id: deviceId,
-                event_type: name,
-                event_properties: params,
-                time: now, // Epoch ms required
-                insert_id: this.generateInsertId(),
-                session_id: logManager.startTime, // Use background startup as session
-                platform: 'Chrome Extension',
-                os_name: 'Chrome',
-                app_version: version,
-                user_properties: {
-                    version: version
-                }
-            }]
+            events: [event]
         };
 
         try {
@@ -397,14 +409,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 /**
  * Handle extension installation/update
  */
-chrome.runtime.onInstalled.addListener((details) => {
+chrome.runtime.onInstalled.addListener(async (details) => {
     logBackgroundEvent('EXTENSION_INSTALLED', {
         reason: details.reason,
         previousVersion: details.previousVersion
     });
 
-    // 1. Initialize/Update Rating State
-    RatingManager.getState().then(state => {
+    try {
+        // 1. Initialize/Update Rating State
+        const state = await RatingManager.getState();
         if (details.reason === chrome.runtime.OnInstalledReason.INSTALL) {
             state.isExistingUser = false;
         } else if (details.reason === chrome.runtime.OnInstalledReason.UPDATE) {
@@ -420,43 +433,44 @@ chrome.runtime.onInstalled.addListener((details) => {
                 state.ratingStatus = null;
             }
         }
-        RatingManager.setState(state);
-    });
+        await RatingManager.setState(state);
 
-    // 2. Set uninstall URL with pre-filled device ID to track uninstalls and ask why
-    AmplitudeWizard.getDeviceId().then(deviceId => {
+        // 2. Set uninstall URL with pre-filled device ID
+        const deviceId = await AmplitudeWizard.getDeviceId();
         const feedbackFormUrl = 'https://docs.google.com/forms/d/e/1FAIpQLSfr82mMdRgwSPY9ZsQkdRp_HXKKwmVuWO7GmjeZ3fS9XHpqsA/viewform';
         const uninstallUrl = `${feedbackFormUrl}?entry.648517234=${deviceId}&device_id=${deviceId}`;
         chrome.runtime.setUninstallURL(uninstallUrl);
-    });
 
-    // 3. Launch Onboarding/Live Tour (ONLY on fresh INSTALL, never on UPDATE or dev reloads)
-    if (details.reason === chrome.runtime.OnInstalledReason.INSTALL) {
-        fetch('https://gemini.google.com/app')
-            .then(response => {
-                // If it redirects to accounts.google.com, the user is signed out of Gemini
+        // 3. Launch Onboarding/Live Tour (on fresh INSTALL, or on dev reloads for testing)
+        const isUnpacked = !('update_url' in chrome.runtime.getManifest());
+        if (details.reason === chrome.runtime.OnInstalledReason.INSTALL || isUnpacked) {
+            try {
+                const response = await fetch('https://gemini.google.com/app', { credentials: 'include' });
                 if (response.url.includes('accounts.google.com') || !response.ok) {
-                    chrome.tabs.create({ url: chrome.runtime.getURL('onboarding.html') });
+                    await chrome.tabs.create({ url: chrome.runtime.getURL('onboarding.html') });
                 } else {
                     // User is signed in! Go straight to the live tour.
-                    chrome.storage.local.set({ ask_gemini_tour_active: true, tour_step: 1 }, () => {
-                        chrome.tabs.create({ url: 'https://gemini.google.com/app' });
+                    await new Promise((resolve) => {
+                        chrome.storage.local.set({ ask_gemini_tour_active: true, tour_step: 1 }, async () => {
+                            await chrome.tabs.create({ url: 'https://gemini.google.com/app' });
+                            resolve();
+                        });
                     });
                 }
-            })
-            .catch(() => {
-                // Fallback if fetch fails
-                chrome.tabs.create({ url: chrome.runtime.getURL('onboarding.html') });
-            });
-    }
+            } catch (err) {
+                await chrome.tabs.create({ url: chrome.runtime.getURL('onboarding.html') });
+            }
+        }
 
-    // Initialize default settings
-    chrome.storage.local.get(['developerMode'], (result) => {
+        // Initialize default settings
+        const result = await chrome.storage.local.get(['developerMode']);
         if (result.developerMode === undefined) {
-            chrome.storage.local.set({ developerMode: false });
+            await chrome.storage.local.set({ developerMode: false });
             logBackgroundEvent('DEFAULT_SETTINGS_INITIALIZED');
         }
-    });
+    } catch (error) {
+        logBackgroundEvent('ON_INSTALLED_ERROR', { error: error.message }, 'ERROR');
+    }
 });
 
 /**

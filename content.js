@@ -241,6 +241,42 @@
             transition: all 0.2s;
         }
         .ag-rating-close:hover { background: var(--ag-bg-hover); color: var(--ag-text); }
+
+        /* Placeholder fade transitions */
+        .ql-editor::before {
+            transition: opacity 0.15s ease-in-out, transform 0.15s ease-in-out !important;
+            opacity: 1;
+        }
+        .ql-editor.ag-placeholder-fade-out::before {
+            opacity: 0 !important;
+            transform: translateY(4px) !important;
+        }
+        .ql-editor.ag-placeholder-fade-in::before {
+            opacity: 0 !important;
+            transform: translateY(-4px) !important;
+        }
+
+        /* Click to Scroll Target Selection Highlight Animation */
+        @keyframes ag-text-highlight-blink-anim {
+            0% {
+                background-color: transparent;
+            }
+            15% {
+                background-color: rgba(61, 90, 254, 0.35); /* Google Blue-style mouse selection highlight */
+            }
+            85% {
+                background-color: rgba(61, 90, 254, 0.35);
+            }
+            100% {
+                background-color: transparent;
+            }
+        }
+        .ag-text-highlight-blink {
+            animation: ag-text-highlight-blink-anim 2s ease-in-out;
+            border-radius: 2px;
+            padding: 2px 0;
+            display: inline;
+        }
     `;
 
     const styleSheet = document.createElement("style");
@@ -258,6 +294,9 @@
     let floatButton = null;
     let contextBox = null;
     let isInjecting = false;
+    let retentionTipTimeout = null;
+    let isTipTemporarilyDismissed = false;
+    let lastRepliesCount = 0;
 
     // ═══════════════════════════════════════════════════════════════════════════════
     // SECTION 2: CORE INJECTION LOGIC (The "Competitor" Method)
@@ -292,8 +331,20 @@
 
             // Step 3: Trigger Send immediately
             requestAnimationFrame(() => {
-                sendBtn.click();
                 clearContext();
+                sendBtn.click();
+
+                // Increment reply count and reset visits since last reply
+                chrome.storage.local.get(['reply_count_lifetime'], (res) => {
+                    const count = (res.reply_count_lifetime || 0) + 1;
+                    chrome.storage.local.set({
+                        reply_count_lifetime: count,
+                        last_reply_time: Date.now(),
+                        gemini_visits_since_last_reply: 0
+                    }, () => {
+                        evaluateRetentionTip().catch(console.error);
+                    });
+                });
 
                 // Step 4: Restore visibility after send triggers
                 setTimeout(() => {
@@ -323,6 +374,8 @@
 
         if (text.length > 0 && text.length < 5000) {
             showFloatButton(selection);
+            isTipTemporarilyDismissed = true;
+            evaluateRetentionTip().catch(console.error);
         } else {
             hideFloatButton();
         }
@@ -364,6 +417,7 @@
             length: text.length,
             word_count: words
         });
+        evaluateRetentionTip().catch(console.error);
     }
 
     function renderContextBox() {
@@ -397,6 +451,7 @@
     function clearContext() {
         currentContext = null;
         if (contextBox) contextBox.style.display = 'none';
+        evaluateRetentionTip().catch(console.error);
     }
 
     // ═══════════════════════════════════════════════════════════════════════════════
@@ -410,7 +465,7 @@
         modal.className = 'ag-rating-modal';
         modal.innerHTML = `
             <button class="ag-rating-close" aria-label="Close">${ICONS.close}</button>
-            <h3 class="ag-rating-title" style="text-align: center; font-size: 15px; margin-bottom: 2px;">Enjoying QuoteReply?</h3>
+            <h3 class="ag-rating-title" style="text-align: center; font-size: 15px; margin-bottom: 2px;">Enjoying Quote Reply?</h3>
             <div class="ag-rating-stars-container">
                 <button class="ag-star-btn" data-value="1" aria-label="1 star">${ICONS.star}</button>
                 <button class="ag-star-btn" data-value="2" aria-label="2 stars">${ICONS.star}</button>
@@ -448,7 +503,7 @@
                     modal.innerHTML = `
                         <button class="ag-rating-close" aria-label="Close">${ICONS.close}</button>
                         <h3 class="ag-rating-title" style="font-size: 15px; text-align: center;">You're the best! 🌟</h3>
-                        <p class="ag-rating-text" style="font-size: 12px; text-align: center; margin: 4px 0 8px 0; line-height: 1.4;">A quick 5-star review helps us keep QuoteReply free and powerful.</p>
+                        <p class="ag-rating-text" style="font-size: 12px; text-align: center; margin: 4px 0 8px 0; line-height: 1.4;">A quick 5-star review helps us keep Quote Reply free and powerful.</p>
                         <div class="ag-rating-buttons" style="margin-top: 4px;">
                             <button class="ag-rating-btn ag-rating-btn-primary" id="ag-go-rate" style="padding: 8px;">Leave 5 Stars</button>
                         </div>
@@ -494,9 +549,104 @@
     // SECTION 4: HISTORY BEAUTIFICATION (Turning Separators into Chips)
     // ═══════════════════════════════════════════════════════════════════════════════
 
+    function scrollToAndHighlightText(textToFind) {
+        if (!textToFind) return;
+        const cleanText = textToFind.trim();
+        if (cleanText.length === 0) return;
+
+        // Gather all text elements in the chat log (excluding transformed proxy components)
+        const candidates = document.querySelectorAll(
+            '.model-response, .message-content, .markdown-main-panel, message-content, .query-text, .user-query-bubble-with-background'
+        );
+
+        let targetElement = null;
+
+        for (const el of candidates) {
+            if (el.closest('.ask-gemini-transformed-proxy')) continue;
+
+            const contentText = el.textContent || "";
+            if (contentText.includes(cleanText)) {
+                targetElement = el;
+                // Drill down to more specific child elements if available
+                const subElements = el.querySelectorAll('p, span, li, h1, h2, h3, code');
+                for (const subEl of subElements) {
+                    if (subEl.textContent.includes(cleanText)) {
+                        targetElement = subEl;
+                    }
+                }
+                break;
+            }
+        }
+
+        if (targetElement) {
+            // Traverse targetElement to find the exact text node containing the textToHighlight
+            const walk = document.createTreeWalker(targetElement, NodeFilter.SHOW_TEXT, null, false);
+            let node;
+            let foundTextNode = false;
+
+            while (node = walk.nextNode()) {
+                const index = node.nodeValue.indexOf(cleanText);
+                if (index !== -1) {
+                    foundTextNode = true;
+                    const parent = node.parentNode;
+                    
+                    // Create a span representing the selection highlight
+                    const highlightSpan = document.createElement('span');
+                    highlightSpan.className = 'ag-text-highlight-blink';
+                    highlightSpan.textContent = cleanText;
+
+                    const beforeText = node.nodeValue.substring(0, index);
+                    const afterText = node.nodeValue.substring(index + cleanText.length);
+
+                    const beforeNode = document.createTextNode(beforeText);
+                    const afterNode = document.createTextNode(afterText);
+
+                    parent.insertBefore(beforeNode, node);
+                    parent.insertBefore(highlightSpan, node);
+                    parent.insertBefore(afterNode, node);
+                    parent.removeChild(node);
+
+                    highlightSpan.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+                    // Restore clean DOM after the highlight animation ends
+                    setTimeout(() => {
+                        if (highlightSpan.parentNode) {
+                            const mergedText = beforeText + cleanText + afterText;
+                            const restoredNode = document.createTextNode(mergedText);
+                            const pNode = highlightSpan.parentNode;
+                            pNode.insertBefore(restoredNode, beforeNode);
+                            pNode.removeChild(beforeNode);
+                            pNode.removeChild(highlightSpan);
+                            pNode.removeChild(afterNode);
+                            pNode.normalize();
+                        }
+                    }, 2000);
+                    
+                    break;
+                }
+            }
+
+            // Fallback to highlighting the parent if specific text node mapping fails
+            if (!foundTextNode) {
+                targetElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                targetElement.classList.add('ag-text-highlight-blink');
+                setTimeout(() => {
+                    targetElement.classList.remove('ag-text-highlight-blink');
+                }, 2000);
+            }
+        }
+    }
+
     function transformMessages() {
         const PREFIX = "I'm replying to this:";
         const PREFIX_CURLY = "I\u2019m replying to this:";
+        
+        const replies = document.querySelectorAll('.model-response, .message-content, .markdown-main-panel, message-content');
+        const currentCount = replies.length;
+        if (currentCount > lastRepliesCount) {
+            lastRepliesCount = currentCount;
+            isTipTemporarilyDismissed = false;
+        }
         
         const candidates = document.querySelectorAll('.query-text, .user-query-bubble-with-background, p.query-text-line, [data-test-id="user-query"]');
         
@@ -544,12 +694,21 @@
                 const proxy = document.createElement('div');
                 proxy.className = 'ask-gemini-transformed-proxy';
                 proxy.innerHTML = chipHtml;
+                
+                const btn = proxy.querySelector('.ask-gemini-reply-preview');
+                if (btn) {
+                    btn.onclick = () => scrollToAndHighlightText(context);
+                }
+                
                 wrapper.appendChild(proxy);
                 
                 wrapper.setAttribute('data-ag-processed', 'true');
                 wrapper.querySelectorAll('*').forEach(child => child.setAttribute('data-ag-processed', 'true'));
             }
         });
+
+        // Dynamic retention tips checks
+        evaluateRetentionTip().catch(console.error);
     }
 
     // ═══════════════════════════════════════════════════════════════════════════════
@@ -566,6 +725,153 @@
             || document.querySelector('button.send-button');
     }
 
+    async function updateUserProfile() {
+        // 1. Try to get email from meta tag
+        const meta = document.querySelector('meta[name="og-profile-acct"]');
+        let email = meta ? meta.getAttribute('content') : null;
+
+        // 2. Try to get name and email from Google Account profile button
+        const profileLink = document.querySelector('a[aria-label*="Google Account"]');
+        let name = null;
+        if (profileLink) {
+            const ariaLabel = profileLink.getAttribute('aria-label') || "";
+            const nameMatch = ariaLabel.match(/Google Account:\s*([^\n\(\r]+)/i);
+            if (nameMatch && nameMatch[1]) {
+                name = nameMatch[1].trim();
+            }
+            if (!email) {
+                const emailMatch = ariaLabel.match(/\(([^)]+)\)/);
+                if (emailMatch && emailMatch[1]) {
+                    email = emailMatch[1].trim();
+                }
+            }
+        }
+
+        const normalizedEmail = email ? email.trim().toLowerCase() : null;
+        const normalizedName = name ? name.trim() : null;
+
+        const res = await chrome.storage.local.get(['user_email', 'user_name']);
+        
+        const updates = {};
+        if (normalizedEmail && res.user_email !== normalizedEmail) {
+            updates.user_email = normalizedEmail;
+        }
+        if (normalizedName && res.user_name !== normalizedName) {
+            updates.user_name = normalizedName;
+        }
+
+        if (Object.keys(updates).length > 0) {
+            await chrome.storage.local.set(updates);
+        }
+    }
+
+    async function incrementSessionVisits() {
+        const key = 'gemini_visits_since_last_reply';
+        const res = await chrome.storage.local.get([key]);
+        const current = res[key] || 0;
+        await chrome.storage.local.set({ [key]: current + 1 });
+    }
+
+    function animatePlaceholderChange(input, newPlaceholder) {
+        if (input.getAttribute('data-placeholder') === newPlaceholder) return;
+        input.classList.add('ag-placeholder-fade-out');
+        setTimeout(() => {
+            input.setAttribute('data-placeholder', newPlaceholder);
+            input.classList.remove('ag-placeholder-fade-out');
+            input.classList.add('ag-placeholder-fade-in');
+            setTimeout(() => {
+                input.classList.remove('ag-placeholder-fade-in');
+            }, 150);
+        }, 150);
+    }
+
+    async function evaluateRetentionTip() {
+        const input = findInputArea();
+        if (!input) return;
+
+        // Clean up any old DOM retention tip element if present
+        const oldTip = document.getElementById('ag-retention-tip');
+        if (oldTip) oldTip.remove();
+
+        const res = await chrome.storage.local.get([
+            'reply_count_lifetime', 
+            'last_reply_time', 
+            'gemini_visits_since_last_reply'
+        ]);
+
+        const replyCount = res.reply_count_lifetime || 0;
+        const lastReplyTime = res.last_reply_time || 0;
+        const visits = res.gemini_visits_since_last_reply || 0;
+
+        let shouldShow = false;
+
+        if (replyCount < 5) {
+            // Still onboarding (under 5 quote-replies)
+            shouldShow = true;
+        } else {
+            // Over 5 replies: check if 7 days passed AND they opened Gemini at least twice
+            const sevenDays = 7 * 24 * 60 * 60 * 1000;
+            const inactive = (Date.now() - lastReplyTime) > sevenDays;
+            if (inactive && visits >= 2) {
+                shouldShow = true;
+            }
+        }
+
+        // Hide if a quote snippet is actively loaded
+        if (currentContext) {
+            shouldShow = false;
+        }
+
+        // Hide if user is currently typing in the box
+        const currentText = input.innerText || "";
+        if (currentText.trim().length > 0) {
+            shouldShow = false;
+        }
+
+        // Hide if there is no response from Gemini on screen (convo hasn't started)
+        const replyElement = document.querySelector('.model-response, .message-content, .markdown-main-panel, message-content');
+        const hasReply = !!(replyElement && replyElement.textContent.trim().length > 0);
+        if (!hasReply) {
+            shouldShow = false;
+        }
+
+        // Store original placeholder if not already saved
+        const originalPlaceholder = input.getAttribute('data-placeholder');
+        if (originalPlaceholder && originalPlaceholder !== "Highlight any text to quote-reply." && !input.hasAttribute('data-ag-original-placeholder')) {
+            input.setAttribute('data-ag-original-placeholder', originalPlaceholder);
+        }
+
+        const basePlaceholder = input.getAttribute('data-ag-original-placeholder') || 'Ask Gemini';
+        const targetPlaceholder = (shouldShow && !isTipTemporarilyDismissed) ? "Highlight any text to quote-reply." : basePlaceholder;
+
+        if (input.getAttribute('data-placeholder') !== targetPlaceholder) {
+            animatePlaceholderChange(input, targetPlaceholder);
+
+            // If we just showed the tip, start the auto-dismiss timer
+            if (targetPlaceholder === "Highlight any text to quote-reply.") {
+                if (retentionTipTimeout) clearTimeout(retentionTipTimeout);
+                retentionTipTimeout = setTimeout(() => {
+                    isTipTemporarilyDismissed = true;
+                    evaluateRetentionTip().catch(console.error);
+                }, 6000); // 6 seconds auto-dismiss
+            } else {
+                // If we cleared/changed away from the tip, clear any active timer
+                if (retentionTipTimeout) {
+                    clearTimeout(retentionTipTimeout);
+                    retentionTipTimeout = null;
+                }
+            }
+        }
+
+        // Bind input typing handler
+        if (!input.hasAttribute('data-ag-tip-listener')) {
+            input.setAttribute('data-ag-tip-listener', 'true');
+            input.addEventListener('input', () => {
+                evaluateRetentionTip().catch(console.error);
+            });
+        }
+    }
+
     function trackEvent(name, params) {
         chrome.runtime.sendMessage({ type: 'TRACK_EVENT', name, params });
     }
@@ -573,12 +879,16 @@
     // Listen for Send triggers
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Enter' && !e.shiftKey && currentContext) {
-            if (maybeInjectAndSend()) e.stopImmediatePropagation();
+            e.preventDefault();
+            e.stopImmediatePropagation();
+            maybeInjectAndSend();
         }
     }, true);
 
     document.addEventListener('click', (e) => {
         if (currentContext && e.target.closest('button[aria-label="Send message"], button.send-button')) {
+            e.preventDefault();
+            e.stopImmediatePropagation();
             maybeInjectAndSend();
         }
     }, true);
@@ -600,5 +910,7 @@
 
     // Initial run
     transformMessages();
+    updateUserProfile().catch(console.error);
+    incrementSessionVisits().catch(console.error);
     console.log('🚀 Ask Gemini: Simplified Engine Active');
 })();

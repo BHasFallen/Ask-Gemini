@@ -72,6 +72,17 @@ class PopupController {
             e.preventDefault();
             this.viewSessionLogs();
         });
+
+        const rateBtn = document.getElementById('rate-extension-btn');
+        if (rateBtn) {
+            rateBtn.addEventListener('click', () => {
+                chrome.runtime.sendMessage({ 
+                    type: 'TRACK_EVENT', 
+                    name: 'popup_rate_click' 
+                });
+                chrome.runtime.sendMessage({ type: 'OPEN_REVIEW_PAGE' });
+            });
+        }
     }
 
     async viewSessionLogs() {

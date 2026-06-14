@@ -1,90 +1,137 @@
 #ag-tour-overlay {
     position: fixed;
-    top: 0; left: 0; width: 100vw; height: 100vh;
+    top: 0; 
+    left: 0; 
+    width: 100vw; 
+    height: 100vh;
     z-index: 99990;
     pointer-events: none; /* Let clicks pass through to highlighted elements */
-    transition: opacity 0.3s ease;
+    transition: opacity 0.4s ease;
 }
 
-#ag-spotlight-cutout {
+#ag-spotlight-cutout,
+#ag-spotlight-cutout-2 {
     transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
+/* Glowing Border Outlines around active elements */
+.ag-tour-glow-outline {
+    position: fixed;
+    pointer-events: none;
+    z-index: 99989;
+    border: 2.5px solid #a8c7fa;
+    border-radius: 14px;
+    box-shadow: 0 0 16px rgba(168, 199, 250, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.15) inset;
+    transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    opacity: 0;
+}
+
+.ag-tour-glow-outline.active {
+    opacity: 1;
+}
+
+/* Tooltip popup card style */
 .ag-tour-card {
     position: fixed;
     z-index: 99991;
-    background: rgba(30, 41, 59, 1);
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(255,255,255,0.1);
+    background: rgba(26, 27, 30, 0.85);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
     padding: 24px;
-    border-radius: 16px;
-    box-shadow: 0 20px 40px rgba(0,0,0,0.5), 0 0 0 1px rgba(102, 126, 234, 0.3) inset;
+    border-radius: 20px;
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(168, 199, 250, 0.12) inset;
     width: 320px;
-    color: white;
-    font-family: -apple-system, system-ui, Roboto, sans-serif;
+    color: #e3e3e3;
+    font-family: 'Outfit', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     pointer-events: auto; /* Allow clicking buttons in tooltip */
-    transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    transition: left 0.4s cubic-bezier(0.16, 1, 0.3, 1), top 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    animation: ag-tooltip-pop 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes ag-tooltip-pop {
+    0% { opacity: 0; transform: scale(0.95) translateY(12px); }
+    100% { opacity: 1; transform: scale(1) translateY(0); }
 }
 
 .ag-tour-step {
-    font-size: 11px;
+    font-size: 10px;
     font-weight: 700;
-    color: #818cf8;
+    color: #a8c7fa;
     text-transform: uppercase;
-    letter-spacing: 1px;
-    margin-bottom: 8px;
-    background: rgba(129, 140, 248, 0.1);
+    letter-spacing: 0.8px;
+    margin-bottom: 10px;
+    background: rgba(168, 199, 250, 0.08);
+    border: 1px solid rgba(168, 199, 250, 0.15);
     display: inline-block;
-    padding: 4px 8px;
-    border-radius: 12px;
+    padding: 4px 10px;
+    border-radius: 100px;
 }
 
 .ag-tour-title {
     font-size: 18px;
-    font-weight: 700;
-    margin: 0 0 12px 0;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    font-weight: 600;
+    margin: 0 0 10px 0;
+    background: linear-gradient(90deg, #a8c7fa 0%, #c2e7ff 100%);
     background-clip: text;
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
+    letter-spacing: -0.3px;
 }
 
 .ag-tour-text {
-    font-size: 14px;
-    color: #cbd5e1;
-    line-height: 1.5;
-    margin: 0 0 20px 0;
+    font-size: 13.5px;
+    color: #c4c7c5;
+    line-height: 1.6;
+    margin: 0 0 24px 0;
+}
+
+.ag-tour-text b {
+    color: #ffffff;
+    font-weight: 600;
 }
 
 .ag-tour-btn {
-    background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
-    color: white;
+    background: linear-gradient(135deg, #a8c7fa 0%, #c2e7ff 100%);
+    color: #131314;
     border: none;
-    padding: 10px 16px;
-    border-radius: 8px;
+    padding: 12px 20px;
+    border-radius: 100px;
     font-weight: 600;
+    font-size: 14px;
     cursor: pointer;
     font-family: inherit;
-    transition: transform 0.2s, box-shadow 0.2s;
+    transition: all 0.25s ease;
     width: 100%;
-    box-shadow: 0 4px 15px rgba(56, 239, 125, 0.2);
+    box-shadow: 0 4px 12px rgba(168, 199, 250, 0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .ag-tour-btn:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(56, 239, 125, 0.4);
+    transform: translateY(-1.5px);
+    box-shadow: 0 6px 18px rgba(168, 199, 250, 0.35);
+    background: #c2e7ff;
+}
+
+.ag-tour-btn:active {
+    transform: translateY(0);
 }
 
 .ag-tour-btn-skip {
     background: transparent;
-    color: #94a3b8;
-    border: 1px solid rgba(255,255,255,0.1);
-    margin-top: 8px;
+    color: #c4c7c5;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    margin-top: 10px;
     box-shadow: none;
+    font-size: 13px;
+    font-weight: 500;
 }
 
 .ag-tour-btn-skip:hover {
-    background: rgba(255,255,255,0.05);
-    color: #fff;
+    background: rgba(255, 255, 255, 0.05);
+    color: #ffffff;
+    border-color: rgba(255, 255, 255, 0.3);
     box-shadow: none;
 }

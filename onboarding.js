@@ -22,19 +22,20 @@ document.addEventListener('DOMContentLoaded', () => {
         
         dots[currentSlide].classList.add('active');
 
+        // Track step reached
+        if (chrome.runtime && chrome.runtime.sendMessage) {
+            chrome.runtime.sendMessage({ 
+                type: 'TRACK_EVENT', 
+                name: 'tour_step_reached',
+                params: { step: currentSlide + 1, type: 'onboarding' }
+            });
+        }
+
         // Update button text if last slide
         if (currentSlide === totalSlides - 1) {
             btnSpan.textContent = "Start Using Extension";
             nextBtn.classList.add('finish');
             nextBtn.querySelector('svg').innerHTML = '<path d="M20 6L9 17l-5-5"/>';
-            
-            // Track completion event
-            if (chrome.runtime && chrome.runtime.sendMessage) {
-                chrome.runtime.sendMessage({ 
-                    type: 'TRACK_EVENT', 
-                    name: 'onboarding_completed'
-                });
-            }
         } else {
             btnSpan.textContent = "Continue";
             nextBtn.classList.remove('finish');
@@ -50,8 +51,17 @@ document.addEventListener('DOMContentLoaded', () => {
             btnSpan.textContent = "Loading Gemini...";
             nextBtn.classList.add('finish');
             
+            // Track completion event on actual finish click
+            if (chrome.runtime && chrome.runtime.sendMessage) {
+                chrome.runtime.sendMessage({ 
+                    type: 'TRACK_EVENT', 
+                    name: 'tour_completed',
+                    params: { type: 'onboarding' }
+                });
+            }
+            
             if (chrome.runtime && chrome.storage) {
-                chrome.storage.local.set({ ask_gemini_tour_active: true, tour_step: 1 }, () => {
+                chrome.storage.local.set({ ask_gemini_tour_active: false, tour_step: 1 }, () => {
                     window.location.href = "https://gemini.google.com/app";
                 });
             } else {
@@ -64,7 +74,13 @@ document.addEventListener('DOMContentLoaded', () => {
     if (chrome.runtime && chrome.runtime.sendMessage) {
         chrome.runtime.sendMessage({ 
             type: 'TRACK_EVENT', 
-            name: 'onboarding_viewed'
+            name: 'tour_started',
+            params: { type: 'onboarding' }
+        });
+        chrome.runtime.sendMessage({ 
+            type: 'TRACK_EVENT', 
+            name: 'tour_step_reached',
+            params: { step: 1, type: 'onboarding' }
         });
     }
 });

@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
-  "name": "QuoteReply for Gemini",
-  "version": "2.1.0",
+  "name": "Quote Reply for Gemini",
+  "version": "2.2.0",
   "description": "Highlight any text in Gemini. Ask a follow-up with that exact context locked in — fewer hallucinations, sharper answers.",
   "permissions": [
     "storage",
@@ -13,7 +13,7 @@
   ],
   "action": {
     "default_popup": "popup.html",
-    "default_title": "QuoteReply Settings"
+    "default_title": "Quote Reply Settings"
   },
   "background": {
     "service_worker": "background.js"

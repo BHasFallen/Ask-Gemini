@@ -20,7 +20,7 @@ foreach ($zip in $oldZips) {
 }
 
 # 3. Create the new zip file name
-$zipName = "QuoteReply_v$version.zip"
+$zipName = "Quote_Reply_v$version.zip"
 $zipPath = Join-Path $rootDir $zipName
 $excludeList = @(".git", ".github", "scripts", ".vscode", ".idea", "node_modules", ".gitignore", $zipName)
 

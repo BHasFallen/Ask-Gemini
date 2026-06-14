@@ -113,12 +113,38 @@
       text-transform: uppercase;
       letter-spacing: 1px;
     }
+
+    .ag-popup-rate-btn {
+      width: 100%;
+      padding: 10px;
+      margin-top: 20px;
+      background: linear-gradient(135deg, #3d5afe, #651fff) !important;
+      border: none !important;
+      border-radius: 10px;
+      color: #ffffff !important;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .ag-popup-rate-btn:hover {
+      background: linear-gradient(135deg, #4d6aff, #7530ff) !important;
+      box-shadow: 0 4px 12px rgba(61, 90, 254, 0.3);
+      transform: translateY(-1px);
+    }
+    .ag-popup-rate-btn:active {
+      transform: translateY(0);
+    }
   </style>
 </head>
 <body>
   <div class="header">
-    <h1>QuoteReply</h1>
-    <span class="version" id="version-badge">v2.1.0</span>
+    <h1>Quote Reply</h1>
+    <span class="version" id="version-badge">v2.2.0</span>
   </div>
 
   <div class="value-dashboard">
@@ -146,6 +172,10 @@
       <span>Type your reply and hit <b>Enter</b>.</span>
     </div>
   </div>
+
+  <button id="rate-extension-btn" class="ag-popup-rate-btn">
+    <span>★ Rate Extension</span>
+  </button>
 
   <div class="footer">
     <a href="#" id="view-logs">View Logs</a>

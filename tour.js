@@ -1,11 +1,19 @@
 /**
- * Ask Gemini: Interactive Guided Tour on gemini.google.com
+ * Quote Reply for Gemini: Interactive Guided Tour on gemini.google.com
  */
 
 class AskGeminiTour {
     static step = 1;
+    static lastTrackedStep = 0;
     static step1ListenersAttached = false;
     static step4ListenersAttached = false;
+
+    static trackEvent(name, params = {}) {
+        if (chrome.runtime && chrome.runtime.sendMessage) {
+            const mergedParams = { type: 'tour', ...params };
+            chrome.runtime.sendMessage({ type: 'TRACK_EVENT', name, params: mergedParams });
+        }
+    }
 
     static init() {
         chrome.storage.local.get(['ask_gemini_tour_active', 'tour_step'], (res) => {
@@ -28,13 +36,18 @@ class AskGeminiTour {
                     <mask id="ag-spotlight-mask">
                         <rect width="100%" height="100%" fill="white" />
                         <!-- Primary spotlight -->
-                        <rect id="ag-spotlight-cutout" x="0" y="0" width="0" height="0" rx="10" fill="black" />
+                        <rect id="ag-spotlight-cutout" x="0" y="0" width="0" height="0" rx="14" fill="black" />
                         <!-- Secondary spotlight (for send button alongside input) -->
-                        <rect id="ag-spotlight-cutout-2" x="0" y="0" width="0" height="0" rx="10" fill="black" />
+                        <rect id="ag-spotlight-cutout-2" x="0" y="0" width="0" height="0" rx="14" fill="black" />
                     </mask>
                 </defs>
-                <rect width="100%" height="100%" fill="rgba(0, 0, 0, 0.75)" mask="url(#ag-spotlight-mask)" />
+                <rect width="100%" height="100%" fill="rgba(0, 0, 0, 0.65)" mask="url(#ag-spotlight-mask)" />
             </svg>
+            
+            <!-- Glowing border outlines matching the active spotlights -->
+            <div id="ag-tour-glow-outline-1" class="ag-tour-glow-outline"></div>
+            <div id="ag-tour-glow-outline-2" class="ag-tour-glow-outline"></div>
+
             <div id="ag-tour-tooltip" class="ag-tour-card" style="opacity: 0; pointer-events: none;">
                 <div id="ag-tour-step" class="ag-tour-step">Step 1</div>
                 <h3 id="ag-tour-title" class="ag-tour-title">Welcome</h3>
@@ -45,8 +58,14 @@ class AskGeminiTour {
         `;
         document.body.appendChild(overlay);
 
-        document.getElementById('ag-tour-skip').addEventListener('click', () => this.endTour());
-        document.getElementById('ag-tour-ok').addEventListener('click', () => this.endTour());
+        document.getElementById('ag-tour-skip').addEventListener('click', () => {
+            this.trackEvent('tour_skipped', { step: this.step });
+            this.endTour();
+        });
+        document.getElementById('ag-tour-ok').addEventListener('click', () => {
+            this.trackEvent('tour_completed');
+            this.endTour();
+        });
     }
 
     static endTour() {
@@ -61,21 +80,40 @@ class AskGeminiTour {
     }
 
     /**
-     * Spotlight a single element
+     * Spotlight a single element and match its glowing outline
      */
-    static spotlightEl(cutoutId, el, padding = 12) {
+    static spotlightEl(cutoutId, outlineId, el, padding = 12) {
         const cutout = document.getElementById(cutoutId);
+        const outline = document.getElementById(outlineId);
         if (!cutout) return;
+
         if (!el || el.offsetParent === null) {
             cutout.setAttribute('width', '0');
             cutout.setAttribute('height', '0');
+            if (outline) outline.classList.remove('active');
             return;
         }
+
         const r = el.getBoundingClientRect();
-        cutout.setAttribute('x', r.left - padding);
-        cutout.setAttribute('y', r.top - padding);
-        cutout.setAttribute('width', r.width + padding * 2);
-        cutout.setAttribute('height', r.height + padding * 2);
+        const x = r.left - padding;
+        const y = r.top - padding;
+        const w = r.width + padding * 2;
+        const h = r.height + padding * 2;
+
+        // Position SVG Cutout
+        cutout.setAttribute('x', x);
+        cutout.setAttribute('y', y);
+        cutout.setAttribute('width', w);
+        cutout.setAttribute('height', h);
+
+        // Position Glowing Border Outline
+        if (outline) {
+            outline.style.left = `${x}px`;
+            outline.style.top = `${y}px`;
+            outline.style.width = `${w}px`;
+            outline.style.height = `${h}px`;
+            outline.classList.add('active');
+        }
     }
 
     /**
@@ -84,10 +122,12 @@ class AskGeminiTour {
     static clearSpotlight2() {
         const c2 = document.getElementById('ag-spotlight-cutout-2');
         if (c2) { c2.setAttribute('width', '0'); c2.setAttribute('height', '0'); }
+        const o2 = document.getElementById('ag-tour-glow-outline-2');
+        if (o2) o2.classList.remove('active');
     }
 
     /**
-     * Position the tooltip card near a target rect
+     * Position the tooltip card near a target rect without overlapping the subject
      */
     static positionTooltip(anchorRect, position = 'top') {
         const tooltip = document.getElementById('ag-tour-tooltip');
@@ -105,17 +145,65 @@ class AskGeminiTour {
         }
 
         tooltip.style.transform = 'none';
-        const TW = 320, TH = 200;
+        
+        // Measure tooltip size dynamically, fallback to standard bounds
+        const TW = 320;
+        const TH = tooltip.offsetHeight || 180;
+        
+        let targetPos = position;
         let x = anchorRect.left + anchorRect.width / 2 - TW / 2;
         let y;
 
-        if (position === 'top') y = anchorRect.top - TH - 16;
-        else if (position === 'bottom') y = anchorRect.bottom + 16;
-        else y = anchorRect.top;
+        // If the anchor element is very large (e.g. spans > 50% of the screen height),
+        // place the tooltip in the bottom-right corner so it never blocks the main content.
+        const isElementHuge = anchorRect.height > window.innerHeight * 0.5;
 
-        // Clamp within viewport
-        x = Math.max(16, Math.min(window.innerWidth - TW - 16, x));
-        y = Math.max(16, Math.min(window.innerHeight - TH - 16, y));
+        if (isElementHuge) {
+            x = window.innerWidth - TW - 24;
+            y = window.innerHeight - TH - 24;
+        } else {
+            // Auto-swap position if there's no space in the requested direction
+            if (targetPos === 'top') {
+                const topSpaceNeeded = TH + 20;
+                if (anchorRect.top < topSpaceNeeded) {
+                    const bottomSpaceAvailable = window.innerHeight - anchorRect.bottom;
+                    if (bottomSpaceAvailable > topSpaceNeeded) {
+                        targetPos = 'bottom';
+                    }
+                }
+            } else if (targetPos === 'bottom') {
+                const bottomSpaceNeeded = TH + 20;
+                const bottomSpaceAvailable = window.innerHeight - anchorRect.bottom;
+                if (bottomSpaceAvailable < bottomSpaceNeeded) {
+                    if (anchorRect.top > bottomSpaceNeeded) {
+                        targetPos = 'top';
+                    }
+                }
+            }
+
+            // Calculate Y coordinate based on final position
+            if (targetPos === 'top') {
+                y = anchorRect.top - TH - 16;
+            } else if (targetPos === 'bottom') {
+                y = anchorRect.bottom + 16;
+            } else {
+                y = anchorRect.top;
+            }
+
+            // Clamp X and Y within viewport boundaries
+            x = Math.max(20, Math.min(window.innerWidth - TW - 20, x));
+            y = Math.max(20, Math.min(window.innerHeight - TH - 20, y));
+
+            // Collision check: if the clamped card still overlaps the anchor element,
+            // push it to the safe bottom-right corner of the screen.
+            const overlapsVertically = (y < anchorRect.bottom && y + TH > anchorRect.top);
+            const overlapsHorizontally = (x < anchorRect.right && x + TW > anchorRect.left);
+            
+            if (overlapsVertically && overlapsHorizontally) {
+                x = window.innerWidth - TW - 24;
+                y = window.innerHeight - TH - 24;
+            }
+        }
 
         tooltip.style.left = `${x}px`;
         tooltip.style.top = `${y}px`;
@@ -134,9 +222,9 @@ class AskGeminiTour {
         titleEl.innerText = title;
         textEl.innerHTML = text;
 
-        this.spotlightEl('ag-spotlight-cutout', primaryEl);
+        this.spotlightEl('ag-spotlight-cutout', 'ag-tour-glow-outline-1', primaryEl);
         if (secondaryEl) {
-            this.spotlightEl('ag-spotlight-cutout-2', secondaryEl);
+            this.spotlightEl('ag-spotlight-cutout-2', 'ag-tour-glow-outline-2', secondaryEl);
         } else {
             this.clearSpotlight2();
         }
@@ -156,26 +244,55 @@ class AskGeminiTour {
         }, 400);
     }
 
-    // ─── Selectors (from real Gemini DOM) ────────────────────────────────────
+    // ─── Robust Selectors (from real Gemini DOM) ─────────────────────────────
     static getInput() {
-        return document.querySelector('.ql-editor[contenteditable="true"]')
+        return document.querySelector('div[contenteditable="true"][aria-label*="rompt"]')
+            || document.querySelector('div[contenteditable="true"][role="textbox"]')
+            || document.querySelector('.ql-editor[contenteditable="true"]')
             || document.querySelector('div[contenteditable="true"]');
     }
 
     static getSendButton() {
-        return document.querySelector('button.send-button')
-            || document.querySelector('button[aria-label="Send message"]');
+        return document.querySelector('button[aria-label*="Send"]')
+            || document.querySelector('button[class*="send"]')
+            || document.querySelector('.send-button-container button')
+            || document.querySelector('button[aria-label="Send message"]')
+            || document.querySelector('button.send-button');
     }
 
     static getLatestGeminiReply() {
-        // Get all finished (not busy) markdown panels, return the last one
-        const panels = document.querySelectorAll('.markdown-main-panel[aria-busy="false"]');
-        if (!panels.length) return null;
-        return panels[panels.length - 1];
+        const selectors = [
+            'message-content',
+            '.message-content',
+            '.model-response',
+            '.markdown-main-panel',
+            'div[class*="message-content"]',
+            'div[class*="model-response"]'
+        ];
+        
+        for (const selector of selectors) {
+            const panels = document.querySelectorAll(selector);
+            if (panels.length > 0) {
+                const last = panels[panels.length - 1];
+                if (last.textContent.trim().length > 0 && last.offsetParent !== null) {
+                    return last;
+                }
+            }
+        }
+        return null;
     }
 
     // ─── Step machine ────────────────────────────────────────────────────────
     static evaluateStep() {
+        if (this.step !== this.lastTrackedStep) {
+            const previousStep = this.lastTrackedStep;
+            this.lastTrackedStep = this.step;
+            
+            if (previousStep === 0 && this.step === 1) {
+                this.trackEvent('tour_started');
+            }
+            this.trackEvent('tour_step_reached', { step: this.step });
+        }
 
         // ── Step 1: Type & send a message ──────────────────────────────
         if (this.step === 1) {
@@ -205,7 +322,7 @@ class AskGeminiTour {
                         if (e.key === 'Enter' && !e.shiftKey) advance();
                     });
                     document.addEventListener('click', (e) => {
-                        if (e.target.closest('button.send-button, button[aria-label="Send message"]')) advance();
+                        if (e.target.closest('button[aria-label*="Send"], button[class*="send"], button.send-button')) advance();
                     }, true);
                 }
             }
@@ -245,6 +362,14 @@ class AskGeminiTour {
 
         // ── Step 3: Click the float button ─────────────────────────────
         else if (this.step === 3) {
+            // Check if context box is already active (i.e. float button was clicked)
+            const contextBox = document.getElementById('ask-gemini-context-box');
+            if (contextBox && contextBox.style.display !== 'none') {
+                this.step = 4;
+                chrome.storage.local.set({ tour_step: 4 });
+                return;
+            }
+
             const floatBtn = document.getElementById('ask-gemini-float-btn');
             const reply = this.getLatestGeminiReply();
 
@@ -261,13 +386,6 @@ class AskGeminiTour {
                 // Selection was lost — go back to step 2
                 this.step = 2;
                 chrome.storage.local.set({ tour_step: 2 });
-                return;
-            }
-
-            const contextBox = document.getElementById('ask-gemini-context-box');
-            if (contextBox && contextBox.style.display !== 'none') {
-                this.step = 4;
-                chrome.storage.local.set({ tour_step: 4 });
             }
         }
 
@@ -304,7 +422,7 @@ class AskGeminiTour {
                         if (e.key === 'Enter' && !e.shiftKey) advance();
                     });
                     document.addEventListener('click', (e) => {
-                        if (e.target.closest('button.send-button, button[aria-label="Send message"]')) advance();
+                        if (e.target.closest('button[aria-label*="Send"], button[class*="send"], button.send-button')) advance();
                     }, true);
                 }
             }
@@ -316,7 +434,7 @@ class AskGeminiTour {
             this.setTooltip({
                 stepName: '🎉 Done!',
                 title: "You're a Pro Now",
-                text: "You've mastered contextual replies on Gemini. Every reply from here on will be laser-precise. Enjoy!",
+                text: "You've mastered contextual replies with <b>Quote Reply for Gemini</b>. Every reply from here on will be laser-precise. Enjoy!",
                 primaryEl: null
             });
 
@@ -324,6 +442,7 @@ class AskGeminiTour {
             if (stepEl) {
                 stepEl.style.background = 'rgba(56, 239, 125, 0.15)';
                 stepEl.style.color = '#38ef7d';
+                stepEl.style.borderColor = 'rgba(56, 239, 125, 0.25)';
             }
             document.getElementById('ag-tour-skip').style.display = 'none';
             document.getElementById('ag-tour-ok').style.display = 'block';
