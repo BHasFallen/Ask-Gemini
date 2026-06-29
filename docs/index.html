@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <!-- SEO Optimization -->
+    <title>Quote Reply for Gemini – Chrome Extension</title>
+    <meta name="description" content="Highlight text on Google Gemini and ask follow-up questions with exact context locked in. True contextual replies to prevent AI hallucinations.">
+    <meta name="keywords" content="Gemini, Google Gemini, Chrome Extension, Quote Reply, Gemini replies, AI assistant extension, productivity tool">
+    <meta name="author" content="Devxtools">
+    
+    <!-- Open Graph/Social Meta Tags -->
+    <meta property="og:title" content="Quote Reply for Gemini – Chrome Extension">
+    <meta property="og:description" content="Add contextual replies directly inside your Google Gemini chats. Highlight, quote, and reply instantly.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://bhasfallen.github.io/Ask-Gemini/">
+    
+    <link rel="stylesheet" href="landing.css">
+</head>
+<body>
+
+    <!-- Header Navigation -->
+    <header>
+        <div class="nav-container">
+            <a href="#" class="logo">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/>
+                </svg>
+                Quote Reply
+            </a>
+            <div class="nav-right">
+                <button class="theme-toggle" id="theme-toggle-btn" aria-label="Toggle dark/light mode">
+                    <svg class="sun-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/>
+                    </svg>
+                    <svg class="moon-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>
+                    </svg>
+                </button>
+                <a href="https://chromewebstore.google.com/detail/jhkodgigeemnmdmdikdkpcbmgbbopgni" target="_blank" class="btn-cta">
+                    Add to Chrome
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="hero" id="hero">
+        <div class="section-container">
+            <h1>True Contextual Replies<br>for Google Gemini</h1>
+            <p>Highlight any text on Gemini to quote-reply instantly. Keep discussions on track, prevent hallucinations, and skip copy-pasting.</p>
+            <div class="hero-ctas">
+                <a href="https://chromewebstore.google.com/detail/jhkodgigeemnmdmdikdkpcbmgbbopgni" target="_blank" class="btn-cta">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/>
+                    </svg>
+                    Get the Extension
+                </a>
+                <a href="#how-it-works" class="btn-secondary">See How it Works</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Stats Banner -->
+    <section class="stats-banner">
+        <div class="stats-grid">
+            <div class="stat-item">
+                <h3>4.8★</h3>
+                <p>Chrome Web Store Rating</p>
+            </div>
+            <div class="stat-item">
+                <h3>85k+</h3>
+                <p>Words Analyzed & Quote-Replied</p>
+            </div>
+            <div class="stat-item">
+                <h3>1,400+</h3>
+                <p>Hours Saved for Users</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- How It Works Timeline Section -->
+    <section id="how-it-works">
+        <div class="section-container">
+            <h2 class="section-title">How It Works</h2>
+            <p class="section-subtitle">A seamless, native three-step process built directly into your Google Gemini interface.</p>
+            
+            <div class="timeline">
+                <!-- Step 1 -->
+                <div class="timeline-step">
+                    <div class="timeline-dot"></div>
+                    <div class="timeline-content">
+                        <h3>1. Highlight Any Text</h3>
+                        <p>Select any portion of a Gemini response. A floating "Ask Gemini" button immediately appears right above your selection.</p>
+                        
+                        <!-- Step 1 Mock -->
+                        <div class="mock-chat-bubble">
+                            Here is the detailed project summary you asked for. The budget has been set to <span class="mock-selection">$10,000 for phase one</span>.
+                            <div class="mock-float-btn">
+                                <svg xmlns="http://www.w3.org/2050/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>
+                                Ask Gemini
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 2 -->
+                <div class="timeline-step">
+                    <div class="timeline-dot"></div>
+                    <div class="timeline-content">
+                        <h3>2. Lock in the Context</h3>
+                        <p>Clicking the button pins that text to your prompt bar as an elegant context chip. Now your follow-up is locked onto that reference.</p>
+                        
+                        <!-- Step 2 Mock -->
+                        <div class="mock-reply-container">
+                            <div class="mock-context-chip">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 14 4 9 9 4"></polyline><path d="M20 20v-7a4 4 0 0 0-4-4H4"></path></svg>
+                                <span>Replying to: "$10,000 for phase one"</span>
+                            </div>
+                            <div class="mock-input">Can we divide this across three milestones?</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 3 -->
+                <div class="timeline-step">
+                    <div class="timeline-dot"></div>
+                    <div class="timeline-content">
+                        <h3>3. Reply Cleanly</h3>
+                        <p>Your follow-up is processed with the quote embedded. In your chat history, the technical details are hidden, replaced by a beautiful context preview block.</p>
+                        
+                        <!-- Step 3 Mock -->
+                        <div class="mock-proxy-content">
+                            <div class="mock-reply-preview">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 14 4 9 9 4"></polyline><path d="M20 20v-7a4 4 0 0 0-4-4H4"></path></svg>
+                                <span>"$10,000 for phase one"</span>
+                            </div>
+                            <div class="mock-message-bubble">
+                                Can we divide this across three milestones?
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Testimonials Section -->
+    <section class="testimonials-slider">
+        <div class="section-container">
+            <h2 class="section-title">What Users Say</h2>
+            <p class="section-subtitle">Real feedback from developers, writers, and students using the extension.</p>
+            
+            <div class="testimonial-container">
+                <!-- Slide 1 -->
+                <div class="testimonial-slide active">
+                    <div class="stars">★★★★★</div>
+                    <p class="quote-text">"An absolute game changer for doing research. I don't have to copy-paste passages from long responses anymore just to clarify one sentence."</p>
+                    <div class="quote-author">Daniel K.</div>
+                    <div class="quote-title">Verified CWS Reviewer</div>
+                </div>
+                <!-- Slide 2 -->
+                <div class="testimonial-slide">
+                    <div class="stars">★★★★★</div>
+                    <p class="quote-text">"Super intuitive. It integrates so cleanly that you forget it's not a native feature of Google Gemini."</p>
+                    <div class="quote-author">Sarah L.</div>
+                    <div class="quote-title">Web Developer</div>
+                </div>
+                <!-- Slide 3 -->
+                <div class="testimonial-slide">
+                    <div class="stars">★★★★★</div>
+                    <p class="quote-text">"Solves the hallucination issue. By explicitly anchoring the next question to the quote, the replies are noticeably more accurate."</p>
+                    <div class="quote-author">James R.</div>
+                    <div class="quote-title">Software Engineer</div>
+                </div>
+            </div>
+            
+            <div class="slider-dots">
+                <span class="dot active" onclick="setSlide(0)"></span>
+                <span class="dot" onclick="setSlide(1)"></span>
+                <span class="dot" onclick="setSlide(2)"></span>
+            </div>
+        </div>
+    </section>
+
+    <!-- FAQ Section -->
+    <section id="faq">
+        <div class="section-container">
+            <h2 class="section-title">Frequently Asked Questions</h2>
+            <p class="section-subtitle">Everything you need to know about Quote Reply for Gemini.</p>
+            
+            <div class="faq-list">
+                <div class="faq-item">
+                    <div class="faq-question" onclick="toggleFaq(this)">Is this extension free? <span>+</span></div>
+                    <div class="faq-answer" style="display: none; padding-top: 10px;">Yes, Quote Reply is 100% free to use. There are no paid tiers, ads, or premium subscriptions.</div>
+                </div>
+                <div class="faq-item">
+                    <div class="faq-question" onclick="toggleFaq(this)">How does it protect my privacy? <span>+</span></div>
+                    <div class="faq-answer" style="display: none; padding-top: 10px;">All text processing occurs locally on your browser. Your conversations and highlighted quotes are never sent to our servers. Optional, anonymous usage telemetry is used to help improve the extension and can be toggled off at any time.</div>
+                </div>
+                <div class="faq-item">
+                    <div class="faq-question" onclick="toggleFaq(this)">Does it work on other websites? <span>+</span></div>
+                    <div class="faq-answer" style="display: none; padding-top: 10px;">No, this extension is custom-built specifically for Google Gemini (gemini.google.com) to provide a deeply integrated, native-feeling user experience.</div>
+                </div>
+                <div class="faq-item">
+                    <div class="faq-question" onclick="toggleFaq(this)">How do I access settings or view my stats? <span>+</span></div>
+                    <div class="faq-answer" style="display: none; padding-top: 10px;">Click the extension icon in your Chrome toolbar. A clean dashboard popup will open showing your usage stats, time saved, and developer mode/telemetry toggles.</div>
+                </div>
+                <div class="faq-item">
+                    <div class="faq-question" onclick="toggleFaq(this)">Does this work with Gemini Advanced/Workspace? <span>+</span></div>
+                    <div class="faq-answer" style="display: none; padding-top: 10px;">Yes, the extension supports all Gemini tiers, including Gemini Advanced, Workspace versions, and dark/light themes.</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+        <div class="footer-logo">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/>
+            </svg>
+            Quote Reply
+        </div>
+        <div class="footer-links">
+            <a href="https://chromewebstore.google.com/detail/jhkodgigeemnmdmdikdkpcbmgbbopgni" target="_blank">Chrome Web Store</a>
+            <a href="privacy-policy.html">Privacy Policy</a>
+            <a href="https://github.com/BHasFallen/Ask-Gemini" target="_blank">GitHub</a>
+        </div>
+        <div class="copyright">
+            &copy; 2026 Devxtools. Released under the MIT License.
+        </div>
+    </footer>
+
+    <!-- Interactive Logic Scripts -->
+    <script>
+        // Theme Toggle
+        const themeBtn = document.getElementById('theme-toggle-btn');
+        themeBtn.addEventListener('click', () => {
+            const html = document.documentElement;
+            const currentTheme = html.getAttribute('data-theme');
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            html.setAttribute('data-theme', newTheme);
+        });
+
+        // Testimonial Slider
+        let currentSlide = 0;
+        const slides = document.querySelectorAll('.testimonial-slide');
+        const dots = document.querySelectorAll('.dot');
+
+        function setSlide(index) {
+            slides[currentSlide].classList.remove('active');
+            dots[currentSlide].classList.remove('active');
+            currentSlide = index;
+            slides[currentSlide].classList.add('active');
+            dots[currentSlide].classList.add('active');
+        }
+
+        // Auto transition testimonials
+        setInterval(() => {
+            let nextSlide = (currentSlide + 1) % slides.length;
+            setSlide(nextSlide);
+        }, 8000);
+
+        // Accordion FAQ Toggle
+        function toggleFaq(element) {
+            const answer = element.nextElementSibling;
+            const symbol = element.querySelector('span');
+            if (answer.style.display === "none") {
+                answer.style.display = "block";
+                symbol.textContent = "−";
+            } else {
+                answer.style.display = "none";
+                symbol.textContent = "+";
+            }
+        }
+    </script>
+</body>
+</html>
