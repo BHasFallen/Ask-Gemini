@@ -570,22 +570,174 @@ footer {
     color: var(--text-secondary);
 }
 
-/* Responsive adjustments */
+/* Responsive adjustments & Mobile layout overrides */
 @media (max-width: 768px) {
     section {
-        padding: 60px 20px;
+        padding: 50px 16px;
     }
+    
+    .hero {
+        padding-top: 120px;
+        padding-bottom: 50px;
+        text-align: center;
+    }
+    
     .hero h1 {
-        font-size: 2.5rem;
+        font-size: 2.2rem;
+        letter-spacing: -0.02em;
+        line-height: 1.2;
     }
+    
+    .hero p {
+        font-size: 1.05rem;
+        margin-bottom: 30px;
+    }
+
+    .hero-ctas {
+        flex-direction: column;
+        width: 100%;
+        gap: 12px;
+    }
+
+    .hero-ctas .btn-cta, 
+    .hero-ctas .btn-secondary {
+        width: 100%;
+        justify-content: center;
+        padding: 12px 24px;
+    }
+
+    .stats-banner {
+        padding: 30px 16px;
+    }
+
     .stats-grid {
         grid-template-columns: 1fr;
-        gap: 30px;
+        gap: 24px;
     }
+
+    .stat-item {
+        border-bottom: 1px solid var(--border);
+        padding-bottom: 16px;
+    }
+
+    .stat-item:last-child {
+        border-bottom: none;
+        padding-bottom: 0;
+    }
+
+    /* Transform Timeline into a Swipeable Tab Deck on Mobile */
     .timeline {
-        padding-left: 24px;
+        padding-left: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
     }
+
+    .timeline::before {
+        display: none; /* Hide vertical timeline line */
+    }
+
+    /* Tab switcher for mobile */
+    .mobile-step-tabs {
+        display: flex;
+        width: 100%;
+        background-color: var(--bg-secondary);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 4px;
+        margin-bottom: 20px;
+    }
+
+    .mobile-step-tab {
+        flex: 1;
+        background: none;
+        border: none;
+        padding: 8px 4px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: var(--text-secondary);
+        cursor: pointer;
+        border-radius: 8px;
+        transition: all 0.2s ease;
+        text-align: center;
+    }
+
+    .mobile-step-tab.active {
+        background-color: var(--card-bg);
+        color: var(--accent);
+        box-shadow: 0 2px 8px var(--shadow);
+    }
+
+    .timeline-step {
+        margin-bottom: 0;
+        display: none; /* Hide all steps by default */
+        width: 100%;
+        animation: slideInRight 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .timeline-step.active {
+        display: block; /* Show only active step */
+    }
+
     .timeline-dot {
-        left: -24px;
+        display: none; /* Hide timeline dots on mobile */
+    }
+
+    .timeline-content {
+        padding: 20px;
+        border-radius: 16px;
+        box-shadow: 0 4px 16px var(--shadow);
+    }
+
+    .timeline-step h3 {
+        font-size: 1.15rem;
+        margin-bottom: 8px;
+    }
+
+    .timeline-step p {
+        font-size: 0.9rem;
+        margin-bottom: 16px;
+    }
+
+    .mock-chat-bubble, 
+    .mock-reply-container, 
+    .mock-proxy-content {
+        margin-top: 10px;
+    }
+
+    .mock-reply-preview {
+        max-width: 100%;
+    }
+
+    /* FAQ improvements for touch */
+    .faq-item {
+        padding: 18px 0;
+    }
+
+    .faq-question {
+        font-size: 1rem;
+    }
+
+    /* Header Nav spacing */
+    .logo {
+        font-size: 1rem;
+    }
+
+    .btn-cta {
+        padding: 8px 16px;
+        font-size: 0.85rem;
     }
 }
+
+/* Animations */
+@keyframes slideInRight {
+    from {
+        opacity: 0;
+        transform: translateX(12px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
