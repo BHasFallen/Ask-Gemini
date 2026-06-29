@@ -17,6 +17,12 @@
     <meta property="og:url" content="https://bhasfallen.github.io/Ask-Gemini/">
     
     <link rel="stylesheet" href="landing.css">
+    <style>
+        /* Hidden on desktop by default */
+        .mobile-bottom-nav, .hero-mobile-app-icon {
+            display: none;
+        }
+    </style>
 </head>
 <body>
 
@@ -45,9 +51,42 @@
         </div>
     </header>
 
+    <!-- Mobile Sticky Bottom Tab Bar -->
+    <nav class="mobile-bottom-nav">
+        <a href="#hero" class="bottom-nav-item active" onclick="setActiveNav(this)">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+            </svg>
+            <span>Home</span>
+        </a>
+        <a href="#how-it-works" class="bottom-nav-item" onclick="setActiveNav(this)">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+            </svg>
+            <span>How-To</span>
+        </a>
+        <a href="#faq" class="bottom-nav-item" onclick="setActiveNav(this)">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span>FAQ</span>
+        </a>
+        <a href="https://chromewebstore.google.com/detail/jhkodgigeemnmdmdikdkpcbmgbbopgni" target="_blank" class="bottom-nav-item bottom-nav-item-cta">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+            </svg>
+            <span>Install</span>
+        </a>
+    </nav>
+
     <!-- Hero Section -->
     <section class="hero" id="hero">
         <div class="section-container">
+            <div class="hero-mobile-app-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/>
+                </svg>
+            </div>
             <h1>True Contextual Replies<br>for Google Gemini</h1>
             <p>Highlight any text on Gemini to quote-reply instantly. Keep discussions on track, prevent hallucinations, and skip copy-pasting.</p>
             <div class="hero-ctas">
@@ -303,6 +342,13 @@
                 setMobileStep(activeTabIdx !== -1 ? activeTabIdx : 0);
             }
         });
+
+        // Mobile active navigation highlighting
+        function setActiveNav(selectedLink) {
+            const items = document.querySelectorAll('.bottom-nav-item');
+            items.forEach(item => item.classList.remove('active'));
+            selectedLink.classList.add('active');
+        }
 
         // Accordion FAQ Toggle
         function toggleFaq(element) {
