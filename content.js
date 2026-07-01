@@ -297,6 +297,8 @@
     let retentionTipTimeout = null;
     let isTipTemporarilyDismissed = false;
     let lastRepliesCount = 0;
+    let wasGenerating = false;
+    let lastRefreshTime = 0;
 
     // ═══════════════════════════════════════════════════════════════════════════════
     // SECTION 2: CORE INJECTION LOGIC (The "Competitor" Method)
@@ -709,6 +711,15 @@
 
         // Dynamic retention tips checks
         evaluateRetentionTip().catch(console.error);
+
+        // Check and inject quota limit visuals
+        checkAndInjectQuota();
+
+        // Check generation state and trigger quota sync
+        checkAndTriggerOnGenerationEnd();
+
+        // Attach focus listener to input area
+        attachInputFocusListener();
     }
 
     // ═══════════════════════════════════════════════════════════════════════════════
@@ -899,18 +910,164 @@
     const observer = new MutationObserver(transformMessages);
     observer.observe(document.body, { childList: true, subtree: true });
 
-    // Listen for rating prompts
+    function updateQuotaDisplay(limits) {
+        if (!limits) return;
+
+        const currentUsage = limits.currentUsage || 0;
+        const resetTime = limits.resetTime || '';
+        const weeklyUsage = limits.weeklyUsage || 0;
+
+        // Clean up Option A & Option B elements if present
+        const oldPill = document.getElementById('ag-quota-pill');
+        if (oldPill) oldPill.remove();
+
+        const oldBar = document.getElementById('ag-quota-bar');
+        if (oldBar) oldBar.remove();
+
+        // Option C: Sidebar Footer Card
+        const sidebarFooter = document.querySelector('.mavatar-footer-left')?.closest('div')
+            || document.querySelector('.mavatar-footer-left')
+            || document.querySelector('div[class*="sidebar"] footer')
+            || document.querySelector('div[class*="lower-sidebar"]');
+        if (sidebarFooter) {
+            let card = document.getElementById('ag-quota-sidebar');
+            if (!card) {
+                card = document.createElement('div');
+                card.id = 'ag-quota-sidebar';
+                card.className = 'ag-sidebar-usage-card';
+                sidebarFooter.parentNode.insertBefore(card, sidebarFooter);
+            }
+            card.innerHTML = `
+                <div class="ag-sidebar-usage-header">
+                    <div class="ag-sidebar-usage-info">
+                        <span>Gemini Usage</span>
+                        <strong>${currentUsage}%</strong>
+                    </div>
+                    <button id="ag-quota-refresh-btn" class="ag-quota-refresh-btn" title="Refresh usage limits">
+                        <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
+                            <path d="M17.65 6.35A7.958 7.958 0 0 0 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 0 1 12 18c-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>
+                        </svg>
+                    </button>
+                </div>
+                <div class="ag-sidebar-usage-bar">
+                    <div class="ag-sidebar-usage-fill" style="width: ${currentUsage}%; background-color: ${currentUsage > 80 ? '#ea4335' : currentUsage > 50 ? '#fbbc05' : '#a8c7fa'}"></div>
+                </div>
+                ${resetTime ? `<div class="ag-sidebar-usage-reset">Resets at ${resetTime}</div>` : ''}
+            `;
+
+            // Toggle display based on sidebar expanded/collapsed state
+            const isCollapsed = !!document.querySelector('button[aria-label*="Expand"]')
+                || !document.querySelector('button[aria-label*="Close"]')
+                || sidebarFooter.getBoundingClientRect().width < 150;
+            card.style.display = isCollapsed ? 'none' : 'block';
+
+            // Add click listener for refresh button
+            const refreshBtn = card.querySelector('#ag-quota-refresh-btn');
+            if (refreshBtn) {
+                refreshBtn.onclick = (e) => {
+                    if (e) e.stopPropagation();
+                    refreshBtn.classList.add('spinning');
+                    lastRefreshTime = Date.now();
+                    
+                    chrome.runtime.sendMessage({ type: 'FORCE_REFRESH_USAGE_LIMITS' }, (response) => {
+                        setTimeout(() => {
+                            refreshBtn.classList.remove('spinning');
+                            if (response && response.success && response.limits) {
+                                updateQuotaDisplay(response.limits);
+                            }
+                        }, 600); // Visual feedback delay for spin
+                    });
+                };
+            }
+        }
+    }
+
+    function requestUsageLimits() {
+        chrome.runtime.sendMessage({ type: 'GET_USAGE_LIMITS' }, (response) => {
+            if (response && response.success && response.limits) {
+                updateQuotaDisplay(response.limits);
+            }
+        });
+    }
+
+    function checkAndInjectQuota() {
+        const hasSidebar = document.getElementById('ag-quota-sidebar');
+        
+        if (!hasSidebar) {
+            requestUsageLimits();
+        } else {
+            // Automatically update visibility in case sidebar collapsed state changed
+            const sidebarFooter = document.querySelector('.mavatar-footer-left')?.closest('div')
+                || document.querySelector('.mavatar-footer-left')
+                || document.querySelector('div[class*="sidebar"] footer')
+                || document.querySelector('div[class*="lower-sidebar"]');
+            const isCollapsed = !!document.querySelector('button[aria-label*="Expand"]')
+                || !document.querySelector('button[aria-label*="Close"]')
+                || (sidebarFooter && sidebarFooter.getBoundingClientRect().width < 150);
+            hasSidebar.style.display = isCollapsed ? 'none' : 'block';
+        }
+    }
+
+    function checkAndTriggerOnGenerationEnd() {
+        const isCurrentlyGenerating = !!document.querySelector('button[aria-label*="Stop"]') 
+            || !!document.querySelector('button[class*="stop"]')
+            || !!document.querySelector('mat-progress-bar')
+            || !!document.querySelector('.is-generating')
+            || !!document.querySelector('div[class*="generating"]');
+            
+        if (wasGenerating && !isCurrentlyGenerating) {
+            console.log('🤖 Ask Gemini: Generation finished! Triggering auto-refresh...');
+            const refreshBtn = document.getElementById('ag-quota-refresh-btn');
+            if (refreshBtn) {
+                refreshBtn.click();
+            }
+        }
+        wasGenerating = isCurrentlyGenerating;
+    }
+
+    function attachInputFocusListener() {
+        const input = findInputArea();
+        if (input && !input.hasAttribute('data-ag-refresh-hook')) {
+            input.setAttribute('data-ag-refresh-hook', 'true');
+            
+            const triggerRefresh = () => {
+                const now = Date.now();
+                if (now - lastRefreshTime < 15000) {
+                    // Ignore clicks/focuses if refreshed in last 15s to avoid rate limit spam
+                    return;
+                }
+                console.log('✍️ Ask Gemini: Input focused/tapped! Triggering auto-refresh...');
+                const refreshBtn = document.getElementById('ag-quota-refresh-btn');
+                if (refreshBtn) {
+                    refreshBtn.click();
+                }
+            };
+            
+            input.addEventListener('focus', triggerRefresh);
+            input.addEventListener('click', triggerRefresh);
+        }
+    }
+
+    // Listen for rating prompts and quota updates
     chrome.runtime.onMessage.addListener((message) => {
         console.log('📬 Ask Gemini: Message Received', message);
         if (message.type === 'SHOW_RATING_PROMPT') {
             console.log('🌟 Ask Gemini: Attempting to show rating modal...');
             showRatingModal();
+        } else if (message.type === 'USAGE_LIMITS_UPDATED') {
+            console.log('📊 Ask Gemini: Quota limits updated', message.limits);
+            updateQuotaDisplay(message.limits);
         }
     });
 
     // Initial run
     transformMessages();
+    requestUsageLimits();
     updateUserProfile().catch(console.error);
     incrementSessionVisits().catch(console.error);
+    
+    // Auto-refresh limits every 60 seconds
+    setInterval(requestUsageLimits, 60000);
+
     console.log('🚀 Ask Gemini: Simplified Engine Active');
 })();

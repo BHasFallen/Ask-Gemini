@@ -247,6 +247,168 @@ class RatingManager {
     }
 }
 
+/**
+ * QuotaManager - Handles periodic scraping of Gemini usage limits
+ */
+class QuotaManager {
+    static atToken = null;
+
+    static async getAtToken() {
+        try {
+            const response = await fetch('https://gemini.google.com/app', { credentials: 'include' });
+            if (!response.ok) return null;
+            const html = await response.text();
+            const match = html.match(/"SNlM0e"\s*:\s*"([^"]+)"/);
+            return match ? match[1] : null;
+        } catch (e) {
+            console.error('Error fetching AT token:', e);
+            return null;
+        }
+    }
+
+    static parseQuotaResponse(text) {
+        try {
+            const lines = text.split('\n');
+            let innerData = null;
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i].trim();
+                if (/^\d+$/.test(line)) {
+                    const jsonStr = lines[i + 1];
+                    if (jsonStr) {
+                        try {
+                            const parsed = JSON.parse(jsonStr);
+                            if (Array.isArray(parsed)) {
+                                for (const item of parsed) {
+                                    if (item[0] === 'wrb.fr' && item[1] === 'jSf9Qc') {
+                                        innerData = JSON.parse(item[2]);
+                                        break;
+                                    }
+                                }
+                            }
+                        } catch (e) {
+                            // Ignore chunk errors
+                        }
+                    }
+                }
+                if (innerData) break;
+            }
+
+            if (!innerData) {
+                // Fallback direct regex check if chunks split weirdly
+                const match = text.match(/"wrb.fr"\s*,\s*"jSf9Qc"\s*,\s*"(.*?)"/);
+                if (match) {
+                    const innerJson = JSON.parse('"' + match[1] + '"');
+                    innerData = JSON.parse(innerJson);
+                }
+            }
+
+            if (!innerData) return null;
+
+            const limitsList = innerData[1];
+            if (!Array.isArray(limitsList)) return null;
+
+            let currentUsage = 0;
+            let resetTime = '';
+            let weeklyUsage = 0;
+
+            for (const item of limitsList) {
+                const val = Math.round((item[1] || 0) * 100);
+                const type = item[2];
+                const resetTsSec = item[3]?.[0]?.[0];
+
+                if (type === 1) {
+                    currentUsage = val;
+                    if (resetTsSec) {
+                        const date = new Date(resetTsSec * 1000);
+                        resetTime = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                    }
+                } else if (type === 2) {
+                    weeklyUsage = val;
+                }
+            }
+
+            return { currentUsage, resetTime, weeklyUsage };
+        } catch (e) {
+            console.error('Error parsing quota response:', e);
+            return null;
+        }
+    }
+
+    static async fetchUsageLimits() {
+        try {
+            if (!this.atToken) {
+                this.atToken = await this.getAtToken();
+            }
+
+            if (!this.atToken) {
+                console.error('Could not retrieve SNlM0e (at) token');
+                return null;
+            }
+
+            const body = new URLSearchParams();
+            body.append('f.req', '[[["jSf9Qc","[]",null,"generic"]]]');
+            body.append('at', this.atToken);
+
+            let response = await fetch('https://gemini.google.com/_/BardChatUi/data/batchexecute?rpcids=jSf9Qc&source-path=%2Fusage', {
+                method: 'POST',
+                body: body,
+                credentials: 'include'
+            });
+
+            if (!response.ok) {
+                if (response.status === 400 || response.status === 403) {
+                    // Token might be expired, reset and try once more
+                    this.atToken = await this.getAtToken();
+                    if (this.atToken) {
+                        body.set('at', this.atToken);
+                        response = await fetch('https://gemini.google.com/_/BardChatUi/data/batchexecute?rpcids=jSf9Qc&source-path=%2Fusage', {
+                            method: 'POST',
+                            body: body,
+                            credentials: 'include'
+                        });
+                    }
+                }
+            }
+
+            if (!response.ok) return null;
+
+            const text = await response.text();
+            const limits = this.parseQuotaResponse(text);
+            if (!limits) return null;
+
+            await chrome.storage.local.set({ quota_limits: limits, last_quota_check: Date.now() });
+            logBackgroundEvent('QUOTA_LIMITS_FETCHED', limits);
+
+            // Broadcast limits update to all active Gemini tabs
+            try {
+                const tabs = await chrome.tabs.query({ url: 'https://gemini.google.com/*' });
+                tabs.forEach(t => {
+                    chrome.tabs.sendMessage(t.id, { type: 'USAGE_LIMITS_UPDATED', limits }, () => {
+                        if (chrome.runtime.lastError) {
+                            // Suppress errors for unloaded tabs
+                        }
+                    });
+                });
+            } catch (err) {
+                console.error('Failed to broadcast quota limits:', err);
+            }
+
+            return limits;
+        } catch (e) {
+            console.error('Failed to scrape usage limits:', e);
+            return null;
+        }
+    }
+
+    static async getCachedLimits() {
+        const res = await chrome.storage.local.get(['quota_limits', 'last_quota_check']);
+        if (res.quota_limits && res.last_quota_check && (Date.now() - res.last_quota_check < 5 * 60 * 1000)) {
+            return res.quota_limits;
+        }
+        return await this.fetchUsageLimits();
+    }
+}
+
 
 /**
  * Centralized log storage for the background script
@@ -373,10 +535,30 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                 sendResponse({ report });
                 break;
 
+            case 'GET_USAGE_LIMITS':
+                QuotaManager.getCachedLimits().then(limits => {
+                    sendResponse({ success: true, limits });
+                }).catch(err => {
+                    sendResponse({ success: false, error: err.message });
+                });
+                break;
+
+            case 'FORCE_REFRESH_USAGE_LIMITS':
+                QuotaManager.fetchUsageLimits().then(limits => {
+                    sendResponse({ success: true, limits });
+                }).catch(err => {
+                    sendResponse({ success: false, error: err.message });
+                });
+                break;
+
             case 'TRACK_EVENT':
                 // Track user engagement or technical events
                 AmplitudeWizard.trackEvent(message.name, message.params);
                 RatingManager.recordEvent(message.name, message.params);
+                if (message.name === 'context_reply_sent') {
+                    // Force refresh limits when user submits contextual reply
+                    QuotaManager.fetchUsageLimits().catch(console.error);
+                }
                 sendResponse({ success: true });
                 break;
 
@@ -500,6 +682,9 @@ chrome.alarms.create('logCleanup', { periodInMinutes: 60 });
 // Fire once per day when extension is active
 chrome.alarms.create('heartbeat', { periodInMinutes: 1440 });
 
+// Periodically check usage limits (every 10 minutes)
+chrome.alarms.create('quotaLimitsCheck', { periodInMinutes: 10 });
+
 chrome.alarms.onAlarm.addListener((alarm) => {
     if (alarm.name === 'logCleanup') {
         const stats = logManager.getStats();
@@ -513,7 +698,20 @@ chrome.alarms.onAlarm.addListener((alarm) => {
         }
     } else if (alarm.name === 'heartbeat') {
         AmplitudeWizard.trackEvent('extension_active');
+    } else if (alarm.name === 'quotaLimitsCheck') {
+        QuotaManager.fetchUsageLimits().catch(console.error);
     }
+});
+
+// Trigger initial quota fetch on startup
+chrome.runtime.onStartup.addListener(() => {
+    logBackgroundEvent('EXTENSION_STARTUP');
+    QuotaManager.fetchUsageLimits().catch(console.error);
+});
+
+// Also trigger on install/load
+chrome.runtime.onInstalled.addListener(() => {
+    QuotaManager.fetchUsageLimits().catch(console.error);
 });
 
 // Log that background script has initialized
@@ -525,3 +723,4 @@ console.log('🏰 Fortress Framework Background Service Worker initialized');
 
 // Expose to console for testing
 self.RatingManager = RatingManager;
+self.QuotaManager = QuotaManager;
