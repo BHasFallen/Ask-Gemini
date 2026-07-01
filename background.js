@@ -327,7 +327,10 @@ class QuotaManager {
                 }
             }
 
-            return { currentUsage, resetTime, weeklyUsage };
+            const userTier = innerData[0];
+            const isProUser = [2, 3, 4, 6].includes(userTier);
+
+            return { currentUsage, resetTime, weeklyUsage, isProUser };
         } catch (e) {
             console.error('Error parsing quota response:', e);
             return null;

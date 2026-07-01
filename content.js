@@ -299,6 +299,7 @@
     let lastRepliesCount = 0;
     let wasGenerating = false;
     let lastRefreshTime = 0;
+    let isFreeUser = false;
 
     // ═══════════════════════════════════════════════════════════════════════════════
     // SECTION 2: CORE INJECTION LOGIC (The "Competitor" Method)
@@ -913,6 +914,20 @@
     function updateQuotaDisplay(limits) {
         if (!limits) return;
 
+        // Check if user is Gemini Advanced (Pro)
+        const isAdvancedDom = document.body.innerText.includes('Gemini Advanced')
+            || !!document.querySelector('a[href*="/app"] svg[aria-label*="Advanced"]')
+            || !!document.querySelector('a[href*="/app"] img[src*="advanced"]');
+            
+        const isPro = limits.isProUser !== false && (limits.isProUser || isAdvancedDom);
+
+        if (!isPro) {
+            isFreeUser = true;
+            const card = document.getElementById('ag-quota-sidebar');
+            if (card) card.remove();
+            return;
+        }
+
         const currentUsage = limits.currentUsage || 0;
         const resetTime = limits.resetTime || '';
         const weeklyUsage = limits.weeklyUsage || 0;
@@ -991,6 +1006,7 @@
     }
 
     function checkAndInjectQuota() {
+        if (isFreeUser) return;
         const hasSidebar = document.getElementById('ag-quota-sidebar');
         
         if (!hasSidebar) {
