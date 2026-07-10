@@ -535,17 +535,9 @@
         return found;
     }
 
-    function escapeHtml(str) {
-        if (!str) return '';
-        return str
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&#039;');
-    }
 
-    function exportChatAsHtml() {
+
+    function exportChatAsPdf() {
         const scroller = document.querySelector('infinite-scroller[data-test-id="chat-history-container"]')
             || document.querySelector('#chat-history infinite-scroller')
             || document.querySelector('infinite-scroller')
@@ -568,7 +560,8 @@
             '.ask-gemini-reply-preview',
             '#ask-gemini-float-btn',
             '#ask-gemini-context-box',
-            '[aria-hidden="true"]'
+            '[aria-hidden="true"]',
+            'source-footnote'
         ];
         selectorsToRemove.forEach(sel => {
             try {
@@ -576,97 +569,158 @@
             } catch(e) {}
         });
 
-        // Gather all stylesheet rules to ensure formatting is fully preserved
-        let cssStyles = '';
-        for (const sheet of document.styleSheets) {
-            try {
-                if (sheet.cssRules) {
-                    for (const rule of sheet.cssRules) {
-                        cssStyles += rule.cssText + '\n';
-                    }
-                }
-            } catch (e) {
-                if (sheet.href) {
-                    cssStyles += `@import url('${sheet.href}');\n`;
-                }
-            }
-        }
+        // Create temporary offscreen container for html2pdf rendering
+        const tempContainer = document.createElement('div');
+        tempContainer.style.position = 'absolute';
+        tempContainer.style.left = '-9999px';
+        tempContainer.style.top = '-9999px';
+        tempContainer.style.width = '750px';
+        tempContainer.style.height = 'auto';
+        tempContainer.style.overflow = 'visible';
+        tempContainer.style.backgroundColor = '#131314';
+        tempContainer.style.color = '#e3e3e3';
+        tempContainer.style.fontFamily = "'Google Sans', 'Roboto', Arial, sans-serif";
+        tempContainer.style.padding = '30px';
+        tempContainer.style.boxSizing = 'border-box';
 
-        // Add default formatting and print enhancements
-        const customStyles = `
-            @media print {
-                body {
-                    background: white !important;
-                    color: black !important;
-                }
-                ms-chat-turn, .chat-turn, .user-query, .model-response {
-                    page-break-inside: avoid !important;
-                }
+        // Add custom styles for the PDF
+        const styleTag = document.createElement('style');
+        styleTag.textContent = `
+            .chat-container {
+                width: 100%;
             }
-            body {
-                background-color: #131314;
-                color: #e3e3e3;
-                font-family: 'Google Sans', 'Roboto', sans-serif;
-                margin: 0 auto;
-                max-width: 800px;
-                padding: 40px 20px;
+            /* User Query Styling */
+            user-query {
+                display: flex;
+                justify-content: flex-end;
+                margin-bottom: 24px;
+                width: 100%;
             }
-            infinite-scroller, .chat-history, main {
-                display: block !important;
-                height: auto !important;
-                overflow: visible !important;
+            .user-query-container {
+                width: 100%;
+                display: flex;
+                justify-content: flex-end;
             }
+            .user-query-bubble-with-background {
+                background-color: #2b2a33 !important;
+                border-radius: 20px;
+                padding: 12px 20px;
+                display: inline-block;
+                color: #ececec !important;
+                font-size: 15px;
+                line-height: 1.5;
+                text-align: left;
+                max-width: 80%;
+            }
+            .query-text-line {
+                margin: 0;
+            }
+            /* Model Response Styling */
+            model-response {
+                display: block;
+                margin-bottom: 32px;
+                width: 100%;
+            }
+            .model-response-text {
+                font-size: 15px;
+                line-height: 1.6;
+            }
+            .markdown-main-panel {
+                color: #e3e3e3 !important;
+            }
+            .markdown-main-panel p {
+                margin: 0 0 12px 0;
+            }
+            /* Table Styling */
+            table {
+                border-collapse: collapse;
+                width: 100%;
+                margin: 16px 0;
+                font-size: 13px;
+                background-color: #1e1e24;
+                border-radius: 8px;
+                overflow: hidden;
+            }
+            th, td {
+                padding: 10px 14px;
+                text-align: left;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            }
+            th {
+                background-color: rgba(255, 255, 255, 0.03);
+                font-weight: 500;
+                color: #ffffff;
+            }
+            /* Code block styling */
             pre, code {
                 background-color: #1e1e24 !important;
                 border-radius: 8px;
-                padding: 12px;
-                overflow-x: auto;
-                color: #e3e3e3;
                 font-family: monospace;
+                font-size: 13px;
+                color: #e3e3e3;
+                white-space: pre-wrap !important;
+                word-wrap: break-word !important;
+            }
+            pre {
+                padding: 12px;
+                margin: 12px 0;
+                overflow-x: auto;
+            }
+            code {
+                padding: 2px 4px;
+            }
+            /* Hide citations labels */
+            .citation-inline, source-inline-chip {
+                display: none !important;
             }
         `;
+        tempContainer.appendChild(styleTag);
 
         const title = document.querySelector('h1[class*="chat-title"]')?.innerText
             || document.querySelector('title')?.innerText.split(' - ')[0]
             || 'Gemini Chat Export';
 
-        const finalHtml = `<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <title>${escapeHtml(title)}</title>
-    <style>
-        ${cssStyles}
-        ${customStyles}
-    </style>
-</head>
-<body>
-    <div style="margin-bottom: 30px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 15px;">
-        <h1 style="margin: 0 0 5px 0; font-size: 24px; font-weight: 500;">${escapeHtml(title)}</h1>
-        <div style="font-size: 12px; color: #9aa0a6;">Exported via Powerbox on ${new Date().toLocaleString()}</div>
-    </div>
-    <div class="chat-container">
-        ${clone.innerHTML}
-    </div>
-    <script>
-        // Auto trigger browser print dialog on load
-        window.addEventListener('DOMContentLoaded', () => {
-            setTimeout(() => { window.print(); }, 500);
-        });
-    </script>
-</body>
-</html>`;
+        const headerDiv = document.createElement('div');
+        headerDiv.style.marginBottom = '25px';
+        headerDiv.style.borderBottom = '1px solid rgba(255,255,255,0.1)';
+        headerDiv.style.paddingBottom = '15px';
+        headerDiv.innerHTML = `
+            <h1 style="margin: 0 0 5px 0; font-size: 22px; font-weight: 500; color: #ffffff;">${escapeHtml(title)}</h1>
+            <div style="font-size: 11px; color: #9aa0a6;">Exported via Powerbox on ${new Date().toLocaleString()}</div>
+        `;
+        tempContainer.appendChild(headerDiv);
 
-        const blob = new Blob([finalHtml], { type: 'text/html' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
+        const chatWrapper = document.createElement('div');
+        chatWrapper.className = 'chat-container';
+        chatWrapper.appendChild(clone);
+        tempContainer.appendChild(chatWrapper);
+
+        document.body.appendChild(tempContainer);
+
+        // Options for html2pdf
         const cleanFileName = title.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'chat_export';
-        a.download = `${cleanFileName}.html`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
+        const opt = {
+            margin:       [0.4, 0.4, 0.4, 0.4],
+            filename:     `${cleanFileName}.pdf`,
+            image:        { type: 'jpeg', quality: 0.98 },
+            html2canvas:  { 
+                scale: 2, 
+                useCORS: true,
+                backgroundColor: '#131314',
+                logging: false
+            },
+            jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' }
+        };
+
+        // Render PDF directly and trigger download
+        html2pdf().set(opt).from(tempContainer).save().then(() => {
+            tempContainer.remove();
+        }).catch(err => {
+            console.error('PDF generation failed:', err);
+            tempContainer.remove();
+            alert('Failed to generate PDF. Falling back to print...');
+            window.print();
+        });
     }
 
     function injectExportButton() {
@@ -682,12 +736,12 @@
 
         exportBtn = document.createElement('button');
         exportBtn.id = 'ag-export-pdf-btn';
-        exportBtn.innerHTML = `${ICONS.export} Export Chat`;
+        exportBtn.innerHTML = `${ICONS.export} Export PDF`;
         exportBtn.title = 'Save conversation to PDF';
 
         exportBtn.onclick = (e) => {
             e.preventDefault();
-            exportChatAsHtml();
+            exportChatAsPdf();
         };
 
         document.body.appendChild(exportBtn);

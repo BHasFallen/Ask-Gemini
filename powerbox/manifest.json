@@ -29,6 +29,7 @@
         "styles.css"
       ],
       "js": [
+        "html2pdf.bundle.min.js",
         "content.js"
       ],
       "run_at": "document_idle"
