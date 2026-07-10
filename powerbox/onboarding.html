@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Powerbox for Gemini</title>
+    <link rel="stylesheet" href="onboarding.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&family=Google+Sans+Display:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body class="mode-install">
+
+    <main class="ob-page">
+
+        <!-- Header -->
+        <header class="ob-header">
+            <div class="ob-logo">
+                <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/><path d="M5 3v4"/><path d="M19 17v4"/><path d="M3 5h4"/><path d="M17 19h4"/></svg>
+            </div>
+            <span class="ob-logo-name">Powerbox for Gemini</span>
+            <span id="ob-version" class="ob-version-badge"></span>
+        </header>
+
+        <!-- INSTALL MODE -->
+        <div class="show-on-install">
+            <section class="ob-hero">
+                <h1 class="ob-headline">How to use Powerbox</h1>
+            </section>
+
+            <!-- Steps -->
+            <section class="ob-steps">
+                <div class="ob-step">
+                    <div class="ob-step-num">1</div>
+                    <div class="ob-step-body">
+                        <h3 class="ob-step-title">Quote Reply</h3>
+                        <p class="ob-step-desc">Select any text in Gemini's response, click the floating "Ask Gemini" button, and type your reply.</p>
+                    </div>
+                </div>
+                <div class="ob-step-connector"></div>
+                <div class="ob-step">
+                    <div class="ob-step-num">2</div>
+                    <div class="ob-step-body">
+                        <h3 class="ob-step-title">Usage Limits Tracker</h3>
+                        <p class="ob-step-desc">Gemini Advanced users will see their usage metrics directly in the left-hand sidebar.</p>
+                    </div>
+                </div>
+                <div class="ob-step-connector"></div>
+                <div class="ob-step">
+                    <div class="ob-step-num">3</div>
+                    <div class="ob-step-body">
+                        <h3 class="ob-step-title">Export Chats to PDF</h3>
+                        <p class="ob-step-desc">Click the "Export PDF" button next to any chat session header to print and save your logs.</p>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <!-- UPDATE MODE -->
+        <div class="show-on-update">
+            <section class="ob-hero">
+                <h1 class="ob-headline">Powerbox has been updated!</h1>
+            </section>
+
+            <!-- What's New -->
+            <section class="ob-whats-new">
+                <h2 class="ob-section-title">What's new in <span id="ob-version-inline"></span></h2>
+                <ul class="ob-changelog">
+                    <li>
+                        <span class="ob-tag ob-tag-new">New</span>
+                        Chat Exporter: Beautiful native PDF print layouts for saving chats
+                    </li>
+                    <li>
+                        <span class="ob-tag ob-tag-new">New</span>
+                        Unified Settings: Toggle Quote Reply, Usage Limits, or PDF Exporter on/off
+                    </li>
+                    <li>
+                        <span class="ob-tag ob-tag-improved">Improved</span>
+                        High-efficiency DOM parsing engine for Gemini's custom Angular nodes
+                    </li>
+                    <li>
+                        <span class="ob-tag ob-tag-improved">Improved</span>
+                        Support for school, enterprise, and Workspace account layouts
+                    </li>
+                </ul>
+            </section>
+
+            <!-- Feature Requests & Feedback -->
+            <section class="ob-feedback-card">
+                <h2 class="ob-section-title">Have feedback or feature requests?</h2>
+                <p class="ob-feedback-text">Help shape Powerbox! Let us know what you want to see next or report any issues.</p>
+                <div class="ob-feedback-buttons">
+                    <a href="https://docs.google.com/forms/d/e/1FAIpQLSfr82mMdRgwSPY9ZsQkdRp_HXKKwmVuWO7GmjeZ3fS9XHpqsA/viewform" target="_blank" class="ob-btn-secondary">
+                        Submit Feature Request
+                    </a>
+                    <a href="https://docs.google.com/forms/d/e/1FAIpQLSfr82mMdRgwSPY9ZsQkdRp_HXKKwmVuWO7GmjeZ3fS9XHpqsA/viewform" target="_blank" class="ob-btn-secondary">
+                        Report an Issue
+                    </a>
+                </div>
+            </section>
+        </div>
+
+        <!-- CTA & Footer -->
+        <div class="ob-cta">
+            <button id="ob-open-gemini" class="ob-btn-primary">
+                Open Gemini
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+            </button>
+        </div>
+
+        <footer class="ob-footer">
+            <a href="https://docs.google.com/forms/d/e/1FAIpQLSfr82mMdRgwSPY9ZsQkdRp_HXKKwmVuWO7GmjeZ3fS9XHpqsA/viewform" target="_blank">Send feedback</a>
+            <span>·</span>
+            <a href="https://chromewebstore.google.com/detail/jhkodgigeemnmdmdikdkpcbmgbbopgni" target="_blank">Chrome Web Store</a>
+        </footer>
+
+    </main>
+
+    <script src="onboarding.js"></script>
+</body>
+</html>

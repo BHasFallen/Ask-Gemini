@@ -1,0 +1,40 @@
+{
+  "manifest_version": 3,
+  "name": "Powerbox for Gemini",
+  "version": "1.0.0",
+  "description": "The ultimate power utility for Google Gemini: Quote reply, track usage limits, and export your chats to PDF.",
+  "permissions": [
+    "storage",
+    "alarms",
+    "tabs",
+    "activeTab"
+  ],
+  "host_permissions": [
+    "https://api2.amplitude.com/*",
+    "https://gemini.google.com/*"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Powerbox Settings"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://gemini.google.com/*"
+      ],
+      "css": [
+        "styles.css"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'; worker-src 'self'; img-src 'self' data: https:"
+  }
+}
