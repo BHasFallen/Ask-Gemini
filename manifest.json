@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Quote Reply for Gemini",
   "version": "2.4.0",
-  "description": "Highlight any text in Gemini. Ask a follow-up with that exact context locked in — fewer hallucinations, sharper answers.",
+  "description": "Highlight any Google Gemini response and quote-reply with full context. Sharper follow-ups, fewer hallucinations.",
   "permissions": [
     "storage",
     "alarms"
