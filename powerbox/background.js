@@ -98,15 +98,11 @@ class QuotaManager {
 
     static async getAtToken() {
         try {
-            const cookies = await chrome.cookies.getAll({ domain: 'gemini.google.com', name: 'SNlM0e' });
-            if (cookies && cookies.length > 0) {
-                return cookies[0].value;
-            }
-            // Scrape backup via active page fetch
+            // Scrape via active page fetch directly without cookies API permission check
             const response = await fetch('https://gemini.google.com/app', { credentials: 'include' });
             if (!response.ok) return null;
             const html = await response.text();
-            const match = html.match(/"SNlM0e"\s*:\s*"(.*?)"/);
+            const match = html.match(/"SNlM0e"\s*:\s*"([^"]+)"/);
             return match ? match[1] : null;
         } catch (e) {
             console.error('Error fetching AT token:', e);
@@ -379,10 +375,19 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
             case 'GET_USAGE_LIMITS':
                 QuotaManager.getCachedLimits().then(limits => {
-                    sendResponse({ limits });
+                    sendResponse({ success: true, limits });
                 }).catch(err => {
                     console.error('Quota fetch error:', err);
-                    sendResponse({ limits: null });
+                    sendResponse({ success: false, error: err.message });
+                });
+                return true; // Keep response channel open
+
+            case 'FORCE_REFRESH_USAGE_LIMITS':
+                QuotaManager.fetchUsageLimits().then(limits => {
+                    sendResponse({ success: true, limits });
+                }).catch(err => {
+                    console.error('Force quota refresh error:', err);
+                    sendResponse({ success: false, error: err.message });
                 });
                 return true; // Keep response channel open
 

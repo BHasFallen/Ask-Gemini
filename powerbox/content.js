@@ -42,6 +42,8 @@
     let isInjecting = false;
     let isTipTemporarilyDismissed = false;
     let originalPlaceholder = '';
+    let retentionTipTimeout = null;
+    let isFreeUser = false;
 
     function findInputArea() {
         return document.querySelector('.ql-editor[contenteditable="true"]')
@@ -207,79 +209,152 @@
     }
 
     // Beautify Chat History Quotes (Click to Scroll)
+    function scrollToAndHighlightText(textToFind) {
+        if (!textToFind) return;
+        const cleanText = textToFind.trim();
+        if (cleanText.length === 0) return;
+
+        const candidates = document.querySelectorAll(
+            '.model-response, .message-content, .markdown-main-panel, message-content, .query-text, .user-query-bubble-with-background'
+        );
+
+        let targetElement = null;
+
+        for (const el of candidates) {
+            if (el.closest('.ask-gemini-transformed-proxy')) continue;
+
+            const contentText = el.textContent || "";
+            if (contentText.includes(cleanText)) {
+                targetElement = el;
+                const subElements = el.querySelectorAll('p, span, li, h1, h2, h3, code');
+                for (const subEl of subElements) {
+                    if (subEl.textContent.includes(cleanText)) {
+                        targetElement = subEl;
+                    }
+                }
+                break;
+            }
+        }
+
+        if (targetElement) {
+            const walk = document.createTreeWalker(targetElement, NodeFilter.SHOW_TEXT, null, false);
+            let node;
+            let foundTextNode = false;
+
+            while (node = walk.nextNode()) {
+                const index = node.nodeValue.indexOf(cleanText);
+                if (index !== -1) {
+                    foundTextNode = true;
+                    const parent = node.parentNode;
+                    
+                    const highlightSpan = document.createElement('span');
+                    highlightSpan.className = 'ag-text-highlight-blink';
+                    highlightSpan.textContent = cleanText;
+
+                    const beforeText = node.nodeValue.substring(0, index);
+                    const afterText = node.nodeValue.substring(index + cleanText.length);
+
+                    const beforeNode = document.createTextNode(beforeText);
+                    const afterNode = document.createTextNode(afterText);
+
+                    parent.insertBefore(beforeNode, node);
+                    parent.insertBefore(highlightSpan, node);
+                    parent.insertBefore(afterNode, node);
+                    parent.removeChild(node);
+
+                    highlightSpan.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+                    setTimeout(() => {
+                        if (highlightSpan.parentNode) {
+                            const mergedText = beforeText + cleanText + afterText;
+                            const restoredNode = document.createTextNode(mergedText);
+                            const pNode = highlightSpan.parentNode;
+                            pNode.insertBefore(restoredNode, beforeNode);
+                            pNode.removeChild(beforeNode);
+                            pNode.removeChild(highlightSpan);
+                            pNode.removeChild(afterNode);
+                            pNode.normalize();
+                        }
+                    }, MergedBlinkHighlightTimeout());
+                    
+                    break;
+                }
+            }
+
+            if (!foundTextNode) {
+                targetElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                targetElement.classList.add('ag-text-highlight-blink');
+                setTimeout(() => {
+                    targetElement.classList.remove('ag-text-highlight-blink');
+                }, 2000);
+            }
+        }
+    }
+
+    function MergedBlinkHighlightTimeout() {
+        return 2000;
+    }
+
     function transformMessages() {
         if (!settings.quote_reply_enabled) return;
-        const messages = document.querySelectorAll('user-query .query-text-line, ms-user-query .query-text-line');
-        messages.forEach(msg => {
-            if (msg.dataset.transformed) return;
-            const text = msg.innerText;
-            const match = text.match(/^I'm replying to this:\n"([\s\S]*?)"\n\n([\s\S]*)$/m);
-            if (match) {
-                const quote = match[1];
-                const reply = match[2];
-                msg.innerHTML = '';
+        const PREFIX = "I'm replying to this:";
+        const PREFIX_CURLY = "I\u2019m replying to this:";
+        
+        const candidates = document.querySelectorAll('.query-text, .user-query-bubble-with-background, p.query-text-line, [data-test-id="user-query"]');
+        
+        candidates.forEach(el => {
+            if (el.hasAttribute('data-ag-processed')) return;
+            
+            const text = el.textContent || "";
+            const hasPrefix = text.includes(PREFIX) || text.includes(PREFIX_CURLY);
+            
+            if (hasPrefix && text.includes('"')) {
+                const prefixUsed = text.includes(PREFIX) ? PREFIX : PREFIX_CURLY;
+                const afterPrefix = text.substring(text.indexOf(prefixUsed) + prefixUsed.length);
+                
+                const firstQuote = afterPrefix.indexOf('"');
+                const lastQuote = afterPrefix.lastIndexOf('"');
+                
+                if (firstQuote === -1 || lastQuote === -1 || firstQuote === lastQuote) return;
 
-                const proxy = document.createElement('div');
-                proxy.className = 'ask-gemini-transformed-proxy';
-                proxy.innerHTML = `
+                const context = afterPrefix.substring(firstQuote + 1, lastQuote).trim();
+                let actualMessage = afterPrefix.substring(lastQuote + 1).trim();
+
+                actualMessage = actualMessage.replace(/^⟦◈⟧\s*/, '').trim();
+
+                if (!context || !actualMessage) return;
+
+                const chipHtml = `
                     <div class="ask-gemini-proxy-content">
-                        <button type="button" class="ask-gemini-reply-preview">
-                            <span class="ask-gemini-reply-icon">${ICONS.reply}</span>
+                        <button class="ask-gemini-reply-preview" type="button">
+                            <div class="ask-gemini-reply-icon">${ICONS.reply}</div>
                             <div class="ask-gemini-reply-text-wrapper">
-                                <p class="ask-gemini-reply-text">${escapeHtml(quote)}</p>
+                                <p class="ask-gemini-reply-text">${context}</p>
                             </div>
                         </button>
                         <div class="ask-gemini-message-bubble">
-                            <div class="ask-gemini-bubble-text">
-                                <p>${escapeHtml(reply).replace(/\n/g, '<br>')}</p>
-                            </div>
+                            <div class="ask-gemini-bubble-text"><p>${actualMessage}</p></div>
                         </div>
                     </div>
                 `;
 
-                // Add Click-to-Scroll anchor handler
-                proxy.querySelector('.ask-gemini-reply-preview').onclick = (e) => {
-                    e.preventDefault();
-                    anchorSearchAndScroll(quote);
-                };
-
-                msg.appendChild(proxy);
-                msg.dataset.transformed = 'true';
+                const wrapper = el.closest('.user-query-bubble-with-background') || el.closest('.query-text') || el;
+                wrapper.innerHTML = '';
+                const proxy = document.createElement('div');
+                proxy.className = 'ask-gemini-transformed-proxy';
+                proxy.innerHTML = chipHtml;
+                
+                const btn = proxy.querySelector('.ask-gemini-reply-preview');
+                if (btn) {
+                    btn.onclick = () => scrollToAndHighlightText(context);
+                }
+                
+                wrapper.appendChild(proxy);
+                
+                wrapper.setAttribute('data-ag-processed', 'true');
+                wrapper.querySelectorAll('*').forEach(child => child.setAttribute('data-ag-processed', 'true'));
             }
         });
-    }
-
-    function anchorSearchAndScroll(quoteText) {
-        const textTarget = quoteText.trim();
-        if (!textTarget) return;
-
-        // Traverse deep shadow DOM to search chat bubbles
-        function deepShadowSearch(root) {
-            const cards = root.querySelectorAll('model-response, ms-model-response, .response-container-content');
-            for (const card of cards) {
-                if (card.innerText.includes(textTarget)) {
-                    return card;
-                }
-            }
-            const all = root.querySelectorAll('*');
-            for (let i = 0; i < all.length; i++) {
-                if (all[i].shadowRoot) {
-                    const found = deepShadowSearch(all[i].shadowRoot);
-                    if (found) return found;
-                }
-            }
-            return null;
-        }
-
-        const matchNode = deepShadowSearch(document);
-        if (matchNode) {
-            matchNode.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            matchNode.style.transition = 'outline 0.2s ease-in-out';
-            matchNode.style.outline = '2px solid var(--ask-gemini-primary, #a8c7fa)';
-            setTimeout(() => {
-                matchNode.style.outline = 'none';
-            }, 1500);
-        }
     }
 
     async function evaluateRetentionTip() {
@@ -329,6 +404,7 @@
         const isPro = limits.isProUser !== false && (limits.isProUser || isAdvancedDom);
 
         if (!isPro) {
+            isFreeUser = true;
             const card = document.getElementById('ag-quota-sidebar');
             if (card) card.remove();
             return;
@@ -374,9 +450,9 @@
                 refreshBtn.onclick = (e) => {
                     e.preventDefault();
                     refreshBtn.classList.add('spinning');
-                    chrome.runtime.sendMessage({ type: 'GET_USAGE_LIMITS' }, (response) => {
+                    chrome.runtime.sendMessage({ type: 'FORCE_REFRESH_USAGE_LIMITS' }, (response) => {
                         refreshBtn.classList.remove('spinning');
-                        if (response && response.limits) {
+                        if (response && response.success && response.limits) {
                             updateQuotaDisplay(response.limits);
                         }
                     });
@@ -388,10 +464,29 @@
     function requestUsageLimits() {
         if (!settings.usage_tracker_enabled) return;
         chrome.runtime.sendMessage({ type: 'GET_USAGE_LIMITS' }, (response) => {
-            if (response && response.limits) {
+            if (response && response.success && response.limits) {
                 updateQuotaDisplay(response.limits);
             }
         });
+    }
+
+    function checkAndInjectQuota() {
+        if (!settings.usage_tracker_enabled || isFreeUser) return;
+        const hasSidebar = document.getElementById('ag-quota-sidebar');
+        
+        if (!hasSidebar) {
+            requestUsageLimits();
+        } else {
+            // Automatically update visibility in case sidebar collapsed state changed
+            const sidebarFooter = document.querySelector('.mavatar-footer-left')?.closest('div')
+                || document.querySelector('.mavatar-footer-left')
+                || document.querySelector('div[class*="sidebar"] footer')
+                || document.querySelector('div[class*="lower-sidebar"]');
+            const isCollapsed = !!document.querySelector('button[aria-label*="Expand"]')
+                || !document.querySelector('button[aria-label*="Close"]')
+                || (sidebarFooter && sidebarFooter.getBoundingClientRect().width < 150);
+            hasSidebar.style.display = isCollapsed ? 'none' : 'block';
+        }
     }
 
     function initUsageTracker() {
@@ -515,9 +610,15 @@
 
     function injectExportButton() {
         if (!settings.pdf_exporter_enabled) return;
+        
+        const hasMessages = !!(document.querySelector('model-response, ms-model-response, .model-response, .message-content, ms-chat-turn'));
+        if (!hasMessages) {
+            destroyExporter();
+            return;
+        }
+
         if (document.getElementById('ag-export-pdf-btn')) return;
 
-        // Target placement: next to chat actions or top header bar
         const header = document.querySelector('header')
             || document.querySelector('[class*="chat-header"]')
             || document.querySelector('[class*="header-actions"]');
@@ -584,7 +685,8 @@
         // Initialize general mutations observer
         const observer = new MutationObserver(() => {
             transformMessages();
-            if (settings.pdf_exporter_enabled && !document.getElementById('ag-export-pdf-btn')) {
+            checkAndInjectQuota();
+            if (settings.pdf_exporter_enabled) {
                 injectExportButton();
             }
         });
