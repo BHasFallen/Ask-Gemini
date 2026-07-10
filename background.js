@@ -39,10 +39,11 @@ class AmplitudeWizard {
         const deviceId = await this.getDeviceId();
         const version = chrome.runtime.getManifest().version;
         
-        // Retrieve raw email and name from local storage
-        const storageResult = await chrome.storage.local.get(['user_email', 'user_name']);
+        // Retrieve raw email, name and tier from local storage
+        const storageResult = await chrome.storage.local.get(['user_email', 'user_name', 'quota_limits']);
         const userId = storageResult.user_email || null;
         const userName = storageResult.user_name || null;
+        const quotaLimits = storageResult.quota_limits || null;
         
         const event = {
             device_id: deviceId,
@@ -55,8 +56,12 @@ class AmplitudeWizard {
             os_name: 'Chrome',
             app_version: version,
             user_properties: {
-                version: version,
-                name: userName
+                $set: {
+                    version: version,
+                    name: userName,
+                    is_pro_user: quotaLimits?.isProUser ?? null,
+                    gemini_tier: quotaLimits?.userTier ?? null
+                }
             }
         };
 
@@ -326,7 +331,7 @@ class QuotaManager {
             const userTier = innerData[0];
             const isProUser = [2, 3, 4, 6].includes(userTier);
 
-            return { currentUsage, resetTime, weeklyUsage, isProUser };
+            return { currentUsage, resetTime, weeklyUsage, isProUser, userTier };
         } catch (e) {
             console.error('Error parsing quota response:', e);
             return null;
