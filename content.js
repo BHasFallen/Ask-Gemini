@@ -542,11 +542,6 @@
         const input = findInputArea();
         if (input) input.focus();
         
-        const words = text.trim().split(/\s+/).length;
-        trackEvent('text_highlight', { 
-            length: text.length,
-            word_count: words
-        });
         evaluateRetentionTip().catch(console.error);
     }
 

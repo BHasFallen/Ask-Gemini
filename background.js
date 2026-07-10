@@ -34,10 +34,6 @@ class AmplitudeWizard {
      * Track event to Amplitude
      */
     static async trackEvent(name, params = {}) {
-        // Exclude text_highlight from Amplitude completely to be privacy-first
-        if (name === 'text_highlight') {
-            return;
-        }
 
         const now = Date.now();
         const deviceId = await this.getDeviceId();
@@ -620,8 +616,24 @@ chrome.runtime.onInstalled.addListener(async (details) => {
         }
         await RatingManager.setState(state);
 
-        // 2. Set uninstall URL with pre-filled device ID
+        // 2. Track install/update event then set uninstall URL
         const deviceId = await AmplitudeWizard.getDeviceId();
+        if (details.reason === chrome.runtime.OnInstalledReason.INSTALL) {
+            AmplitudeWizard.trackEvent('extension_installed', {
+                version: chrome.runtime.getManifest().version
+            });
+        } else if (details.reason === chrome.runtime.OnInstalledReason.UPDATE) {
+            AmplitudeWizard.trackEvent('extension_updated', {
+                version: chrome.runtime.getManifest().version,
+                previousVersion: details.previousVersion
+            });
+        }
+
+        // Fire uninstall_initiated just before registering the URL so it always lands
+        AmplitudeWizard.trackEvent('uninstall_initiated', {
+            version: chrome.runtime.getManifest().version,
+            device_id: deviceId
+        });
         const feedbackFormUrl = 'https://docs.google.com/forms/d/e/1FAIpQLSfr82mMdRgwSPY9ZsQkdRp_HXKKwmVuWO7GmjeZ3fS9XHpqsA/viewform';
         const uninstallUrl = `${feedbackFormUrl}?entry.648517234=${deviceId}&device_id=${deviceId}`;
         chrome.runtime.setUninstallURL(uninstallUrl);
@@ -669,9 +681,6 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
  */
 chrome.alarms.create('logCleanup', { periodInMinutes: 60 });
 
-// Fire once per day when extension is active
-chrome.alarms.create('heartbeat', { periodInMinutes: 1440 });
-
 // Periodically check usage limits (every 10 minutes)
 chrome.alarms.create('quotaLimitsCheck', { periodInMinutes: 10 });
 
@@ -686,8 +695,6 @@ chrome.alarms.onAlarm.addListener((alarm) => {
                 after: 100
             });
         }
-    } else if (alarm.name === 'heartbeat') {
-        AmplitudeWizard.trackEvent('extension_active');
     } else if (alarm.name === 'quotaLimitsCheck') {
         QuotaManager.fetchUsageLimits().catch(console.error);
     }
