@@ -535,77 +535,138 @@
         return found;
     }
 
-    function parseCurrentChat() {
-        const msgs = [], ts = {}, cm = {}, am = {};
-        let ti = 1, ci = 1, fi = 1;
-        let pairs = [];
+    function escapeHtml(str) {
+        if (!str) return '';
+        return str
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
 
-        // Strategy 1: ms-chat-turn
-        const msChatTurns = deepShadowAll('ms-chat-turn');
-        if (msChatTurns.length > 0) {
-            msChatTurns.forEach(turn => {
-                const model = (turn.getAttribute('model') || '').toLowerCase();
-                pairs.push({ node: turn, role: model === 'user' ? 'u' : 'a' });
-            });
-        }
+    function exportChatAsHtml() {
+        const scroller = document.querySelector('infinite-scroller[data-test-id="chat-history-container"]')
+            || document.querySelector('#chat-history infinite-scroller')
+            || document.querySelector('infinite-scroller')
+            || document.querySelector('.chat-history')
+            || document.querySelector('main')
+            || document.body;
 
-        // Strategy 2: user-query & model-response
-        if (!pairs.length) {
-            const userNodes = deepShadowAll('user-query, ms-user-query');
-            const aiNodes   = deepShadowAll('model-response, ms-model-response');
-            userNodes.forEach(n => pairs.push({ node: n, role: 'u' }));
-            aiNodes.forEach(n   => pairs.push({ node: n, role: 'a' }));
-        }
+        const clone = scroller.cloneNode(true);
 
-        if (!pairs.length) return null;
-
-        // Sort DOM nodes chronologically
-        pairs.sort((a, b) => a.node.compareDocumentPosition(b.node) & 4 ? -1 : 1);
-
-        // Deduplicate
-        const deduped = [];
-        pairs.forEach(p => {
-            if (!deduped.some(q => q.node.contains(p.node) || p.node.contains(q.node))) deduped.push(p);
+        // Remove interactive/unwanted buttons and controls
+        const selectorsToRemove = [
+            'button', 
+            'svg', 
+            '.actions', 
+            'ms-chat-turn-actions', 
+            'ms-vote-buttons',
+            'ms-copy-button',
+            '#ag-export-pdf-btn',
+            '#ag-quota-sidebar',
+            '.ask-gemini-reply-preview',
+            '#ask-gemini-float-btn',
+            '#ask-gemini-context-box',
+            '[aria-hidden="true"]'
+        ];
+        selectorsToRemove.forEach(sel => {
+            try {
+                clone.querySelectorAll(sel).forEach(el => el.remove());
+            } catch(e) {}
         });
 
-        deduped.forEach(({ node, role }) => {
-            const tId = 't' + ti++;
-            ts[tId] = new Date().toISOString();
-
-            // Extract code blocks
-            const codeRefs = [];
-            node.querySelectorAll('pre, code-block').forEach(pre => {
-                const codeEl = pre.querySelector('code') || pre;
-                let lang = '';
-                for (const cls of codeEl.classList) {
-                    if (cls.startsWith('language-')) { lang = cls.slice(9).toLowerCase(); break; }
+        // Gather all stylesheet rules to ensure formatting is fully preserved
+        let cssStyles = '';
+        for (const sheet of document.styleSheets) {
+            try {
+                if (sheet.cssRules) {
+                    for (const rule of sheet.cssRules) {
+                        cssStyles += rule.cssText + '\n';
+                    }
                 }
-                const body = (codeEl.innerText || codeEl.textContent || '').trim();
-                if (body && body.length >= 10) {
-                    const cId = 'c' + ci++;
-                    cm[cId] = [lang || 'text', body];
-                    codeRefs.push(cId);
+            } catch (e) {
+                if (sheet.href) {
+                    cssStyles += `@import url('${sheet.href}');\n`;
                 }
-            });
+            }
+        }
 
-            // Extract plain text (excluding layout controls/buttons)
-            const clone = node.cloneNode(true);
-            ["pre", "button", "svg", "[aria-hidden='true']", "ms-copy-button", "ms-chat-turn-actions", "ms-vote-buttons"].forEach(s => {
-                try { clone.querySelectorAll(s).forEach(e => e.remove()); } catch(e){}
-            });
-            const text = clone.innerText.trim().replace(/\n{3,}/g, '\n\n');
+        // Add default formatting and print enhancements
+        const customStyles = `
+            @media print {
+                body {
+                    background: white !important;
+                    color: black !important;
+                }
+                ms-chat-turn, .chat-turn, .user-query, .model-response {
+                    page-break-inside: avoid !important;
+                }
+            }
+            body {
+                background-color: #131314;
+                color: #e3e3e3;
+                font-family: 'Google Sans', 'Roboto', sans-serif;
+                margin: 0 auto;
+                max-width: 800px;
+                padding: 40px 20px;
+            }
+            infinite-scroller, .chat-history, main {
+                display: block !important;
+                height: auto !important;
+                overflow: visible !important;
+            }
+            pre, code {
+                background-color: #1e1e24 !important;
+                border-radius: 8px;
+                padding: 12px;
+                overflow-x: auto;
+                color: #e3e3e3;
+                font-family: monospace;
+            }
+        `;
 
-            const contentBlock = { txt: text };
-            if (codeRefs.length > 0) contentBlock.c = codeRefs;
-
-            msgs.push([role, tId, contentBlock]);
-        });
-
-        const chatTitle = document.querySelector('h1[class*="chat-title"]')?.innerText
+        const title = document.querySelector('h1[class*="chat-title"]')?.innerText
             || document.querySelector('title')?.innerText.split(' - ')[0]
             || 'Gemini Chat Export';
 
-        return { p: 'gemini', m: msgs, c: cm, t: ts, chatTitle };
+        const finalHtml = `<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>${escapeHtml(title)}</title>
+    <style>
+        ${cssStyles}
+        ${customStyles}
+    </style>
+</head>
+<body>
+    <div style="margin-bottom: 30px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 15px;">
+        <h1 style="margin: 0 0 5px 0; font-size: 24px; font-weight: 500;">${escapeHtml(title)}</h1>
+        <div style="font-size: 12px; color: #9aa0a6;">Exported via Powerbox on ${new Date().toLocaleString()}</div>
+    </div>
+    <div class="chat-container">
+        ${clone.innerHTML}
+    </div>
+    <script>
+        // Auto trigger browser print dialog on load
+        window.addEventListener('DOMContentLoaded', () => {
+            setTimeout(() => { window.print(); }, 500);
+        });
+    </script>
+</body>
+</html>`;
+
+        const blob = new Blob([finalHtml], { type: 'text/html' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        const cleanFileName = title.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'chat_export';
+        a.download = `${cleanFileName}.html`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
     }
 
     function injectExportButton() {
@@ -621,17 +682,12 @@
 
         exportBtn = document.createElement('button');
         exportBtn.id = 'ag-export-pdf-btn';
-        exportBtn.innerHTML = `${ICONS.export} Export PDF`;
+        exportBtn.innerHTML = `${ICONS.export} Export Chat`;
         exportBtn.title = 'Save conversation to PDF';
 
         exportBtn.onclick = (e) => {
             e.preventDefault();
-            const data = parseCurrentChat();
-            if (!data || !data.m.length) {
-                alert('No chat data found on screen. Try loading a conversation first.');
-                return;
-            }
-            chrome.runtime.sendMessage({ type: 'OPEN_PDF_PREVIEW', data });
+            exportChatAsHtml();
         };
 
         document.body.appendChild(exportBtn);
