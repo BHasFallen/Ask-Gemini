@@ -17,6 +17,7 @@
     const THEME_CSS = `
         :root, body {
             --ag-primary: #3d5afe;
+            --ag-primary-hover: #4d6aff;
             --ag-bg: #2d2e30;
             --ag-bg-hover: #3a3b3d;
             --ag-text: #ffffff;
@@ -29,6 +30,8 @@
 
         /* Light Theme Overrides */
         body.light-theme {
+            --ag-primary: #1a73e8;
+            --ag-primary-hover: #1557b0;
             --ag-bg: #f8f9fa;
             --ag-bg-hover: #f1f3f4;
             --ag-text: #202124;
@@ -277,6 +280,129 @@
             padding: 2px 0;
             display: inline;
         }
+
+        /* Scoped Feature Banner */
+        .ag-feature-banner {
+            position: fixed;
+            top: 76px;
+            right: 24px;
+            width: 340px;
+            background: rgba(45, 46, 48, 0.85) !important;
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08) !important;
+            border-radius: 20px;
+            box-shadow: 0 16px 48px rgba(0, 0, 0, 0.35) !important;
+            padding: 20px;
+            z-index: 9999999;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            font-family: 'Google Sans', 'Roboto', -apple-system, BlinkMacSystemFont, sans-serif;
+            animation: ag-slide-in-right 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+            box-sizing: border-box;
+        }
+
+        body.light-theme .ag-feature-banner {
+            background: rgba(248, 249, 250, 0.85) !important;
+            border: 1px solid rgba(0, 0, 0, 0.08) !important;
+            box-shadow: 0 16px 48px rgba(60, 64, 67, 0.15) !important;
+        }
+
+        .ag-feature-banner.slide-out {
+            animation: ag-slide-out-right 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        .ag-feature-banner .banner-top {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .ag-feature-banner .text-container {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .ag-feature-banner .banner-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--ag-text) !important;
+            margin: 0;
+            line-height: 1.4;
+        }
+
+        .ag-feature-banner .body-text {
+            font-size: 13.5px;
+            color: var(--ag-text-dim) !important;
+            line-height: 1.5;
+            margin: 0;
+        }
+
+        .ag-feature-banner .actions-container {
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+            margin-top: 4px;
+        }
+
+        /* Secondary Button ("Not now") */
+        .ag-feature-banner .banner-btn-secondary {
+            background: transparent !important;
+            border: none !important;
+            color: var(--ag-text) !important;
+            padding: 8px 16px;
+            border-radius: 100px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background-color 0.2s, color 0.2s;
+            font-family: inherit;
+        }
+
+        .ag-feature-banner .banner-btn-secondary:hover {
+            background-color: var(--ag-bg-hover) !important;
+        }
+
+        /* Primary Button ("Try it") */
+        .ag-feature-banner .banner-btn-primary {
+            background: var(--ag-primary, #3d5afe) !important;
+            color: #ffffff !important;
+            border: none !important;
+            padding: 8px 20px;
+            border-radius: 100px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background-color 0.2s, transform 0.1s, box-shadow 0.2s;
+            font-family: inherit;
+        }
+
+        .ag-feature-banner .banner-btn-primary:hover {
+            background: var(--ag-primary-hover, #4d6aff) !important;
+            box-shadow: 0 4px 12px rgba(61, 90, 254, 0.3) !important;
+        }
+
+        .ag-feature-banner .banner-btn-primary:active {
+            transform: scale(0.98);
+        }
+
+        @keyframes ag-slide-out-right {
+            from { transform: translateX(0) scale(1); opacity: 1; }
+            to { transform: translateX(50px) scale(0.95); opacity: 0; }
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .ag-feature-banner {
+                top: auto;
+                bottom: 24px;
+                right: 24px;
+                left: 24px;
+                width: auto;
+                animation: ag-slide-up 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            }
+        }
     `;
 
     const styleSheet = document.createElement("style");
@@ -300,6 +426,7 @@
     let wasGenerating = false;
     let lastRefreshTime = 0;
     let isFreeUser = false;
+    let hasEvaluatedFeatureBanner = false;
 
     // ═══════════════════════════════════════════════════════════════════════════════
     // SECTION 2: CORE INJECTION LOGIC (The "Competitor" Method)
@@ -549,6 +676,116 @@
     }
 
     // ═══════════════════════════════════════════════════════════════════════════════
+    // SECTION 4.2: FEATURE BANNER SYSTEM
+    // ═══════════════════════════════════════════════════════════════════════════════
+
+    const CURRENT_FEATURE = null;
+
+    /*
+    // Example feature configuration when you want to show a banner:
+    const CURRENT_FEATURE = {
+        id: "nano_banana_v1", // Unique ID for this feature notification
+        title: "Get your game face on ⚽️",
+        description: "Picture yourself in the game with Nano Banana.",
+        primaryText: "Try it",
+        secondaryText: "Not now",
+        onTry: () => {
+            chrome.storage.local.set({ ask_gemini_tour_active: true, tour_step: 1 }, () => {
+                if (typeof AskGeminiTour !== 'undefined') {
+                    AskGeminiTour.init();
+                } else {
+                    window.location.reload();
+                }
+            });
+        }
+    };
+    */
+
+    async function evaluateFeatureBanner() {
+        if (!CURRENT_FEATURE || !CURRENT_FEATURE.id) return;
+
+        const input = findInputArea();
+        if (!input) {
+            hasEvaluatedFeatureBanner = false; // Reset to retry when DOM changes
+            return;
+        }
+
+        const bannerKey = `feature_banner_seen_${CURRENT_FEATURE.id}`;
+        const res = await chrome.storage.local.get([bannerKey]);
+        
+        // If already seen/dismissed, don't show
+        if (res[bannerKey]) return;
+
+        // Don't show if any other modals (like rating modal or tour overlay) are active
+        if (document.querySelector('.ag-rating-modal') || document.getElementById('ag-tour-overlay') || document.querySelector('.ag-feature-banner')) {
+            return;
+        }
+
+        // Show after a short delay so it's not jarring
+        setTimeout(() => {
+            // Re-verify conditions before showing
+            if (document.querySelector('.ag-rating-modal') || document.getElementById('ag-tour-overlay') || document.querySelector('.ag-feature-banner')) {
+                return;
+            }
+            showFeatureBanner();
+        }, 3000);
+    }
+
+    function showFeatureBanner() {
+        if (document.querySelector('.ag-feature-banner')) return;
+
+        const banner = document.createElement('section');
+        banner.className = 'ag-feature-banner gem-banner-container ng-star-inserted';
+        banner.setAttribute('jslog', '307885;track:impression');
+        
+        banner.innerHTML = `
+            <div class="banner-top">
+                <div class="text-container">
+                    <div class="title-container ng-star-inserted">
+                        <h3 class="banner-title gds-body-m">${CURRENT_FEATURE.title}</h3>
+                    </div>
+                    <div class="body-text gds-body-m ng-star-inserted">${CURRENT_FEATURE.description}</div>
+                </div>
+            </div>
+            <div class="actions-container ng-star-inserted">
+                <button class="banner-btn-secondary" id="ag-banner-btn-dismiss">${CURRENT_FEATURE.secondaryText}</button>
+                <button class="banner-btn-primary" id="ag-banner-btn-try">${CURRENT_FEATURE.primaryText}</button>
+            </div>
+        `;
+
+        document.body.appendChild(banner);
+
+        const dismissBtn = banner.querySelector('#ag-banner-btn-dismiss');
+        const tryBtn = banner.querySelector('#ag-banner-btn-try');
+
+        const closeBanner = (callback) => {
+            banner.classList.add('slide-out');
+            banner.addEventListener('animationend', () => {
+                banner.remove();
+                if (callback) callback();
+            }, { once: true });
+        };
+
+        dismissBtn.onclick = () => {
+            const bannerKey = `feature_banner_seen_${CURRENT_FEATURE.id}`;
+            chrome.storage.local.set({ [bannerKey]: true }, () => {
+                trackEvent('feature_banner_dismissed', { feature_id: CURRENT_FEATURE.id });
+                closeBanner();
+            });
+        };
+
+        tryBtn.onclick = () => {
+            const bannerKey = `feature_banner_seen_${CURRENT_FEATURE.id}`;
+            chrome.storage.local.set({ [bannerKey]: true }, () => {
+                trackEvent('feature_banner_try_clicked', { feature_id: CURRENT_FEATURE.id });
+                closeBanner(() => {
+                    if (CURRENT_FEATURE.onTry) CURRENT_FEATURE.onTry();
+                });
+            });
+        };
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════════
     // SECTION 4: HISTORY BEAUTIFICATION (Turning Separators into Chips)
     // ═══════════════════════════════════════════════════════════════════════════════
 
@@ -721,6 +958,12 @@
 
         // Attach focus listener to input area
         attachInputFocusListener();
+
+        // Evaluate feature banner display
+        if (!hasEvaluatedFeatureBanner) {
+            hasEvaluatedFeatureBanner = true;
+            evaluateFeatureBanner().catch(console.error);
+        }
     }
 
     // ═══════════════════════════════════════════════════════════════════════════════
