@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Thanks for installing Quote Reply for Gemini</title>
+    <title>Quote Reply for Gemini</title>
     <link rel="stylesheet" href="onboarding.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&family=Google+Sans+Display:wght@400;700&display=swap" rel="stylesheet">
 </head>
-<body>
+<body class="mode-install">
 
     <main class="ob-page">
 
@@ -21,76 +21,85 @@
             <span id="ob-version" class="ob-version-badge"></span>
         </header>
 
-        <!-- Hero Section -->
-        <section class="ob-hero">
-            <h1 class="ob-headline">Reply with context.<br>Not confusion.</h1>
-            <p class="ob-tagline">Highlight any text in Gemini, then ask a follow-up with that exact quote locked in — fewer hallucinations, sharper answers.</p>
-        </section>
+        <!-- INSTALL MODE -->
+        <div class="show-on-install">
+            <section class="ob-hero">
+                <h1 class="ob-headline">How to use Quote Reply</h1>
+            </section>
 
-        <!-- Steps -->
-        <section class="ob-steps">
-            <div class="ob-step">
-                <div class="ob-step-num">1</div>
-                <div class="ob-step-body">
-                    <h3 class="ob-step-title">Highlight</h3>
-                    <p class="ob-step-desc">Select any text in a Gemini response you want to reply to.</p>
+            <!-- Steps -->
+            <section class="ob-steps">
+                <div class="ob-step">
+                    <div class="ob-step-num">1</div>
+                    <div class="ob-step-body">
+                        <h3 class="ob-step-title">Highlight target text</h3>
+                        <p class="ob-step-desc">Select any text in Gemini's response that you want to reply to.</p>
+                    </div>
                 </div>
-            </div>
-            <div class="ob-step-connector"></div>
-            <div class="ob-step">
-                <div class="ob-step-num">2</div>
-                <div class="ob-step-body">
-                    <h3 class="ob-step-title">Click "Ask Gemini"</h3>
-                    <p class="ob-step-desc">A floating button appears near your selection. Click it.</p>
+                <div class="ob-step-connector"></div>
+                <div class="ob-step">
+                    <div class="ob-step-num">2</div>
+                    <div class="ob-step-body">
+                        <h3 class="ob-step-title">Click "Ask Gemini"</h3>
+                        <p class="ob-step-desc">A floating button will pop up near your cursor. Click it to lock in your context.</p>
+                    </div>
                 </div>
-            </div>
-            <div class="ob-step-connector"></div>
-            <div class="ob-step">
-                <div class="ob-step-num">3</div>
-                <div class="ob-step-body">
-                    <h3 class="ob-step-title">Reply</h3>
-                    <p class="ob-step-desc">Type your follow-up and send. Your quote goes with it — automatically.</p>
+                <div class="ob-step-connector"></div>
+                <div class="ob-step">
+                    <div class="ob-step-num">3</div>
+                    <div class="ob-step-body">
+                        <h3 class="ob-step-title">Type &amp; Send</h3>
+                        <p class="ob-step-desc">Enter your follow-up reply in the text area and press enter. Your highlighted context is sent with it.</p>
+                    </div>
                 </div>
-            </div>
-        </section>
+            </section>
+        </div>
 
-        <!-- What's New -->
-        <section class="ob-whats-new">
-            <h2 class="ob-section-title">What's new in <span id="ob-version-inline"></span></h2>
-            <ul class="ob-changelog">
-                <li>
-                    <span class="ob-tag ob-tag-new">New</span>
-                    Click quoted text in your history to scroll back to the original source
-                </li>
-                <li>
-                    <span class="ob-tag ob-tag-new">New</span>
-                    Gemini Usage tracker in the sidebar for Advanced users
-                </li>
-                <li>
-                    <span class="ob-tag ob-tag-improved">Improved</span>
-                    Light theme support across all extension UI
-                </li>
-                <li>
-                    <span class="ob-tag ob-tag-improved">Improved</span>
-                    More reliable input detection across all Gemini plans
-                </li>
-            </ul>
-        </section>
+        <!-- UPDATE MODE -->
+        <div class="show-on-update">
+            <section class="ob-hero">
+                <h1 class="ob-headline">Quote Reply has been updated!</h1>
+            </section>
 
-        <!-- Social Proof -->
-        <section class="ob-social">
-            <div class="ob-stars" aria-label="5 star rating">
-                <svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-                <svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-                <svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-                <svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-                <svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-            </div>
-            <p class="ob-social-text">Loved by Gemini power users on the Chrome Web Store.</p>
-            <a id="ob-rate-link" href="https://chromewebstore.google.com/detail/jhkodgigeemnmdmdikdkpcbmgbbopgni/reviews" target="_blank" class="ob-rate-link">Leave a review →</a>
-        </section>
+            <!-- What's New -->
+            <section class="ob-whats-new">
+                <h2 class="ob-section-title">What's new in <span id="ob-version-inline"></span></h2>
+                <ul class="ob-changelog">
+                    <li>
+                        <span class="ob-tag ob-tag-new">New</span>
+                        Scroll-to-source: Click on a quoted reply in chat history to scroll back to the original text
+                    </li>
+                    <li>
+                        <span class="ob-tag ob-tag-new">New</span>
+                        Gemini Usage tracker: Track your Advanced limits directly in the lower sidebar
+                    </li>
+                    <li>
+                        <span class="ob-tag ob-tag-improved">Improved</span>
+                        Light theme compatibility and seamless Material 3 styling
+                    </li>
+                    <li>
+                        <span class="ob-tag ob-tag-improved">Improved</span>
+                        Robust input and send button detection for Google Workspace / EDU accounts
+                    </li>
+                </ul>
+            </section>
 
-        <!-- CTA -->
+            <!-- Feature Requests & Feedback -->
+            <section class="ob-feedback-card">
+                <h2 class="ob-section-title">Have feedback or feature requests?</h2>
+                <p class="ob-feedback-text">Help shape Quote Reply! Let us know what you want to see next or report any issues.</p>
+                <div class="ob-feedback-buttons">
+                    <a href="https://docs.google.com/forms/d/e/1FAIpQLSfr82mMdRgwSPY9ZsQkdRp_HXKKwmVuWO7GmjeZ3fS9XHpqsA/viewform" target="_blank" class="ob-btn-secondary">
+                        Submit Feature Request
+                    </a>
+                    <a href="https://docs.google.com/forms/d/e/1FAIpQLSfr82mMdRgwSPY9ZsQkdRp_HXKKwmVuWO7GmjeZ3fS9XHpqsA/viewform" target="_blank" class="ob-btn-secondary">
+                        Report an Issue
+                    </a>
+                </div>
+            </section>
+        </div>
+
+        <!-- CTA & Footer -->
         <div class="ob-cta">
             <button id="ob-open-gemini" class="ob-btn-primary">
                 Open Gemini
@@ -98,7 +107,6 @@
             </button>
         </div>
 
-        <!-- Footer -->
         <footer class="ob-footer">
             <a href="https://docs.google.com/forms/d/e/1FAIpQLSfr82mMdRgwSPY9ZsQkdRp_HXKKwmVuWO7GmjeZ3fS9XHpqsA/viewform" target="_blank">Send feedback</a>
             <span>·</span>

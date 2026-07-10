@@ -1,4 +1,8 @@
 document.addEventListener('DOMContentLoaded', () => {
+    // ── Mode detection ───────────────────────────────────────────────────────
+    const urlParams = new URLSearchParams(window.location.search);
+    const reason = urlParams.get('reason') || 'install';
+    document.body.className = `mode-${reason}`;
 
     // ── Version badge ────────────────────────────────────────────────────────
     const manifest = chrome.runtime.getManifest();
@@ -22,20 +26,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (chrome.runtime && chrome.runtime.sendMessage) {
         chrome.runtime.sendMessage({
             type: 'TRACK_EVENT',
-            name: 'onboarding_page_viewed',
+            name: `onboarding_view_${reason}`,
             params: { version }
-        });
-    }
-
-    if (openBtn) {
-        openBtn.addEventListener('click', () => {
-            if (chrome.runtime && chrome.runtime.sendMessage) {
-                chrome.runtime.sendMessage({
-                    type: 'TRACK_EVENT',
-                    name: 'onboarding_open_gemini_clicked',
-                    params: { version }
-                });
-            }
         });
     }
 });

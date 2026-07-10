@@ -46,6 +46,10 @@ body {
     to   { opacity: 1; transform: translateY(0); }
 }
 
+/* ── Mode Toggling ───────────────────────────────────────────────────────── */
+body.mode-install .show-on-update { display: none !important; }
+body.mode-update .show-on-install { display: none !important; }
+
 /* ── Header ──────────────────────────────────────────────────────────────── */
 .ob-header {
     display: flex;
@@ -87,7 +91,7 @@ body {
 
 /* ── Hero ────────────────────────────────────────────────────────────────── */
 .ob-hero {
-    margin-bottom: 48px;
+    margin-bottom: 32px;
 }
 
 .ob-headline {
@@ -96,14 +100,6 @@ body {
     line-height: 1.15;
     letter-spacing: -0.5px;
     color: var(--ob-text);
-    margin-bottom: 16px;
-}
-
-.ob-tagline {
-    font-size: 16px;
-    line-height: 1.65;
-    color: var(--ob-text-dim);
-    max-width: 500px;
 }
 
 /* ── Steps ───────────────────────────────────────────────────────────────── */
@@ -113,8 +109,8 @@ body {
     background: var(--ob-surface);
     border: 1px solid var(--ob-border);
     border-radius: var(--ob-radius-card);
-    padding: 28px 28px;
-    margin-bottom: 20px;
+    padding: 28px;
+    margin-bottom: 24px;
     gap: 0;
 }
 
@@ -163,13 +159,14 @@ body {
     width: 1px;
     height: 20px;
     background: var(--ob-border);
-    margin-left: 17px; /* align with centre of number circle */
+    margin-left: 17px;
     margin-top: 4px;
     margin-bottom: 4px;
 }
 
-/* ── What's New ──────────────────────────────────────────────────────────── */
-.ob-whats-new {
+/* ── What's New & Feedback Cards ─────────────────────────────────────────── */
+.ob-whats-new,
+.ob-feedback-card {
     background: var(--ob-surface);
     border: 1px solid var(--ob-border);
     border-radius: var(--ob-radius-card);
@@ -225,49 +222,21 @@ body {
     border: 1px solid rgba(109, 213, 140, 0.2);
 }
 
-/* ── Social proof ────────────────────────────────────────────────────────── */
-.ob-social {
-    background: var(--ob-surface);
-    border: 1px solid var(--ob-border);
-    border-radius: var(--ob-radius-card);
-    padding: 24px 28px;
-    margin-bottom: 32px;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-}
-
-.ob-stars {
-    display: flex;
-    gap: 3px;
-}
-
-.ob-stars svg {
-    width: 18px;
-    height: 18px;
-    fill: #f9ab00;
-    stroke: none;
-}
-
-.ob-social-text {
+/* Feedback Section styling */
+.ob-feedback-text {
     font-size: 14px;
     color: var(--ob-text-dim);
+    line-height: 1.6;
+    margin-bottom: 20px;
 }
 
-.ob-rate-link {
-    font-size: 13px;
-    font-weight: 500;
-    color: var(--ob-primary);
-    align-self: flex-start;
-}
-
-/* ── CTA ─────────────────────────────────────────────────────────────────── */
-.ob-cta {
+.ob-feedback-buttons {
     display: flex;
-    justify-content: flex-end;
-    margin-bottom: 32px;
+    gap: 12px;
+    flex-wrap: wrap;
 }
 
+/* ── Buttons ─────────────────────────────────────────────────────────────── */
 .ob-btn-primary {
     display: inline-flex;
     align-items: center;
@@ -295,6 +264,38 @@ body {
     transform: translateY(0);
 }
 
+.ob-btn-secondary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--ob-surface-2);
+    border: 1.5px solid var(--ob-border);
+    color: var(--ob-primary);
+    padding: 10px 20px;
+    border-radius: var(--ob-radius-chip);
+    font-size: 13.5px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.2s, border-color 0.2s, color 0.2s;
+    font-family: var(--font);
+}
+
+.ob-btn-secondary:hover {
+    background-color: var(--ob-primary-dim);
+    border-color: rgba(168, 199, 250, 0.4);
+    text-decoration: none;
+}
+
+.ob-btn-secondary:active {
+    transform: translateY(1px);
+}
+
+.ob-cta {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 32px;
+}
+
 /* ── Footer ──────────────────────────────────────────────────────────────── */
 .ob-footer {
     display: flex;
@@ -312,6 +313,8 @@ body {
 /* ── Responsive ──────────────────────────────────────────────────────────── */
 @media (max-width: 480px) {
     body { padding: 24px 12px 48px; }
-    .ob-steps, .ob-whats-new, .ob-social { padding: 20px; }
+    .ob-steps, .ob-whats-new, .ob-feedback-card { padding: 20px; }
     .ob-headline { font-size: 1.75rem; }
+    .ob-feedback-buttons { flex-direction: column; width: 100%; }
+    .ob-btn-secondary { width: 100%; }
 }

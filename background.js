@@ -626,10 +626,12 @@ chrome.runtime.onInstalled.addListener(async (details) => {
         const uninstallUrl = `${feedbackFormUrl}?entry.648517234=${deviceId}&device_id=${deviceId}`;
         chrome.runtime.setUninstallURL(uninstallUrl);
 
-        // 3. Launch Onboarding page (always on fresh INSTALL, or on dev reloads for testing)
+        // 3. Launch Onboarding page (on fresh INSTALL, dev reloads, or UPDATE)
         const isUnpacked = !('update_url' in chrome.runtime.getManifest());
         if (details.reason === chrome.runtime.OnInstalledReason.INSTALL || isUnpacked) {
-            await chrome.tabs.create({ url: chrome.runtime.getURL('onboarding.html') });
+            await chrome.tabs.create({ url: chrome.runtime.getURL('onboarding.html?reason=install') });
+        } else if (details.reason === chrome.runtime.OnInstalledReason.UPDATE) {
+            await chrome.tabs.create({ url: chrome.runtime.getURL('onboarding.html?reason=update') });
         }
 
         // Initialize default settings
