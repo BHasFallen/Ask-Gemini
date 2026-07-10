@@ -626,25 +626,10 @@ chrome.runtime.onInstalled.addListener(async (details) => {
         const uninstallUrl = `${feedbackFormUrl}?entry.648517234=${deviceId}&device_id=${deviceId}`;
         chrome.runtime.setUninstallURL(uninstallUrl);
 
-        // 3. Launch Onboarding/Live Tour (on fresh INSTALL, or on dev reloads for testing)
+        // 3. Launch Onboarding page (always on fresh INSTALL, or on dev reloads for testing)
         const isUnpacked = !('update_url' in chrome.runtime.getManifest());
         if (details.reason === chrome.runtime.OnInstalledReason.INSTALL || isUnpacked) {
-            try {
-                const response = await fetch('https://gemini.google.com/app', { credentials: 'include' });
-                if (response.url.includes('accounts.google.com') || !response.ok) {
-                    await chrome.tabs.create({ url: chrome.runtime.getURL('onboarding.html') });
-                } else {
-                    // User is signed in! Go straight to the live tour.
-                    await new Promise((resolve) => {
-                        chrome.storage.local.set({ ask_gemini_tour_active: true, tour_step: 1 }, async () => {
-                            await chrome.tabs.create({ url: 'https://gemini.google.com/app' });
-                            resolve();
-                        });
-                    });
-                }
-            } catch (err) {
-                await chrome.tabs.create({ url: chrome.runtime.getURL('onboarding.html') });
-            }
+            await chrome.tabs.create({ url: chrome.runtime.getURL('onboarding.html') });
         }
 
         // Initialize default settings

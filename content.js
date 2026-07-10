@@ -971,13 +971,17 @@
     // ═══════════════════════════════════════════════════════════════════════════════
 
     function findInputArea() {
-        return document.querySelector('.ql-editor[contenteditable="true"]') 
-            || document.querySelector('div[contenteditable="true"][aria-label*="prompt"]');
+        return document.querySelector('.ql-editor[contenteditable="true"]')
+            || document.querySelector('div[contenteditable="true"][aria-label*="rompt"]')
+            || document.querySelector('div[contenteditable="true"][role="textbox"]')
+            || document.querySelector('div[contenteditable="true"]'); // generic catch-all
     }
 
     function findSendButton() {
-        return document.querySelector('button[aria-label="Send message"]') 
-            || document.querySelector('button.send-button');
+        return document.querySelector('button[aria-label="Send message"]')
+            || document.querySelector('button[aria-label*="Send"]')
+            || document.querySelector('button.send-button')
+            || document.querySelector('button[data-test-id*="send"]'); // generic catch-all
     }
 
     async function updateUserProfile() {
