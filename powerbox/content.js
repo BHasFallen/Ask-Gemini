@@ -619,28 +619,22 @@
 
         if (document.getElementById('ag-export-pdf-btn')) return;
 
-        const header = document.querySelector('header')
-            || document.querySelector('[class*="chat-header"]')
-            || document.querySelector('[class*="header-actions"]');
-        
-        if (header) {
-            exportBtn = document.createElement('button');
-            exportBtn.id = 'ag-export-pdf-btn';
-            exportBtn.innerHTML = `${ICONS.export} Export PDF`;
-            exportBtn.title = 'Save conversation to PDF';
+        exportBtn = document.createElement('button');
+        exportBtn.id = 'ag-export-pdf-btn';
+        exportBtn.innerHTML = `${ICONS.export} Export PDF`;
+        exportBtn.title = 'Save conversation to PDF';
 
-            exportBtn.onclick = (e) => {
-                e.preventDefault();
-                const data = parseCurrentChat();
-                if (!data || !data.m.length) {
-                    alert('No chat data found on screen. Try loading a conversation first.');
-                    return;
-                }
-                chrome.runtime.sendMessage({ type: 'OPEN_PDF_PREVIEW', data });
-            };
+        exportBtn.onclick = (e) => {
+            e.preventDefault();
+            const data = parseCurrentChat();
+            if (!data || !data.m.length) {
+                alert('No chat data found on screen. Try loading a conversation first.');
+                return;
+            }
+            chrome.runtime.sendMessage({ type: 'OPEN_PDF_PREVIEW', data });
+        };
 
-            document.body.appendChild(exportBtn);
-        }
+        document.body.appendChild(exportBtn);
     }
 
     function destroyExporter() {
