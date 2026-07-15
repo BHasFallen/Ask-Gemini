@@ -4,15 +4,39 @@
   <meta charset="UTF-8">
   <style>
     :root {
-      --bg: #121212;
-      --text: #e0e0e0;
-      --accent: #818cf8;
-      --muted: #888;
-      --border: #2e2e2e;
+      --bg: #1c1b1f;
+      --surface: #2b2930;
+      --border: rgba(255, 255, 255, 0.08);
+      --primary: #a8c7fa;
+      --text: #e6e0e9;
+      --text-dim: #cac4d0;
+      --muted: #938f99;
+
+      --rate-btn-text: #1c1b1f;
+      --slider-bg: rgba(255, 255, 255, 0.1);
+      --slider-knob-bg: var(--text-dim);
+      --badge-bg: rgba(255, 255, 255, 0.05);
+    }
+
+    @media (prefers-color-scheme: light) {
+      :root {
+        --bg: #ffffff;
+        --surface: #f1f3f4;
+        --border: #dadce0;
+        --primary: #1a73e8;
+        --text: #202124;
+        --text-dim: #5f6368;
+        --muted: #70757a;
+
+        --rate-btn-text: #ffffff;
+        --slider-bg: rgba(0, 0, 0, 0.1);
+        --slider-knob-bg: #ffffff;
+        --badge-bg: rgba(0, 0, 0, 0.05);
+      }
     }
 
     body {
-      width: 280px;
+      width: 300px;
       padding: 16px;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       background-color: var(--bg);
@@ -25,14 +49,14 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 20px;
+      margin-bottom: 16px;
       border-bottom: 1px solid var(--border);
       padding-bottom: 12px;
     }
 
     h1 {
       margin: 0;
-      font-size: 16px;
+      font-size: 15px;
       font-weight: 600;
       display: flex;
       align-items: center;
@@ -42,67 +66,32 @@
     .version {
       font-size: 11px;
       color: var(--muted);
+      background: var(--badge-bg);
+      padding: 2px 8px;
+      border-radius: 10px;
     }
 
-    .guide {
-      display: flex;
-      flex-direction: column;
-      gap: 14px;
-    }
-
-    .step {
-      display: flex;
-      gap: 10px;
-      font-size: 13px;
-    }
-
-    .step-num {
-      color: var(--accent);
-      font-weight: 700;
-      min-width: 14px;
-    }
-
-    b {
-      color: #fff;
-    }
-
-    .footer {
-      margin-top: 24px;
-      padding-top: 12px;
-      border-top: 1px solid var(--border);
-      text-align: center;
-      font-size: 11px;
-      color: var(--muted);
-    }
-
-    a {
-      color: var(--accent);
-      text-decoration: none;
-    }
-
-    /* Stats Section Styles */
     .value-dashboard {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 16px;
-      margin-bottom: 24px;
+      gap: 12px;
+      margin-bottom: 18px;
     }
 
     .stat-card {
-      background: transparent;
+      background: var(--surface);
       border: 1px solid var(--border);
       border-radius: 12px;
-      padding: 14px;
+      padding: 12px;
       text-align: center;
     }
 
     .stat-value {
       display: block;
-      font-size: 20px;
+      font-size: 18px;
       font-weight: 600;
-      color: #ffffff;
+      color: var(--text);
       margin-bottom: 2px;
-      letter-spacing: -0.2px;
     }
 
     .stat-label {
@@ -111,17 +100,96 @@
       font-weight: 500;
       color: var(--muted);
       text-transform: uppercase;
-      letter-spacing: 1px;
+      letter-spacing: 0.5px;
+    }
+
+    /* Settings Toggles */
+    .settings-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px;
+    }
+
+    .setting-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .setting-label {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .setting-name {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text);
+    }
+
+    .setting-desc {
+      font-size: 10.5px;
+      color: var(--muted);
+    }
+
+    /* Switch Style */
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 38px;
+      height: 20px;
+      flex-shrink: 0;
+    }
+
+    .switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background-color: var(--slider-bg);
+      transition: .2s;
+      border-radius: 34px;
+    }
+
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 14px;
+      width: 14px;
+      left: 3px;
+      bottom: 3px;
+      background-color: var(--slider-knob-bg);
+      transition: .2s;
+      border-radius: 50%;
+    }
+
+    input:checked + .slider {
+      background-color: var(--primary);
+    }
+
+    input:checked + .slider:before {
+      transform: translateX(18px);
+      background-color: var(--bg);
     }
 
     .ag-popup-rate-btn {
       width: 100%;
       padding: 10px;
-      margin-top: 20px;
-      background: linear-gradient(135deg, #3d5afe, #651fff) !important;
-      border: none !important;
+      margin-top: 16px;
+      background: var(--primary);
+      border: none;
       border-radius: 10px;
-      color: #ffffff !important;
+      color: var(--rate-btn-text);
       font-size: 13px;
       font-weight: 600;
       cursor: pointer;
@@ -129,22 +197,38 @@
       align-items: center;
       justify-content: center;
       gap: 6px;
-      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      transition: filter 0.2s, transform 0.15s;
     }
     .ag-popup-rate-btn:hover {
-      background: linear-gradient(135deg, #4d6aff, #7530ff) !important;
-      box-shadow: 0 4px 12px rgba(61, 90, 254, 0.3);
+      filter: brightness(1.1);
       transform: translateY(-1px);
     }
     .ag-popup-rate-btn:active {
       transform: translateY(0);
     }
+
+    .footer {
+      margin-top: 16px;
+      padding-top: 10px;
+      border-top: 1px solid var(--border);
+      text-align: center;
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    a {
+      color: var(--primary);
+      text-decoration: none;
+    }
+    a:hover {
+      text-decoration: underline;
+    }
   </style>
 </head>
 <body>
   <div class="header">
-    <h1>Quote Reply</h1>
-    <span class="version" id="version-badge">v2.2.0</span>
+    <h1>Powerbox for Gemini</h1>
+    <span class="version" id="version-badge">v1.0.0</span>
   </div>
 
   <div class="value-dashboard">
@@ -158,27 +242,48 @@
     </div>
   </div>
 
-  <div class="guide">
-    <div class="step">
-      <span class="step-num">1</span>
-      <span><b>Highlight</b> text on Gemini.</span>
+  <!-- Modules List -->
+  <div class="settings-list">
+    <div class="setting-item">
+      <div class="setting-label">
+        <span class="setting-name">Quote Reply</span>
+        <span class="setting-desc">Highlight to copy-reply text</span>
+      </div>
+      <label class="switch">
+        <input type="checkbox" id="toggle-quote-reply">
+        <span class="slider"></span>
+      </label>
     </div>
-    <div class="step">
-      <span class="step-num">2</span>
-      <span>Click the <b>Ask Gemini</b> button.</span>
+
+    <div class="setting-item">
+      <div class="setting-label">
+        <span class="setting-name">Limits Tracker</span>
+        <span class="setting-desc">Advanced sidebar limits</span>
+      </div>
+      <label class="switch">
+        <input type="checkbox" id="toggle-limits-tracker">
+        <span class="slider"></span>
+      </label>
     </div>
-    <div class="step">
-      <span class="step-num">3</span>
-      <span>Type your reply and hit <b>Enter</b>.</span>
+
+    <div class="setting-item">
+      <div class="setting-label">
+        <span class="setting-name">Chat Exporter</span>
+        <span class="setting-desc">Export conversation to PDF</span>
+      </div>
+      <label class="switch">
+        <input type="checkbox" id="toggle-chat-exporter">
+        <span class="slider"></span>
+      </label>
     </div>
   </div>
 
   <button id="rate-extension-btn" class="ag-popup-rate-btn">
-    <span>★ Rate Extension</span>
+    <span>★ Leave a Store Review</span>
   </button>
 
   <div class="footer">
-    <a href="#" id="view-logs">View Logs</a>
+    <a href="https://docs.google.com/forms/d/e/1FAIpQLSfr82mMdRgwSPY9ZsQkdRp_HXKKwmVuWO7GmjeZ3fS9XHpqsA/viewform" target="_blank">Send Feedback</a>
   </div>
 
   <script src="popup.js"></script>

@@ -1,45 +1,35 @@
 /**
- * ╔═══════════════════════════════════════════════════════════════════════════╗
- * ║                       FORTRESS FRAMEWORK v1.0                              ║
- * ║           Background Service Worker - State & Log Management               ║
- * ╚═══════════════════════════════════════════════════════════════════════════╝
+ * Powerbox for Gemini - background.js
+ * Consolidated background service worker handling:
+ * 1. Amplitude Analytics
+ * 2. Quota scraping & Alarm scheduler
+ * 3. Rating prompting lifecycle
+ * 4. Message Broker (PDF preview open, settings get/set)
  */
+'use strict';
 
-/**
- * AmplitudeWizard - Handles Amplitude HTTP V2 API tracking
- * Professional implementation of Amplitude for Chrome Extensions
- */
+// ── SECTION 1: AMPLITUDE ANALYTICS ────────────────────────────────────────────
 class AmplitudeWizard {
-    static API_KEY = '4495bcd2d5c7a66ee74635fd56d16275';
+    static API_KEY = '5db731c3bfdbdb54e8e50b7b629b1be8';
     static ENDPOINT = 'https://api2.amplitude.com/2/httpapi';
-    static lastTracked = new Map();
+
+    static generateInsertId() {
+        return `pb_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
+    }
 
     static async getDeviceId() {
-        const result = await chrome.storage.local.get(['amplitude_device_id']);
-        if (result.amplitude_device_id) return result.amplitude_device_id;
-        
-        const newId = `dev_${Math.random().toString(36).substr(2, 9)}`;
-        await chrome.storage.local.set({ amplitude_device_id: newId });
+        const res = await chrome.storage.local.get(['device_id']);
+        if (res.device_id) return res.device_id;
+        const newId = `dev_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        await chrome.storage.local.set({ device_id: newId });
         return newId;
     }
 
-    /**
-     * Get unique insert_id for deduplication
-     */
-    static generateInsertId() {
-        return `ins_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
-    }
-
-    /**
-     * Track event to Amplitude
-     */
     static async trackEvent(name, params = {}) {
-
         const now = Date.now();
         const deviceId = await this.getDeviceId();
         const version = chrome.runtime.getManifest().version;
         
-        // Retrieve raw email, name and tier from local storage
         const storageResult = await chrome.storage.local.get(['user_email', 'user_name', 'quota_limits']);
         const userId = storageResult.user_email || null;
         const userName = storageResult.user_name || null;
@@ -49,9 +39,9 @@ class AmplitudeWizard {
             device_id: deviceId,
             event_type: name,
             event_properties: params,
-            time: now, // Epoch ms required
+            time: now,
             insert_id: this.generateInsertId(),
-            session_id: logManager.startTime, // Use background startup as session
+            session_id: logManager.startTime,
             platform: 'Chrome Extension',
             os_name: 'Chrome',
             app_version: version,
@@ -69,17 +59,16 @@ class AmplitudeWizard {
             event.user_id = userId;
         }
 
-        // 1. Exclude if running as an unpacked local extension (development mode)
+        // Suppress if developer/unpacked or explicitly disabled
         const isUnpacked = !('update_url' in chrome.runtime.getManifest());
         if (isUnpacked) {
-            console.log(`🏰 [Amplitude] [Dev Mode] Event suppressed: ${name}`, event);
+            console.log(`⚡ [Amplitude] [Dev Suppressed] Event: ${name}`, event);
             return;
         }
 
-        // 2. Exclude if telemetry is explicitly disabled or developerMode is enabled on this profile
-        const result = await chrome.storage.local.get(['disableTelemetry', 'developerMode']);
-        if (result.disableTelemetry || result.developerMode) {
-            console.log(`🏰 [Amplitude] [Telemetry Suppressed] Event: ${name}`, event);
+        const settings = await chrome.storage.local.get(['disableTelemetry', 'developerMode']);
+        if (settings.disableTelemetry || settings.developerMode) {
+            console.log(`⚡ [Amplitude] [Telemetry Blocked] Event: ${name}`, event);
             return;
         }
 
@@ -94,168 +83,22 @@ class AmplitudeWizard {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(eventBody)
             });
-
             if (response.ok) {
-                console.log(`🏰 [Amplitude] Event Tracked: ${name}`, params);
-            } else {
-                console.warn(`🏰 [Amplitude] API Error: ${response.status}`);
+                console.log(`⚡ [Amplitude] Event Tracked: ${name}`, params);
             }
         } catch (error) {
-            console.error('🏰 [Amplitude] Network Error', error);
+            console.error('⚡ [Amplitude] Network Error:', error);
         }
     }
 }
 
-
-/**
- * RatingManager - Handles local usage metrics and rating prompt logic
- * Implements the "Smart Rating" business rules
- */
-class RatingManager {
-    static DEFAULTS = {
-        activeDays: 0,
-        highlightCount: 0,
-        replyCount: 0,
-        totalWords: 0,
-        isExistingUser: false,
-        postUpdateHighlights: 0,
-        ratingStatus: null, // null, 'rated', 'feedback_given', 'dismissed'
-        dismissedAtActiveDay: 0,
-        dismissedAtHighlightCount: 0,
-        lastPromptVersion: '0.0.0',
-        lastDayActive: null
-    };
-
-    static async getState() {
-        const res = await chrome.storage.local.get(['rating_state']);
-        return res.rating_state || { ...this.DEFAULTS };
-    }
-
-    static async setState(newState) {
-        await chrome.storage.local.set({ rating_state: newState });
-    }
-
-    /**
-     * Record a specific event and potentially trigger evaluation
-     */
-    static async recordEvent(eventName, params = {}) {
-        const state = await this.getState();
-        const now = new Date().toISOString().split('T')[0];
-
-        // 1. Track Active Days
-        if (state.lastDayActive !== now) {
-            state.activeDays += 1;
-            state.lastDayActive = now;
-        }
-
-        // 2. Increment Lifetime Counters
-        if (eventName === 'text_highlight') {
-            state.highlightCount += 1;
-            state.totalWords = (state.totalWords || 0) + (params.word_count || 0);
-            if (state.isExistingUser) {
-                state.postUpdateHighlights += 1;
-            }
-        } else if (eventName === 'context_reply_sent') {
-            state.replyCount += 1;
-        }
-
-        await RatingManager.setState(state);
-        
-        // 3. Evaluate Trigger
-        this.evaluateTrigger(state);
-    }
-
-    /**
-     * Core business logic to determine if the prompt should show
-     */
-    static async evaluateTrigger(state) {
-        // Rule: Never show if already rated
-        if (state.ratingStatus === 'rated') return;
-
-        // Rule: Update Bombardment Buffer
-        if (state.isExistingUser && state.postUpdateHighlights < 5) return;
-
-        // Rule: Redemption Arc check is handled in onInstalled, 
-        // here we just check if status is feedback_given (and not reset)
-        if (state.ratingStatus === 'feedback_given') return;
-
-        const timeCriteria = state.activeDays >= 3;
-        const valueCriteria = state.highlightCount >= 15 || state.replyCount >= 3;
-
-        // Rule: Initial Trigger Thresholds
-        if (state.ratingStatus === null) {
-            if (timeCriteria && valueCriteria) {
-                this.triggerUI();
-            }
-        } 
-        // Rule: Cooldown Phase (Second and Final Time)
-        else if (state.ratingStatus === 'dismissed') {
-            const daysSinceDismissal = state.activeDays >= (state.dismissedAtActiveDay + 7);
-            const highlightsSinceDismissal = state.highlightCount >= (state.dismissedAtHighlightCount + 30);
-            
-            if (daysSinceDismissal && highlightsSinceDismissal) {
-                this.triggerUI();
-            }
-        }
-    }
-
-    static async triggerUI() {
-        try {
-            const tabs = await chrome.tabs.query({ url: 'https://gemini.google.com/*' });
-            console.log(`🎯 RatingManager: Found ${tabs.length} Gemini tabs`);
-            
-            tabs.forEach(tab => {
-                chrome.tabs.sendMessage(tab.id, { type: 'SHOW_RATING_PROMPT' }, (response) => {
-                    if (chrome.runtime.lastError) {
-                        console.warn(`❌ Message failed for tab ${tab.id}:`, chrome.runtime.lastError.message);
-                    } else {
-                        console.log(`✅ Message sent successfully to tab ${tab.id}`);
-                    }
-                });
-            });
-
-            // Track in Amplitude once per trigger attempt
-            AmplitudeWizard.trackEvent('rating_prompt_shown', { 
-                version: chrome.runtime.getManifest().version 
-            });
-        } catch (error) {
-            console.error('Trigger UI Error:', error);
-        }
-    }
-
-    /**
-     * Handle user interaction with the prompt
-     */
-    static async setStatus(status) {
-        const state = await this.getState();
-        state.ratingStatus = status;
-        state.lastPromptVersion = chrome.runtime.getManifest().version;
-
-        if (status === 'dismissed') {
-            state.dismissedAtActiveDay = state.activeDays;
-            state.dismissedAtHighlightCount = state.highlightCount;
-        }
-
-        await this.setState(state);
-        logBackgroundEvent('RATING_STATUS_UPDATED', { status });
-
-        // Track in Amplitude
-        AmplitudeWizard.trackEvent('rating_interaction', {
-            status: status,
-            activeDays: state.activeDays,
-            highlightCount: state.highlightCount
-        });
-    }
-}
-
-/**
- * QuotaManager - Handles periodic scraping of Gemini usage limits
- */
+// ── SECTION 2: QUOTA MANAGER ─────────────────────────────────────────────────
 class QuotaManager {
     static atToken = null;
 
     static async getAtToken() {
         try {
+            // Scrape via active page fetch directly without cookies API permission check
             const response = await fetch('https://gemini.google.com/app', { credentials: 'include' });
             if (!response.ok) return null;
             const html = await response.text();
@@ -286,16 +129,13 @@ class QuotaManager {
                                     }
                                 }
                             }
-                        } catch (e) {
-                            // Ignore chunk errors
-                        }
+                        } catch (e) {}
                     }
                 }
                 if (innerData) break;
             }
 
             if (!innerData) {
-                // Fallback direct regex check if chunks split weirdly
                 const match = text.match(/"wrb.fr"\s*,\s*"jSf9Qc"\s*,\s*"(.*?)"/);
                 if (match) {
                     const innerJson = JSON.parse('"' + match[1] + '"');
@@ -304,7 +144,6 @@ class QuotaManager {
             }
 
             if (!innerData) return null;
-
             const limitsList = innerData[1];
             if (!Array.isArray(limitsList)) return null;
 
@@ -343,11 +182,7 @@ class QuotaManager {
             if (!this.atToken) {
                 this.atToken = await this.getAtToken();
             }
-
-            if (!this.atToken) {
-                console.error('Could not retrieve SNlM0e (at) token');
-                return null;
-            }
+            if (!this.atToken) return null;
 
             const body = new URLSearchParams();
             body.append('f.req', '[[["jSf9Qc","[]",null,"generic"]]]');
@@ -360,17 +195,14 @@ class QuotaManager {
             });
 
             if (!response.ok) {
-                if (response.status === 400 || response.status === 403) {
-                    // Token might be expired, reset and try once more
-                    this.atToken = await this.getAtToken();
-                    if (this.atToken) {
-                        body.set('at', this.atToken);
-                        response = await fetch('https://gemini.google.com/_/BardChatUi/data/batchexecute?rpcids=jSf9Qc&source-path=%2Fusage', {
-                            method: 'POST',
-                            body: body,
-                            credentials: 'include'
-                        });
-                    }
+                this.atToken = await this.getAtToken();
+                if (this.atToken) {
+                    body.set('at', this.atToken);
+                    response = await fetch('https://gemini.google.com/_/BardChatUi/data/batchexecute?rpcids=jSf9Qc&source-path=%2Fusage', {
+                        method: 'POST',
+                        body: body,
+                        credentials: 'include'
+                    });
                 }
             }
 
@@ -381,21 +213,16 @@ class QuotaManager {
             if (!limits) return null;
 
             await chrome.storage.local.set({ quota_limits: limits, last_quota_check: Date.now() });
-            logBackgroundEvent('QUOTA_LIMITS_FETCHED', limits);
 
-            // Broadcast limits update to all active Gemini tabs
+            // Broadcast to active Gemini tabs
             try {
                 const tabs = await chrome.tabs.query({ url: 'https://gemini.google.com/*' });
                 tabs.forEach(t => {
                     chrome.tabs.sendMessage(t.id, { type: 'USAGE_LIMITS_UPDATED', limits }, () => {
-                        if (chrome.runtime.lastError) {
-                            // Suppress errors for unloaded tabs
-                        }
+                        if (chrome.runtime.lastError) {}
                     });
                 });
-            } catch (err) {
-                console.error('Failed to broadcast quota limits:', err);
-            }
+            } catch (err) {}
 
             return limits;
         } catch (e) {
@@ -413,166 +240,182 @@ class QuotaManager {
     }
 }
 
+// ── SECTION 3: RATING MANAGER ─────────────────────────────────────────────────
+class RatingManager {
+    static DEFAULTS = {
+        activeDays: 0,
+        highlightCount: 0,
+        replyCount: 0,
+        totalWords: 0,
+        isExistingUser: false,
+        postUpdateHighlights: 0,
+        ratingStatus: null,
+        dismissedAtActiveDay: 0,
+        dismissedAtHighlightCount: 0,
+        lastPromptVersion: '0.0.0',
+        lastDayActive: null
+    };
 
-/**
- * Centralized log storage for the background script
- * Maintains logs from all content scripts across tabs
- */
-class BackgroundLogManager {
-    constructor() {
-        this.logs = [];
-        this.maxLogs = 200;
-        this.sessionId = this.generateSessionId();
-        this.startTime = Date.now();
+    static async getState() {
+        const res = await chrome.storage.local.get(['rating_state']);
+        return res.rating_state || { ...this.DEFAULTS };
     }
 
-    generateSessionId() {
-        return `bg_session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    static async setState(newState) {
+        await chrome.storage.local.set({ rating_state: newState });
     }
 
-    addLog(event) {
-        if (this.logs.length >= this.maxLogs) {
-            this.logs.shift();
+    static async recordEvent(eventName, params = {}) {
+        const state = await this.getState();
+        const now = new Date().toISOString().split('T')[0];
+
+        if (state.lastDayActive !== now) {
+            state.activeDays += 1;
+            state.lastDayActive = now;
         }
-        this.logs.push({
-            ...event,
-            receivedAt: new Date().toISOString()
+
+        if (eventName === 'text_highlight') {
+            state.highlightCount += 1;
+            state.totalWords = (state.totalWords || 0) + (params.word_count || 0);
+            if (state.isExistingUser) {
+                state.postUpdateHighlights += 1;
+            }
+        } else if (eventName === 'context_reply_sent') {
+            state.replyCount += 1;
+        }
+
+        await this.setState(state);
+        this.evaluateTrigger(state);
+    }
+
+    static async evaluateTrigger(state) {
+        if (state.ratingStatus === 'rated') return;
+        if (state.isExistingUser && state.postUpdateHighlights < 5) return;
+        if (state.ratingStatus === 'feedback_given') return;
+
+        const timeCriteria = state.activeDays >= 3;
+        const valueCriteria = state.highlightCount >= 15 || state.replyCount >= 3;
+
+        if (state.ratingStatus === null) {
+            if (timeCriteria && valueCriteria) {
+                this.triggerUI();
+            }
+        } else if (state.ratingStatus === 'dismissed') {
+            const daysSinceDismissal = state.activeDays >= (state.dismissedAtActiveDay + 7);
+            const highlightsSinceDismissal = state.highlightCount >= (state.dismissedAtHighlightCount + 30);
+            if (daysSinceDismissal && highlightsSinceDismissal) {
+                this.triggerUI();
+            }
+        }
+    }
+
+    static async triggerUI() {
+        try {
+            const tabs = await chrome.tabs.query({ url: 'https://gemini.google.com/*' });
+            tabs.forEach(tab => {
+                chrome.tabs.sendMessage(tab.id, { type: 'SHOW_RATING_PROMPT' }, () => {
+                    if (chrome.runtime.lastError) {}
+                });
+            });
+            AmplitudeWizard.trackEvent('rating_prompt_shown', {
+                version: chrome.runtime.getManifest().version
+            });
+        } catch (error) {
+            console.error('Trigger UI Error:', error);
+        }
+    }
+
+    static async setStatus(status) {
+        const state = await this.getState();
+        state.ratingStatus = status;
+        state.lastPromptVersion = chrome.runtime.getManifest().version;
+
+        if (status === 'dismissed') {
+            state.dismissedAtActiveDay = state.activeDays;
+            state.dismissedAtHighlightCount = state.highlightCount;
+        }
+
+        await this.setState(state);
+        
+        AmplitudeWizard.trackEvent('rating_interaction', {
+            status: status,
+            activeDays: state.activeDays,
+            highlightCount: state.highlightCount
         });
     }
+}
 
-    getLogs() {
-        return [...this.logs];
-    }
-
-    getStats() {
-        const errorCount = this.logs.filter(l => l.level === 'ERROR' || l.level === 'CRITICAL').length;
-        const warnCount = this.logs.filter(l => l.level === 'WARN').length;
-        return {
-            totalLogs: this.logs.length,
-            errorCount,
-            warnCount,
-            sessionId: this.sessionId,
-            uptime: Date.now() - this.startTime
-        };
-    }
-
-    clear() {
+// ── SECTION 4: SYSTEM LOG MANAGER ─────────────────────────────────────────────
+class LocalLogManager {
+    constructor() {
+        this.startTime = Date.now();
         this.logs = [];
     }
 }
+const logManager = new LocalLogManager();
 
-// Initialize log manager
-const logManager = new BackgroundLogManager();
-
-/**
- * Log a background-specific event
- */
-function logBackgroundEvent(eventType, context = {}, level = 'INFO') {
-    const event = {
-        timestamp: new Date().toISOString(),
-        sessionId: logManager.sessionId,
-        eventType,
-        level,
-        source: 'background',
-        context
-    };
-    logManager.addLog(event);
-    console.log(`[Fortress/BG/${level}]`, eventType, context);
-}
-
-/**
- * Handle messages from content scripts and popup
- */
+// ── SECTION 5: MESSAGE BROKER ─────────────────────────────────────────────────
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     try {
         switch (message.type) {
-            case 'DIAGNOSTIC_EVENT':
-                // Receive diagnostic events from content scripts
-                if (message.event) {
-                    logManager.addLog({
-                        ...message.event,
-                        tabId: sender.tab?.id,
-                        tabUrl: sender.tab?.url
-                    });
-                }
+            case 'TRACK_EVENT':
+                AmplitudeWizard.trackEvent(message.name, message.params);
                 sendResponse({ success: true });
                 break;
 
-            case 'GET_SESSION_LOGS':
-                // Return logs to popup or content script
-                sendResponse({
-                    logs: logManager.getLogs(),
-                    stats: logManager.getStats()
-                });
-                break;
-
-            case 'CLEAR_LOGS':
-                // Clear all stored logs
-                logManager.clear();
-                logBackgroundEvent('LOGS_CLEARED');
+            case 'RECORD_RATING_EVENT':
+                RatingManager.recordEvent(message.name, message.params);
                 sendResponse({ success: true });
                 break;
 
-            case 'GET_STATS':
-                // Return statistics only
-                sendResponse({ stats: logManager.getStats() });
-                break;
-
-            case 'DEVELOPER_MODE_CHANGED':
-                // Log developer mode changes
-                logBackgroundEvent('DEVELOPER_MODE_CHANGED', {
-                    enabled: message.enabled
-                });
+            case 'UPDATE_RATING_STATUS':
+                RatingManager.setStatus(message.status);
                 sendResponse({ success: true });
-                break;
-
-            case 'GET_ERROR_REPORT':
-                // Generate comprehensive error report
-                const manifest = chrome.runtime.getManifest();
-                const report = {
-                    reportGeneratedAt: new Date().toISOString(),
-                    extensionVersion: manifest.version,
-                    sessionId: logManager.sessionId,
-                    stats: logManager.getStats(),
-                    logs: logManager.getLogs()
-                };
-                sendResponse({ report });
                 break;
 
             case 'GET_USAGE_LIMITS':
                 QuotaManager.getCachedLimits().then(limits => {
                     sendResponse({ success: true, limits });
                 }).catch(err => {
+                    console.error('Quota fetch error:', err);
                     sendResponse({ success: false, error: err.message });
                 });
-                break;
+                return true; // Keep response channel open
 
             case 'FORCE_REFRESH_USAGE_LIMITS':
                 QuotaManager.fetchUsageLimits().then(limits => {
                     sendResponse({ success: true, limits });
                 }).catch(err => {
+                    console.error('Force quota refresh error:', err);
                     sendResponse({ success: false, error: err.message });
                 });
-                break;
+                return true; // Keep response channel open
 
-            case 'TRACK_EVENT':
-                // Track user engagement or technical events
-                AmplitudeWizard.trackEvent(message.name, message.params);
-                RatingManager.recordEvent(message.name, message.params);
-                if (message.name === 'context_reply_sent') {
-                    // Force refresh limits when user submits contextual reply
-                    QuotaManager.fetchUsageLimits().catch(console.error);
-                }
+
+            case 'EXPORT_FINISHED':
+                chrome.tabs.query({ url: '*://gemini.google.com/*' }, (tabs) => {
+                    tabs.forEach(tab => {
+                        chrome.tabs.sendMessage(tab.id, { type: 'EXPORT_FINISHED' });
+                    });
+                });
                 sendResponse({ success: true });
                 break;
 
-            case 'SET_RATING_STATUS':
-                RatingManager.setStatus(message.status);
+            case 'START_PDF_EXPORT':
+                chrome.tabs.create({ url: chrome.runtime.getURL('export.html'), active: false });
                 sendResponse({ success: true });
                 break;
+
+            case 'OPEN_PDF_PREVIEW':
+                const key = `pdf_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
+                chrome.storage.local.set({ [key]: { data: message.data } }, () => {
+                    chrome.tabs.create({ url: chrome.runtime.getURL(`pdf_preview.html?key=${key}`) });
+                    sendResponse({ success: true });
+                });
+                return true;
 
             case 'OPEN_REVIEW_PAGE':
-                const reviewUrl = `https://chromewebstore.google.com/detail/jhkodgigeemnmdmdikdkpcbmgbbopgni/reviews`;
+                const reviewUrl = 'https://chromewebstore.google.com/detail/jhkodgigeemnmdmdikdkpcbmgbbopgni/reviews';
                 chrome.tabs.create({ url: reviewUrl, active: true });
                 sendResponse({ success: true });
                 break;
@@ -580,149 +423,77 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             default:
                 sendResponse({ error: 'Unknown message type' });
         }
-    } catch (error) {
-        logBackgroundEvent('MESSAGE_HANDLER_ERROR', {
-            messageType: message.type,
-            error: error.message
-        }, 'ERROR');
-        sendResponse({ error: error.message });
-    }
-
-    // Return true to indicate async response
-    return true;
-});
-
-/**
- * Handle extension installation/update
- */
-chrome.runtime.onInstalled.addListener(async (details) => {
-    logBackgroundEvent('EXTENSION_INSTALLED', {
-        reason: details.reason,
-        previousVersion: details.previousVersion
-    });
-
-    try {
-        // 1. Initialize/Update Rating State
-        const state = await RatingManager.getState();
-        if (details.reason === chrome.runtime.OnInstalledReason.INSTALL) {
-            state.isExistingUser = false;
-        } else if (details.reason === chrome.runtime.OnInstalledReason.UPDATE) {
-            const oldVersion = state.lastPromptVersion || '0.0.0';
-            const oldMajor = parseInt(oldVersion.split('.')[0]);
-            const newMajor = parseInt(chrome.runtime.getManifest().version.split('.')[0]);
-            
-            state.isExistingUser = true;
-            state.postUpdateHighlights = 0;
-
-            // Redemption Arc: Reset feedback_given if major version increases
-            if (newMajor > oldMajor && state.ratingStatus === 'feedback_given') {
-                state.ratingStatus = null;
-            }
-        }
-        await RatingManager.setState(state);
-
-        // 2. Track install/update event then set uninstall URL
-        const deviceId = await AmplitudeWizard.getDeviceId();
-        if (details.reason === chrome.runtime.OnInstalledReason.INSTALL) {
-            AmplitudeWizard.trackEvent('extension_installed', {
-                version: chrome.runtime.getManifest().version
-            });
-        } else if (details.reason === chrome.runtime.OnInstalledReason.UPDATE) {
-            AmplitudeWizard.trackEvent('extension_updated', {
-                version: chrome.runtime.getManifest().version,
-                previousVersion: details.previousVersion
-            });
-        }
-
-        // Fire uninstall_initiated just before registering the URL so it always lands
-        AmplitudeWizard.trackEvent('uninstall_initiated', {
-            version: chrome.runtime.getManifest().version,
-            device_id: deviceId
-        });
-        const feedbackFormUrl = 'https://docs.google.com/forms/d/e/1FAIpQLSfr82mMdRgwSPY9ZsQkdRp_HXKKwmVuWO7GmjeZ3fS9XHpqsA/viewform';
-        const uninstallUrl = `${feedbackFormUrl}?entry.648517234=${deviceId}&device_id=${deviceId}`;
-        chrome.runtime.setUninstallURL(uninstallUrl);
-
-        // 3. Launch Onboarding page (on fresh INSTALL, dev reloads, or UPDATE)
-        const isUnpacked = !('update_url' in chrome.runtime.getManifest());
-        if (details.reason === chrome.runtime.OnInstalledReason.INSTALL || isUnpacked) {
-            await chrome.tabs.create({ url: chrome.runtime.getURL('onboarding.html?reason=install') });
-        } else if (details.reason === chrome.runtime.OnInstalledReason.UPDATE) {
-            await chrome.tabs.create({ url: chrome.runtime.getURL('onboarding.html?reason=update') });
-        }
-
-        // Initialize default settings
-        const result = await chrome.storage.local.get(['developerMode']);
-        if (result.developerMode === undefined) {
-            await chrome.storage.local.set({ developerMode: false });
-            logBackgroundEvent('DEFAULT_SETTINGS_INITIALIZED');
-        }
-    } catch (error) {
-        logBackgroundEvent('ON_INSTALLED_ERROR', { error: error.message }, 'ERROR');
+    } catch (err) {
+        console.error('Message handling error:', err);
+        sendResponse({ error: err.message });
     }
 });
 
-/**
- * Handle extension startup
- */
-chrome.runtime.onStartup.addListener(() => {
-    logBackgroundEvent('EXTENSION_STARTUP');
-});
-
-/**
- * Handle tab updates - useful for SPA navigation detection
- */
-chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
-    if (tab.url?.includes('gemini.google.com') && changeInfo.status === 'complete') {
-        logBackgroundEvent('GEMINI_TAB_LOADED', {
-            tabId,
-            url: tab.url
-        });
-    }
-});
-
-/**
- * Periodic cleanup of old logs (every hour)
- */
-chrome.alarms.create('logCleanup', { periodInMinutes: 60 });
-
-// Periodically check usage limits (every 10 minutes)
+// Alarms Scheduler
 chrome.alarms.create('quotaLimitsCheck', { periodInMinutes: 10 });
-
 chrome.alarms.onAlarm.addListener((alarm) => {
-    if (alarm.name === 'logCleanup') {
-        const stats = logManager.getStats();
-        if (stats.totalLogs > 150) {
-            // Trim to keep only the last 100 logs
-            logManager.logs = logManager.logs.slice(-100);
-            logBackgroundEvent('LOGS_TRIMMED', {
-                before: stats.totalLogs,
-                after: 100
-            });
-        }
-    } else if (alarm.name === 'quotaLimitsCheck') {
+    if (alarm.name === 'quotaLimitsCheck') {
         QuotaManager.fetchUsageLimits().catch(console.error);
     }
 });
 
-// Trigger initial quota fetch on startup
+// Startup & Install Listeners
 chrome.runtime.onStartup.addListener(() => {
-    logBackgroundEvent('EXTENSION_STARTUP');
     QuotaManager.fetchUsageLimits().catch(console.error);
 });
 
-// Also trigger on install/load
-chrome.runtime.onInstalled.addListener(() => {
+chrome.runtime.onInstalled.addListener(async (details) => {
     QuotaManager.fetchUsageLimits().catch(console.error);
+
+    const state = await RatingManager.getState();
+    if (details.reason === chrome.runtime.OnInstalledReason.INSTALL) {
+        state.isExistingUser = false;
+        AmplitudeWizard.trackEvent('extension_installed', { version: chrome.runtime.getManifest().version });
+    } else if (details.reason === chrome.runtime.OnInstalledReason.UPDATE) {
+        const oldVersion = details.previousVersion || '0.0.0';
+        const oldMajor = parseInt(oldVersion.split('.')[0]);
+        const newMajor = parseInt(chrome.runtime.getManifest().version.split('.')[0]);
+        
+        state.isExistingUser = true;
+        state.postUpdateHighlights = 0;
+
+        if (newMajor > oldMajor && state.ratingStatus === 'feedback_given') {
+            state.ratingStatus = null; // Redemption trigger
+        }
+        AmplitudeWizard.trackEvent('extension_updated', {
+            version: chrome.runtime.getManifest().version,
+            previousVersion: oldVersion
+        });
+    }
+    await RatingManager.setState(state);
+
+    // Set Uninstall URL with device_id
+    const deviceId = await AmplitudeWizard.getDeviceId();
+    AmplitudeWizard.trackEvent('uninstall_initiated', { version: chrome.runtime.getManifest().version, device_id: deviceId });
+    const feedbackFormUrl = 'https://docs.google.com/forms/d/e/1FAIpQLSfr82mMdRgwSPY9ZsQkdRp_HXKKwmVuWO7GmjeZ3fS9XHpqsA/viewform';
+    const uninstallUrl = `${feedbackFormUrl}?entry.648517234=${deviceId}&device_id=${deviceId}`;
+    chrome.runtime.setUninstallURL(uninstallUrl);
+
+    // Onboarding routing
+    const isUnpacked = !('update_url' in chrome.runtime.getManifest());
+    if (details.reason === chrome.runtime.OnInstalledReason.INSTALL || isUnpacked) {
+        await chrome.tabs.create({ url: chrome.runtime.getURL('onboarding.html?reason=install') });
+    } else if (details.reason === chrome.runtime.OnInstalledReason.UPDATE) {
+        await chrome.tabs.create({ url: chrome.runtime.getURL('onboarding.html?reason=update') });
+    }
+
+    // Default settings init
+    const result = await chrome.storage.local.get(['developerMode', 'powerbox_settings']);
+    if (result.developerMode === undefined) {
+        await chrome.storage.local.set({ developerMode: false });
+    }
+    if (result.powerbox_settings === undefined) {
+        await chrome.storage.local.set({
+            powerbox_settings: {
+                quote_reply_enabled: true,
+                usage_tracker_enabled: true,
+                pdf_exporter_enabled: true
+            }
+        });
+    }
 });
-
-// Log that background script has initialized
-logBackgroundEvent('BACKGROUND_INITIALIZED', {
-    version: chrome.runtime.getManifest().version
-});
-
-console.log('🏰 Fortress Framework Background Service Worker initialized');
-
-// Expose to console for testing
-self.RatingManager = RatingManager;
-self.QuotaManager = QuotaManager;

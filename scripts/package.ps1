@@ -20,9 +20,13 @@ foreach ($zip in $oldZips) {
 }
 
 # 3. Create the new zip file name
-$zipName = "Quote_Reply_v$version.zip"
+$zipName = "v2.4b.zip"
 $zipPath = Join-Path $rootDir $zipName
-$excludeList = @(".git", ".github", "scripts", ".vscode", ".idea", "node_modules", ".gitignore", $zipName)
+$excludeList = @(
+    ".git", ".github", "scripts", ".vscode", ".idea", "node_modules", 
+    ".gitignore", "gemini.google.comm.js", "Export_Gemini_AI_chats_to_Pdf_source", 
+    "tour.js", "tour.css", "docs", "Quote_Reply_v2.3.0.zip", $zipName
+)
 
 # Gather files/folders to zip
 $filesToZip = Get-ChildItem -Path $rootDir | Where-Object { $_.Name -notin $excludeList }

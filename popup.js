@@ -1,28 +1,29 @@
-/**
- * ╔═══════════════════════════════════════════════════════════════════════════╗
- * ║                       FORTRESS FRAMEWORK v1.0                              ║
- * ║           Popup Controller - Minimalist Version                            ║
- * ╚═══════════════════════════════════════════════════════════════════════════╝
- */
+// Powerbox for Gemini - popup.js
+'use strict';
 
 class PopupController {
     constructor() {
         this.versionBadge = document.getElementById('version-badge');
-        this.viewLogsLink = document.getElementById('view-logs');
         this.timeSavedEl = document.getElementById('time-saved');
         this.wordsAnalyzedEl = document.getElementById('words-analyzed');
+        
+        this.toggleQuoteReply = document.getElementById('toggle-quote-reply');
+        this.toggleLimitsTracker = document.getElementById('toggle-limits-tracker');
+        this.toggleChatExporter = document.getElementById('toggle-chat-exporter');
+        
         this.init();
     }
 
     async init() {
         this.loadVersion();
         this.loadStats();
+        await this.loadSettings();
         this.setupEventListeners();
 
-        // Track Popup View
+        // Track view
         chrome.runtime.sendMessage({ 
             type: 'TRACK_EVENT', 
-            name: 'popup_view' 
+            name: 'powerbox_popup_view' 
         });
     }
 
@@ -43,12 +44,9 @@ class PopupController {
             const totalWords = state.totalWords || 0;
             const replyCount = state.replyCount || 0;
 
-            // 1. Refined Math Logic
-            // (1 minute per 100 words processed + 1 minute per AI reply)
             const timeSavedInMinutes = Math.round((totalWords / 100) + (replyCount * 1.0));
             const wordsAnalyzed = totalWords;
 
-            // 2. Formatting Rules
             let timeStr = `${timeSavedInMinutes} mins`;
             if (timeSavedInMinutes > 60) {
                 timeStr = `${(timeSavedInMinutes / 60).toFixed(1)} hrs`;
@@ -59,7 +57,6 @@ class PopupController {
                 wordsStr = `${(wordsAnalyzed / 1000).toFixed(1)}k words`;
             }
 
-            // 3. Injection
             this.timeSavedEl.textContent = timeStr;
             this.wordsAnalyzedEl.textContent = wordsStr;
         } catch (e) {
@@ -67,33 +64,52 @@ class PopupController {
         }
     }
 
+    async loadSettings() {
+        try {
+            const res = await chrome.storage.local.get(['powerbox_settings']);
+            const settings = res.powerbox_settings || {
+                quote_reply_enabled: true,
+                usage_tracker_enabled: true,
+                pdf_exporter_enabled: true
+            };
+
+            this.toggleQuoteReply.checked = settings.quote_reply_enabled;
+            this.toggleLimitsTracker.checked = settings.usage_tracker_enabled;
+            this.toggleChatExporter.checked = settings.pdf_exporter_enabled;
+        } catch (e) {
+            console.error('Failed to load settings:', e);
+        }
+    }
+
     setupEventListeners() {
-        this.viewLogsLink.addEventListener('click', (e) => {
-            e.preventDefault();
-            this.viewSessionLogs();
-        });
+        const saveSettings = async () => {
+            const settings = {
+                quote_reply_enabled: this.toggleQuoteReply.checked,
+                usage_tracker_enabled: this.toggleLimitsTracker.checked,
+                pdf_exporter_enabled: this.toggleChatExporter.checked
+            };
+            await chrome.storage.local.set({ powerbox_settings: settings });
+            
+            chrome.runtime.sendMessage({
+                type: 'TRACK_EVENT',
+                name: 'powerbox_settings_changed',
+                params: settings
+            });
+        };
+
+        this.toggleQuoteReply.addEventListener('change', saveSettings);
+        this.toggleLimitsTracker.addEventListener('change', saveSettings);
+        this.toggleChatExporter.addEventListener('change', saveSettings);
 
         const rateBtn = document.getElementById('rate-extension-btn');
         if (rateBtn) {
             rateBtn.addEventListener('click', () => {
                 chrome.runtime.sendMessage({ 
                     type: 'TRACK_EVENT', 
-                    name: 'popup_rate_click' 
+                    name: 'powerbox_rate_click' 
                 });
                 chrome.runtime.sendMessage({ type: 'OPEN_REVIEW_PAGE' });
             });
-        }
-    }
-
-    async viewSessionLogs() {
-        try {
-            const response = await chrome.runtime.sendMessage({ type: 'GET_SESSION_LOGS' });
-            if (response && response.logs) {
-                console.log('📊 Session Logs:', response.logs);
-                alert(`📊 Captured ${response.logs.length} events in this session.\nCheck console for details.`);
-            }
-        } catch (e) {
-            console.error('Failed to fetch logs:', e);
         }
     }
 }

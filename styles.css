@@ -1,32 +1,76 @@
+/* Powerbox for Gemini - styles.css */
+
 :root {
-  --ask-gemini-primary: #3d5afe;
-  --ask-gemini-bg: #212121;
-  --ask-gemini-text: #ffffff;
   --ask-gemini-radius: 12px;
+
+  /* Default theme values (Dark Theme) */
+  --ask-gemini-primary: #a8c7fa;
+  --ask-gemini-bg: #2b2930;
+  --ask-gemini-text: #e6e0e9;
+
+  --ag-primary: #a8c7fa;
+  --ag-primary-dim: rgba(168, 199, 250, 0.15);
+  --ag-bg: #2b2930;
+  --ag-surface-2: #322f37;
+  --ag-text: #e6e0e9;
+  --ag-text-dim: #9aa0a6;
+  --ag-border: rgba(255, 255, 255, 0.08);
+  --ag-shadow: rgba(0, 0, 0, 0.3);
+  --ag-hover-bg: rgba(255, 255, 255, 0.1);
+  --ag-hover-color: #fff;
+  --ag-refresh-hover-bg: rgba(255, 255, 255, 0.08);
 }
 
+/* Light Theme Overrides */
+body.light-theme,
+html.light-theme,
+[theme="light"] {
+  --ask-gemini-primary: #1a73e8;
+  --ask-gemini-bg: #ffffff;
+  --ask-gemini-text: #202124;
+
+  --ag-primary: #1a73e8;
+  --ag-primary-dim: rgba(26, 115, 232, 0.1);
+  --ag-bg: #ffffff;
+  --ag-surface-2: #f1f3f4;
+  --ag-text: #202124;
+  --ag-text-dim: #5f6368;
+  --ag-border: #dadce0;
+  --ag-shadow: none;
+  --ag-hover-bg: rgba(0, 0, 0, 0.08);
+  --ag-hover-color: #000;
+  --ag-refresh-hover-bg: rgba(0, 0, 0, 0.06);
+}
+
+/* ── QUOTE REPLY FLOATING BUTTON ────────────────────────────────────────────── */
 #ask-gemini-float-btn {
   position: absolute;
   z-index: 9999;
   display: none;
   align-items: center;
   gap: 8px;
-  background-color: var(--ask-gemini-bg);
-  color: var(--ask-gemini-text);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background-color: var(--ag-bg, #2b2930);
+  color: var(--ag-text, #e6e0e9);
+  border: 1px solid var(--ag-border, rgba(255, 255, 255, 0.08));
   border-radius: 99px;
   padding: 8px 16px;
   font-family: 'Google Sans', 'Roboto', sans-serif;
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  box-shadow: var(--ag-shadow, 0 4px 12px rgba(0, 0, 0, 0.3));
   transition: transform 0.2s ease, background-color 0.2s ease, opacity 0.2s ease;
   animation: ask-gemini-fade-in 0.2s ease-out;
 }
 
+#ask-gemini-float-btn span {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
 #ask-gemini-float-btn:hover {
-  background-color: #333333;
+  background-color: var(--ag-surface-2, #322f37);
   transform: translateY(-2px);
 }
 
@@ -39,19 +83,19 @@
     opacity: 0;
     transform: translateY(10px);
   }
-
   to {
     opacity: 1;
     transform: translateY(0);
   }
 }
 
+/* ── QUOTE REPLY CONTEXT BOX ABOVE INPUT ─────────────────────────────────────── */
 #ask-gemini-context-box {
   display: flex;
   align-items: flex-start;
   gap: 6px;
   padding: 8px 12px 4px 12px;
-  background-color: #2F2F2F;
+  background-color: var(--ag-surface-2, #322f37);
   border-radius: 28px 28px 0 0;
   margin-bottom: 0px;
   width: 100%;
@@ -67,7 +111,7 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  color: #9aa0a6;
+  color: var(--ag-text-dim, #9aa0a6);
 }
 
 .ask-gemini-draft-icon svg {
@@ -81,7 +125,7 @@
   background: transparent;
   border: none;
   cursor: pointer;
-  color: #9aa0a6;
+  color: var(--ag-text-dim, #9aa0a6);
   font-size: 15px;
   font-family: "Google Sans", "Roboto", sans-serif;
   line-height: 1.4;
@@ -103,24 +147,19 @@
   background: transparent;
   border: none;
   cursor: pointer;
-  color: #9aa0a6;
+  color: var(--ag-text-dim, #9aa0a6);
   border-radius: 8px;
   transition: background-color 0.2s, color 0.2s;
 }
 
 .ask-gemini-draft-close:hover {
-  background-color: rgba(255, 255, 255, 0.1);
-  color: #fff;
+  background-color: var(--ag-hover-bg, rgba(255, 255, 255, 0.1));
+  color: var(--ag-hover-color, #fff);
 }
 
-.user-query-bubble-with-background,
-.user-query-bubble-with-background.ng-star-inserted {
-  transition: background 0.2s;
-}
-
+/* ── HISTORY PROXY BUBBLES ─────────────────────────────────────────────────── */
 .user-query-bubble-with-background:has(.ask-gemini-transformed-proxy) {
   background: transparent !important;
-  background-color: transparent !important;
   box-shadow: none !important;
   border: none !important;
   padding: 0 !important;
@@ -156,7 +195,7 @@
   border: none;
   cursor: pointer;
   text-align: left;
-  color: #b4b4b4;
+  color: var(--ag-text-dim, #9aa0a6);
   font-family: inherit;
   font-size: 13px;
   opacity: 0.8;
@@ -166,7 +205,7 @@
 
 .ask-gemini-reply-preview:hover {
   opacity: 1;
-  color: #ffffff;
+  color: var(--ag-text, #ffffff);
 }
 
 .ask-gemini-reply-icon {
@@ -204,12 +243,12 @@
 }
 
 .ask-gemini-message-bubble {
-  background-color: #2f2f2f;
-  color: #ececec;
+  background-color: var(--ag-surface-2, #322f37);
+  color: var(--ag-text, #e6e0e9);
   padding: 12px 18px;
   border-radius: 20px;
   border-top-right-radius: 4px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  box-shadow: var(--ag-shadow, 0 1px 3px rgba(0, 0, 0, 0.2));
   align-self: flex-end;
 }
 
@@ -224,14 +263,14 @@
   margin-top: 12px;
 }
 
-/* Quota Limits Custom UI Styles */
+/* ── SIDEBAR USAGE LIMITS CARD ──────────────────────────────────────────────── */
 .ag-sidebar-usage-card {
   padding: 16px 0 0 0;
   background-color: transparent !important;
   border: none !important;
   border-top: 1px solid var(--ag-border, rgba(255, 255, 255, 0.08)) !important;
   border-radius: 0 !important;
-  margin: 12px 16px 12px 16px !important;
+  margin: 12px 16px !important;
   font-family: 'Google Sans', 'Roboto', sans-serif;
   text-align: left !important;
 }
@@ -280,7 +319,7 @@
 }
 
 .ag-quota-refresh-btn:hover {
-  background-color: rgba(255, 255, 255, 0.08) !important;
+  background-color: var(--ag-refresh-hover-bg, rgba(255, 255, 255, 0.08)) !important;
   color: var(--ag-text, #ffffff) !important;
 }
 
@@ -318,3 +357,78 @@
   font-weight: 400;
   text-align: left !important;
 }
+
+/* ── CHAT EXPORTER "EXPORT PDF" BUTTON ───────────────────────────────────────── */
+#ag-export-pdf-btn {
+  position: fixed;
+  top: 16px;
+  right: 80px;
+  z-index: 99999;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  padding: 0 16px;
+  border-radius: 18px;
+  border: 1px solid var(--ag-border);
+  background-color: transparent;
+  color: var(--ag-text);
+  font-family: 'Google Sans', 'Roboto', Arial, sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  box-shadow: none;
+  transition: background-color 0.2s, border-color 0.2s, transform 0.1s;
+}
+
+#ag-export-pdf-btn:hover {
+  background-color: var(--ag-hover-bg);
+}
+
+#ag-export-pdf-btn:active {
+  transform: scale(0.97);
+}
+
+#ag-export-pdf-btn svg {
+  display: block;
+  fill: currentColor;
+}
+
+/* ── HIGHLIGHT BLINK EFFECT ── */
+.ag-text-highlight-blink {
+  background-color: rgba(255, 235, 59, 0.4) !important; /* Soft yellow highlight */
+  border-radius: 4px;
+  padding: 0 4px;
+  animation: ag-highlight-blink-anim 2s ease-out;
+}
+
+@keyframes ag-highlight-blink-anim {
+  0% {
+    background-color: rgba(255, 235, 59, 0.7);
+  }
+  30% {
+    background-color: rgba(255, 235, 59, 0.7);
+  }
+  100% {
+    background-color: rgba(255, 235, 59, 0);
+  }
+}
+
+/* ── Spinner for Export Button ── */
+.ag-btn-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  border-top-color: #fff;
+  animation: ag-spin 0.6s linear infinite;
+  display: inline-block;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+
+body.light-theme .ag-btn-spinner {
+  border: 2px solid rgba(0, 0, 0, 0.2);
+  border-top-color: var(--ag-primary);
+}
+
