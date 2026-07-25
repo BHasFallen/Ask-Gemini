@@ -139,12 +139,60 @@
     .ag-popup-rate-btn:active {
       transform: translateY(0);
     }
+    /* Settings Section */
+    .settings-section {
+      margin-top: 20px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border);
+    }
+
+    .setting-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .setting-label {
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--muted);
+    }
+
+    .setting-toggle {
+      display: flex;
+      background: #1e1e1e;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 3px;
+      gap: 2px;
+    }
+
+    .toggle-opt {
+      background: transparent;
+      border: none;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 500;
+      padding: 4px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .toggle-opt.active {
+      background: var(--accent);
+      color: #fff;
+    }
+
+    .toggle-opt:not(.active):hover {
+      color: var(--text);
+    }
   </style>
 </head>
 <body>
   <div class="header">
     <h1>Quote Reply</h1>
-    <span class="version" id="version-badge">v2.2.0</span>
+    <span class="version" id="version-badge">v2.4.0</span>
   </div>
 
   <div class="value-dashboard">
@@ -173,12 +221,36 @@
     </div>
   </div>
 
+  <div class="settings-section">
+    <div class="setting-row">
+      <span class="setting-label">Multi-Quote Style</span>
+      <div class="setting-toggle">
+        <button class="toggle-opt" id="toggle-expanded">Expanded</button>
+        <button class="toggle-opt" id="toggle-compact">Compact</button>
+      </div>
+    </div>
+    <div class="setting-row" style="margin-top: 12px;">
+      <span class="setting-label">Usage Limits View</span>
+      <div class="setting-toggle">
+        <button class="toggle-opt" id="toggle-limits-on">On</button>
+        <button class="toggle-opt" id="toggle-limits-off">Off</button>
+      </div>
+    </div>
+    <div class="setting-row" style="margin-top: 12px;">
+      <span class="setting-label">Multi-Quote Support</span>
+      <div class="setting-toggle">
+        <button class="toggle-opt" id="toggle-mq-on">On</button>
+        <button class="toggle-opt" id="toggle-mq-off">Off</button>
+      </div>
+    </div>
+  </div>
+
   <button id="rate-extension-btn" class="ag-popup-rate-btn">
     <span>★ Rate Extension</span>
   </button>
 
   <div class="footer">
-    <a href="#" id="view-logs">View Logs</a>
+    <a href="#" id="report-problem">Report a Problem</a>
   </div>
 
   <script src="popup.js"></script>

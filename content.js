@@ -416,7 +416,10 @@
         star: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ag-star"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>`
     };
 
-    let currentContext = null;
+    let currentContexts = [];
+    let multiQuoteDisplay = 'expanded'; // 'expanded' | 'compact'
+    let usageLimitsEnabled = true;
+    let multiQuoteEnabled = true;
     let floatButton = null;
     let contextBox = null;
     let isInjecting = false;
@@ -436,7 +439,7 @@
      * Perform the direct injection and send
      */
     function maybeInjectAndSend() {
-        if (isInjecting || !currentContext) return false;
+        if (isInjecting || !currentContexts.length) return false;
 
         const input = findInputArea();
         const sendBtn = findSendButton();
@@ -447,7 +450,9 @@
         
         try {
             const originalText = input.innerText || "";
-            const contextBlock = `I'm replying to this:\n"${currentContext.trim()}"\n\n`;
+            const contextBlock = currentContexts.length === 1
+                ? `I'm replying to this:\n"${currentContexts[0].trim()}"\n\n`
+                : `I'm replying to these excerpts:\n${currentContexts.map((q, i) => `${i + 1}. "${q.trim()}"`).join('\n')}\n\n`;
             const composed = contextBlock + originalText;
 
             // Step 1: Hide the technical string from user
@@ -484,7 +489,8 @@
             });
 
             trackEvent('context_reply_sent', { 
-                length: currentContext.length
+                length: currentContexts.reduce((a, c) => a + c.length, 0),
+                quote_count: currentContexts.length
             });
             return true;
         } catch (err) {
@@ -512,23 +518,41 @@
     }
 
     function showFloatButton(selection) {
+        const text = selection.toString().trim();
+
         if (!floatButton) {
             floatButton = document.createElement('button');
             floatButton.id = BTN_ID;
-            floatButton.innerHTML = `<span>${ICONS.ask} Ask Gemini</span>`;
-            floatButton.onclick = (e) => {
-                e.preventDefault();
-                activateContext(selection.toString());
-                hideFloatButton();
-            };
             document.body.appendChild(floatButton);
         }
 
         const range = selection.getRangeAt(0);
         const rect = range.getBoundingClientRect();
-        
-        floatButton.style.top = `${rect.top + window.scrollY - 45}px`;
-        floatButton.style.left = `${rect.left + window.scrollX + (rect.width / 2) - 60}px`;
+        const centerX = rect.left + window.scrollX + (rect.width / 2);
+        const topY = rect.top + window.scrollY - 45;
+
+        if (currentContexts.length > 0 && multiQuoteEnabled) {
+            // Multi-quote mode: offer to add another quote to the queue
+            floatButton.innerHTML = `<span>${ICONS.ask} + Add Quote (${currentContexts.length})</span>`;
+            floatButton.onclick = (e) => {
+                e.preventDefault();
+                currentContexts.push(text);
+                renderContextBox();
+                hideFloatButton();
+            };
+            floatButton.style.left = `${centerX - 75}px`;
+        } else {
+            // Normal single-quote mode: identical to before
+            floatButton.innerHTML = `<span>${ICONS.ask} Ask Gemini</span>`;
+            floatButton.onclick = (e) => {
+                e.preventDefault();
+                activateContext(text);
+                hideFloatButton();
+            };
+            floatButton.style.left = `${centerX - 60}px`;
+        }
+
+        floatButton.style.top = `${topY}px`;
         floatButton.style.display = 'flex';
     }
 
@@ -537,7 +561,10 @@
     }
 
     function activateContext(text) {
-        currentContext = text;
+        if (!multiQuoteEnabled) {
+            currentContexts = [];
+        }
+        currentContexts.push(text);
         renderContextBox();
         const input = findInputArea();
         if (input) input.focus();
@@ -569,12 +596,14 @@
             container.prepend(contextBox);
         }
 
-        document.getElementById('ask-gemini-context-content').innerText = `"${currentContext}"`;
+        const count = currentContexts.length;
+        document.getElementById('ask-gemini-context-content').innerText =
+            count === 1 ? `"${currentContexts[0]}"` : `${count} quotes queued`;
         contextBox.style.display = 'flex';
     }
 
     function clearContext() {
-        currentContext = null;
+        currentContexts = [];
         if (contextBox) contextBox.style.display = 'none';
         evaluateRetentionTip().catch(console.error);
     }
@@ -674,7 +703,32 @@
     // SECTION 4.2: FEATURE BANNER SYSTEM
     // ═══════════════════════════════════════════════════════════════════════════════
 
-    const CURRENT_FEATURE = null;
+    const CURRENT_FEATURE = {
+        id: "multi_quote_v1",
+        title: "New: Quote multiple excerpts",
+        description: "Highlight text, then keep highlighting more — look for the '+ Add Quote' button to build a multi-quote reply.",
+        primaryText: "Try it",
+        secondaryText: "Later",
+        onTry: () => {
+            chrome.storage.local.set({ ask_gemini_tour_active: true, tour_step: 1 }, () => {
+                if (typeof AskGeminiTour !== 'undefined') {
+                    AskGeminiTour.step = 1;
+                    AskGeminiTour.step1ListenersAttached = false;
+                    AskGeminiTour.step4ListenersAttached = false;
+                    AskGeminiTour.step6ListenersAttached = false;
+
+                    // If a reply already exists, skip step 1 and go directly to step 2 (highlighting)
+                    if (AskGeminiTour.getLatestGeminiReply()) {
+                        AskGeminiTour.step = 2;
+                        chrome.storage.local.set({ tour_step: 2 });
+                    }
+                    AskGeminiTour.init();
+                } else {
+                    window.location.reload();
+                }
+            });
+        }
+    };
 
     /*
     // Example feature configuration when you want to show a banner:
@@ -743,8 +797,8 @@
                 </div>
             </div>
             <div class="actions-container ng-star-inserted">
-                <button class="banner-btn-secondary" id="ag-banner-btn-dismiss">${CURRENT_FEATURE.secondaryText}</button>
                 <button class="banner-btn-primary" id="ag-banner-btn-try">${CURRENT_FEATURE.primaryText}</button>
+                <button class="banner-btn-secondary" id="ag-banner-btn-dismiss">${CURRENT_FEATURE.secondaryText}</button>
             </div>
         `;
 
@@ -875,6 +929,8 @@
     function transformMessages() {
         const PREFIX = "I'm replying to this:";
         const PREFIX_CURLY = "I\u2019m replying to this:";
+        const PREFIX_MULTI = "I'm replying to these excerpts:";
+        const PREFIX_MULTI_CURLY = "I\u2019m replying to these excerpts:";
         
         const replies = document.querySelectorAll('.model-response, .message-content, .markdown-main-panel, message-content');
         const currentCount = replies.length;
@@ -890,6 +946,7 @@
             
             const text = el.textContent || "";
             const hasPrefix = text.includes(PREFIX) || text.includes(PREFIX_CURLY);
+            const hasMultiPrefix = text.includes(PREFIX_MULTI) || text.includes(PREFIX_MULTI_CURLY);
             
             if (hasPrefix && text.includes('"')) {
                 // Extract everything after the prefix
@@ -906,7 +963,7 @@
                 let actualMessage = afterPrefix.substring(lastQuote + 1).trim();
 
                 // Robustly strip any leftover technical separators from previous versions
-                actualMessage = actualMessage.replace(/^⟦◈⟧\s*/, '').trim();
+                actualMessage = actualMessage.replace(/^\u27e6\u25c8\u27e7\s*/, '').trim();
 
                 if (!context || !actualMessage) return;
 
@@ -937,6 +994,75 @@
                 
                 wrapper.appendChild(proxy);
                 
+                wrapper.setAttribute('data-ag-processed', 'true');
+                wrapper.querySelectorAll('*').forEach(child => child.setAttribute('data-ag-processed', 'true'));
+            } else if (hasMultiPrefix) {
+                // Multi-quote transform: parse numbered quoted items
+                const prefixUsed = text.includes(PREFIX_MULTI) ? PREFIX_MULTI : PREFIX_MULTI_CURLY;
+                const afterPrefix = text.substring(text.indexOf(prefixUsed) + prefixUsed.length).trim();
+
+                const quoteMatches = [...afterPrefix.matchAll(/(\d+)\.\s*"([^"]+)"/g)];
+                if (quoteMatches.length === 0) return;
+
+                const lastMatch = quoteMatches[quoteMatches.length - 1];
+                let actualMessage = afterPrefix.substring(lastMatch.index + lastMatch[0].length).trim();
+                actualMessage = actualMessage.replace(/^\u27e6\u25c8\u27e7\s*/, '').trim();
+
+                if (!actualMessage) return;
+
+                const quotes = quoteMatches.map(m => m[2].trim());
+
+                const chipsHtml = quotes.map(q => `
+                    <button class="ask-gemini-reply-preview" type="button">
+                        <div class="ask-gemini-reply-icon">${ICONS.reply}</div>
+                        <div class="ask-gemini-reply-text-wrapper">
+                            <p class="ask-gemini-reply-text">${q}</p>
+                        </div>
+                    </button>
+                `).join('');
+
+                let chipHtml;
+                if (multiQuoteDisplay === 'compact') {
+                    chipHtml = `
+                        <div class="ask-gemini-proxy-content">
+                            <button class="ask-gemini-reply-preview" type="button"
+                                title="${quotes.map((q, i) => `${i + 1}. ${q}`).join('\n')}">
+                                <div class="ask-gemini-reply-icon">${ICONS.reply}</div>
+                                <div class="ask-gemini-reply-text-wrapper">
+                                    <p class="ask-gemini-reply-text">${quotes.length} quoted excerpts</p>
+                                </div>
+                            </button>
+                            <div class="ask-gemini-message-bubble">
+                                <div class="ask-gemini-bubble-text"><p>${actualMessage}</p></div>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    chipHtml = `
+                        <div class="ask-gemini-proxy-content">
+                            ${chipsHtml}
+                            <div class="ask-gemini-message-bubble">
+                                <div class="ask-gemini-bubble-text"><p>${actualMessage}</p></div>
+                            </div>
+                        </div>
+                    `;
+                }
+
+                const wrapper = el.closest('.user-query-bubble-with-background') || el.closest('.query-text') || el;
+                wrapper.innerHTML = '';
+                const proxy = document.createElement('div');
+                proxy.className = 'ask-gemini-transformed-proxy';
+                proxy.innerHTML = chipHtml;
+
+                proxy.querySelectorAll('.ask-gemini-reply-preview').forEach((btn, i) => {
+                    if (multiQuoteDisplay === 'compact') {
+                        btn.onclick = null; // compact chip is informational only
+                    } else {
+                        btn.onclick = () => scrollToAndHighlightText(quotes[i]);
+                    }
+                });
+
+                wrapper.appendChild(proxy);
                 wrapper.setAttribute('data-ag-processed', 'true');
                 wrapper.querySelectorAll('*').forEach(child => child.setAttribute('data-ag-processed', 'true'));
             }
@@ -1072,7 +1198,7 @@
         }
 
         // Hide if a quote snippet is actively loaded
-        if (currentContext) {
+        if (currentContexts.length > 0) {
             shouldShow = false;
         }
 
@@ -1132,7 +1258,7 @@
 
     // Listen for Send triggers
     document.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' && !e.shiftKey && currentContext) {
+        if (e.key === 'Enter' && !e.shiftKey && currentContexts.length > 0) {
             e.preventDefault();
             e.stopImmediatePropagation();
             maybeInjectAndSend();
@@ -1140,7 +1266,7 @@
     }, true);
 
     document.addEventListener('click', (e) => {
-        if (currentContext && e.target.closest('button[aria-label="Send message"], button.send-button')) {
+        if (currentContexts.length > 0 && e.target.closest('button[aria-label="Send message"], button.send-button')) {
             e.preventDefault();
             e.stopImmediatePropagation();
             maybeInjectAndSend();
@@ -1154,6 +1280,11 @@
     observer.observe(document.body, { childList: true, subtree: true });
 
     function updateQuotaDisplay(limits) {
+        if (!usageLimitsEnabled) {
+            const card = document.getElementById('ag-quota-sidebar');
+            if (card) card.remove();
+            return;
+        }
         if (!limits) return;
 
         // Check if user is Gemini Advanced (Pro)
@@ -1315,6 +1446,44 @@
         } else if (message.type === 'USAGE_LIMITS_UPDATED') {
             console.log('📊 Ask Gemini: Quota limits updated', message.limits);
             updateQuotaDisplay(message.limits);
+        }
+    });
+
+    // Read preferences on boot
+    chrome.storage.local.get(['multi_quote_display', 'usage_limits_enabled', 'multi_quote_enabled'], (res) => {
+        multiQuoteDisplay = res.multi_quote_display || 'expanded';
+        usageLimitsEnabled = res.usage_limits_enabled !== false;
+        multiQuoteEnabled = res.multi_quote_enabled !== false;
+
+        // Hide sidebar immediately if limits are disabled
+        if (!usageLimitsEnabled) {
+            const card = document.getElementById('ag-quota-sidebar');
+            if (card) card.remove();
+        }
+    });
+
+    // React to preference changes from the popup in real-time
+    chrome.storage.onChanged.addListener((changes, area) => {
+        if (area === 'local') {
+            if (changes.multi_quote_display) {
+                multiQuoteDisplay = changes.multi_quote_display.newValue;
+            }
+            if (changes.usage_limits_enabled) {
+                usageLimitsEnabled = changes.usage_limits_enabled.newValue !== false;
+                if (!usageLimitsEnabled) {
+                    const card = document.getElementById('ag-quota-sidebar');
+                    if (card) card.remove();
+                } else {
+                    requestUsageLimits();
+                }
+            }
+            if (changes.multi_quote_enabled) {
+                multiQuoteEnabled = changes.multi_quote_enabled.newValue !== false;
+                if (!multiQuoteEnabled && currentContexts.length > 1) {
+                    currentContexts = [currentContexts[0]];
+                    renderContextBox();
+                }
+            }
         }
     });
 

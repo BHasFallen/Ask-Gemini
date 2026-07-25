@@ -7,6 +7,7 @@ class AskGeminiTour {
     static lastTrackedStep = 0;
     static step1ListenersAttached = false;
     static step4ListenersAttached = false;
+    static step6ListenersAttached = false;
 
     static trackEvent(name, params = {}) {
         if (chrome.runtime && chrome.runtime.sendMessage) {
@@ -301,7 +302,7 @@ class AskGeminiTour {
 
             if (input && input.offsetParent !== null) {
                 this.setTooltip({
-                    stepName: 'Step 1 of 4',
+                    stepName: 'Step 1 of 6',
                     title: 'Say Hello to Gemini',
                     text: 'Type a quick message in the box below, then hit <b>Send</b> to start the conversation!',
                     primaryEl: input,
@@ -328,14 +329,14 @@ class AskGeminiTour {
             }
         }
 
-        // ── Step 2: Wait for reply, then highlight it ──────────────────
+        // ── Step 2: Highlight first sentence ───────────────────────────
         else if (this.step === 2) {
             const reply = this.getLatestGeminiReply();
 
             if (!reply) {
                 // Still generating — show centered "waiting" card, no spotlight
                 this.setTooltip({
-                    stepName: 'Step 2 of 4',
+                    stepName: 'Step 2 of 6',
                     title: 'Gemini is Thinking…',
                     text: 'Wait for the reply to finish, then <b>highlight a sentence</b> in Gemini\'s response using your mouse.',
                     primaryEl: null,
@@ -344,8 +345,8 @@ class AskGeminiTour {
             } else {
                 // Reply is ready — spotlight it and prompt user to highlight
                 this.setTooltip({
-                    stepName: 'Step 2 of 4',
-                    title: 'Highlight a Sentence',
+                    stepName: 'Step 2 of 6',
+                    title: 'Highlight First Sentence',
                     text: 'Gemini replied! Now <b>click and drag</b> to highlight any word or sentence in that response.',
                     primaryEl: reply,
                     position: 'top'
@@ -360,7 +361,7 @@ class AskGeminiTour {
             }
         }
 
-        // ── Step 3: Click the float button ─────────────────────────────
+        // ── Step 3: Click "Ask Gemini" to queue first quote ─────────────
         else if (this.step === 3) {
             // Check if context box is already active (i.e. float button was clicked)
             const contextBox = document.getElementById('ask-gemini-context-box');
@@ -375,9 +376,9 @@ class AskGeminiTour {
 
             if (floatBtn && floatBtn.style.display !== 'none') {
                 this.setTooltip({
-                    stepName: 'Step 3 of 4',
+                    stepName: 'Step 3 of 6',
                     title: 'Click "Ask Gemini"',
-                    text: 'The floating button appeared! Click it to <b>lock in your highlighted context</b>.',
+                    text: 'The floating button appeared! Click it to <b>lock in your first highlighted quote</b>.',
                     primaryEl: floatBtn,
                     secondaryEl: reply,
                     position: 'bottom'
@@ -389,33 +390,106 @@ class AskGeminiTour {
             }
         }
 
-        // ── Step 4: Type reply & send ──────────────────────────────────
+        // ── Step 4: Highlight a second sentence ────────────────────────
         else if (this.step === 4) {
+            const contextBox = document.getElementById('ask-gemini-context-box');
+            if (!contextBox || contextBox.style.display === 'none') {
+                // Context cleared, restart at step 2
+                this.step = 2;
+                chrome.storage.local.set({ tour_step: 2 });
+                return;
+            }
+
+            // Check if 2 quotes are already queued
+            const contextText = document.getElementById('ask-gemini-context-content')?.innerText || '';
+            if (contextText.includes('queued') || parseInt(contextText) > 1) {
+                this.step = 6;
+                chrome.storage.local.set({ tour_step: 6 });
+                return;
+            }
+
+            const reply = this.getLatestGeminiReply();
+            this.setTooltip({
+                stepName: 'Step 4 of 6',
+                title: 'Highlight a Second Sentence',
+                text: 'First quote locked! Now, <b>click and drag to highlight another sentence</b> anywhere in the response.',
+                primaryEl: reply,
+                position: 'top'
+            });
+
+            // Advance when the extension's float button appears again
+            const floatBtn = document.getElementById('ask-gemini-float-btn');
+            if (floatBtn && floatBtn.style.display !== 'none') {
+                this.step = 5;
+                chrome.storage.local.set({ tour_step: 5 });
+            }
+        }
+
+        // ── Step 5: Click "+ Add Quote" to queue second quote ───────────
+        else if (this.step === 5) {
+            const contextBox = document.getElementById('ask-gemini-context-box');
+            if (!contextBox || contextBox.style.display === 'none') {
+                this.step = 2;
+                chrome.storage.local.set({ tour_step: 2 });
+                return;
+            }
+
+            // Check if context text reflects multiple quotes queued
+            const contextText = document.getElementById('ask-gemini-context-content')?.innerText || '';
+            if (contextText.includes('queued') || parseInt(contextText) > 1) {
+                this.step = 6;
+                chrome.storage.local.set({ tour_step: 6 });
+                return;
+            }
+
+            const floatBtn = document.getElementById('ask-gemini-float-btn');
+            const reply = this.getLatestGeminiReply();
+
+            if (floatBtn && floatBtn.style.display !== 'none') {
+                this.setTooltip({
+                    stepName: 'Step 5 of 6',
+                    title: 'Click "+ Add Quote"',
+                    text: 'The floating button changed to "+ Add Quote"! Click it to <b>queue this second quote</b> next to the first one.',
+                    primaryEl: floatBtn,
+                    secondaryEl: reply,
+                    position: 'bottom'
+                });
+            } else {
+                // Selection was lost — go back to step 4
+                this.step = 4;
+                chrome.storage.local.set({ tour_step: 4 });
+            }
+        }
+
+        // ── Step 6: Type reply and send with multiple quotes ────────────
+        else if (this.step === 6) {
             const input = this.getInput();
             const send = this.getSendButton();
             const contextBox = document.getElementById('ask-gemini-context-box');
 
             if (!contextBox || contextBox.style.display === 'none') {
-                this.step = 2; return; // context cleared, restart
+                this.step = 2;
+                chrome.storage.local.set({ tour_step: 2 });
+                return; // context cleared, restart
             }
 
             if (input) {
                 this.setTooltip({
-                    stepName: 'Step 4 of 4',
-                    title: 'Context Locked! Now Reply',
-                    text: 'Type your follow-up (e.g. <i>"expand on this"</i>) and hit <b>Send</b> to reply with perfect context!',
+                    stepName: 'Step 6 of 6',
+                    title: 'Multiple Quotes Locked!',
+                    text: 'You now have multiple quotes in the queue! Type your follow-up prompt and hit <b>Send</b> to see them in action.',
                     primaryEl: input,
                     secondaryEl: send,
                     position: 'top'
                 });
 
-                if (!this.step4ListenersAttached) {
-                    this.step4ListenersAttached = true;
+                if (!this.step6ListenersAttached) {
+                    this.step6ListenersAttached = true;
 
                     const advance = () => {
-                        if (this.step !== 4) return;
-                        this.step = 5;
-                        chrome.storage.local.set({ tour_step: 5 });
+                        if (this.step !== 6) return;
+                        this.step = 7;
+                        chrome.storage.local.set({ tour_step: 7 });
                     };
 
                     input.addEventListener('keydown', (e) => {
@@ -428,13 +502,13 @@ class AskGeminiTour {
             }
         }
 
-        // ── Step 5: Done ───────────────────────────────────────────────
-        else if (this.step === 5) {
+        // ── Step 7: Done ───────────────────────────────────────────────
+        else if (this.step === 7) {
             this.clearSpotlight2();
             this.setTooltip({
                 stepName: '🎉 Done!',
-                title: "You're a Pro Now",
-                text: "You've mastered contextual replies with <b>Quote Reply for Gemini</b>. Every reply from here on will be laser-precise. Enjoy!",
+                title: "You're a Multi-Quote Pro!",
+                text: "You've successfully queued multiple quotes and sent your reply. Every reply from here on will be laser-precise. Enjoy!",
                 primaryEl: null
             });
 

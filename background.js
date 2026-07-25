@@ -634,11 +634,6 @@ chrome.runtime.onInstalled.addListener(async (details) => {
             });
         }
 
-        // Fire uninstall_initiated just before registering the URL so it always lands
-        AmplitudeWizard.trackEvent('uninstall_initiated', {
-            version: chrome.runtime.getManifest().version,
-            device_id: deviceId
-        });
         const feedbackFormUrl = 'https://docs.google.com/forms/d/e/1FAIpQLSfr82mMdRgwSPY9ZsQkdRp_HXKKwmVuWO7GmjeZ3fS9XHpqsA/viewform';
         const uninstallUrl = `${feedbackFormUrl}?entry.648517234=${deviceId}&device_id=${deviceId}`;
         chrome.runtime.setUninstallURL(uninstallUrl);

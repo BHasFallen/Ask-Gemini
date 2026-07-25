@@ -8,7 +8,7 @@
 class PopupController {
     constructor() {
         this.versionBadge = document.getElementById('version-badge');
-        this.viewLogsLink = document.getElementById('view-logs');
+        this.reportProblemLink = document.getElementById('report-problem');
         this.timeSavedEl = document.getElementById('time-saved');
         this.wordsAnalyzedEl = document.getElementById('words-analyzed');
         this.init();
@@ -17,6 +17,7 @@ class PopupController {
     async init() {
         this.loadVersion();
         this.loadStats();
+        this.loadSettings();
         this.setupEventListeners();
 
         // Track Popup View
@@ -67,11 +68,80 @@ class PopupController {
         }
     }
 
-    setupEventListeners() {
-        this.viewLogsLink.addEventListener('click', (e) => {
-            e.preventDefault();
-            this.viewSessionLogs();
+    async loadSettings() {
+        const res = await chrome.storage.local.get([
+            'multi_quote_display',
+            'usage_limits_enabled',
+            'multi_quote_enabled'
+        ]);
+        const display = res.multi_quote_display || 'expanded';
+        this.applyToggleState(display);
+
+        const limits = res.usage_limits_enabled !== false;
+        this.applyLimitsToggleState(limits);
+
+        const mq = res.multi_quote_enabled !== false;
+        this.applyMqToggleState(mq);
+    }
+
+    applyToggleState(value) {
+        document.getElementById('toggle-expanded').classList.toggle('active', value === 'expanded');
+        document.getElementById('toggle-compact').classList.toggle('active', value === 'compact');
+    }
+
+    applyLimitsToggleState(enabled) {
+        document.getElementById('toggle-limits-on').classList.toggle('active', enabled);
+        document.getElementById('toggle-limits-off').classList.toggle('active', !enabled);
+    }
+
+    applyMqToggleState(enabled) {
+        document.getElementById('toggle-mq-on').classList.toggle('active', enabled);
+        document.getElementById('toggle-mq-off').classList.toggle('active', !enabled);
+    }
+
+    async saveMultiQuoteStyle(value) {
+        await chrome.storage.local.set({ multi_quote_display: value });
+        this.applyToggleState(value);
+    }
+
+    async saveUsageLimitsState(enabled) {
+        await chrome.storage.local.set({ usage_limits_enabled: enabled });
+        this.applyLimitsToggleState(enabled);
+
+        // Track setting change event
+        chrome.runtime.sendMessage({ 
+            type: 'TRACK_EVENT', 
+            name: 'setting_usage_limits_changed',
+            params: { enabled }
         });
+    }
+
+    async saveMultiQuoteState(enabled) {
+        await chrome.storage.local.set({ multi_quote_enabled: enabled });
+        this.applyMqToggleState(enabled);
+
+        // Track setting change event
+        chrome.runtime.sendMessage({ 
+            type: 'TRACK_EVENT', 
+            name: 'setting_multi_quote_changed',
+            params: { enabled }
+        });
+    }
+
+    setupEventListeners() {
+        this.reportProblemLink.addEventListener('click', (e) => {
+            e.preventDefault();
+            this.reportProblem();
+        });
+
+        document.getElementById('toggle-expanded').addEventListener('click', () => this.saveMultiQuoteStyle('expanded'));
+        document.getElementById('toggle-compact').addEventListener('click', () => this.saveMultiQuoteStyle('compact'));
+
+        document.getElementById('toggle-limits-on').addEventListener('click', () => this.saveUsageLimitsState(true));
+        document.getElementById('toggle-limits-off').addEventListener('click', () => this.saveUsageLimitsState(false));
+
+        document.getElementById('toggle-mq-on').addEventListener('click', () => this.saveMultiQuoteState(true));
+        document.getElementById('toggle-mq-off').addEventListener('click', () => this.saveMultiQuoteState(false));
 
         const rateBtn = document.getElementById('rate-extension-btn');
         if (rateBtn) {
@@ -85,15 +155,23 @@ class PopupController {
         }
     }
 
-    async viewSessionLogs() {
+    async reportProblem() {
         try {
-            const response = await chrome.runtime.sendMessage({ type: 'GET_SESSION_LOGS' });
-            if (response && response.logs) {
-                console.log('📊 Session Logs:', response.logs);
-                alert(`📊 Captured ${response.logs.length} events in this session.\nCheck console for details.`);
-            }
+            // Track the report problem click
+            chrome.runtime.sendMessage({ 
+                type: 'TRACK_EVENT', 
+                name: 'popup_report_problem_click' 
+            });
+
+            // Retrieve Amplitude device ID
+            const res = await chrome.storage.local.get(['amplitude_device_id']);
+            const deviceId = res.amplitude_device_id || '';
+            const feedbackFormUrl = 'https://docs.google.com/forms/d/e/1FAIpQLSfr82mMdRgwSPY9ZsQkdRp_HXKKwmVuWO7GmjeZ3fS9XHpqsA/viewform';
+            const url = `${feedbackFormUrl}?entry.648517234=${deviceId}&device_id=${deviceId}`;
+            
+            chrome.tabs.create({ url });
         } catch (e) {
-            console.error('Failed to fetch logs:', e);
+            console.error('Failed to report problem:', e);
         }
     }
 }
