@@ -1859,6 +1859,7 @@
     let tocObserver = null;
     let tocScheduledTimer = null;
     let lastTOCSignature = '';
+    let activePromptIndex = 0;
 
     function scheduleTOCBuild() {
         if (tocScheduledTimer) return;
@@ -1892,14 +1893,15 @@
             const snippet = cleanedText.length > 50 ? cleanedText.slice(0, 50) + '...' : (cleanedText || `Prompt ${index + 1}`);
 
             items.push({
-                index: index + 1,
+                index: index,
+                num: index + 1,
                 anchorId: promptEl.id,
                 title: snippet
             });
         });
 
         // Compare signature to prevent unnecessary DOM re-renders & loops
-        const currentSignature = items.map(i => `${i.anchorId}:${i.title}`).join('|');
+        const currentSignature = items.map(i => `${i.anchorId}:${i.title}`).join('|') + `|active:${activePromptIndex}`;
         if (currentSignature === lastTOCSignature && document.getElementById('ag-toc-widget')) {
             return;
         }
@@ -1917,50 +1919,76 @@
         }
 
         widget.innerHTML = `
-            <button id="ag-toc-trigger" aria-label="Table of Contents">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <line x1="8" y1="6" x2="21" y2="6"></line>
-                    <line x1="8" y1="12" x2="21" y2="12"></line>
-                    <line x1="8" y1="18" x2="21" y2="18"></line>
-                    <line x1="3" y1="6" x2="3.01" y2="6"></line>
-                    <line x1="3" y1="12" x2="3.01" y2="12"></line>
-                    <line x1="3" y1="18" x2="3.01" y2="18"></line>
-                </svg>
-                <span>Contents (${items.length})</span>
-            </button>
+            <div id="ag-toc-bar" class="flex flex-col items-center gap-2 py-1">
+                ${items.map((item, idx) => `
+                    <button type="button" 
+                        class="ag-toc-dash h-0.5 w-4.5 shrink-0 rounded-full transition-all" 
+                        aria-label="Prompt ${item.num}" 
+                        data-tooltip="${item.title}"
+                        data-toc-item-index="${idx}"
+                        ${idx === activePromptIndex ? 'data-toc-active="true"' : ''}>
+                    </button>
+                `).join('')}
+            </div>
             <div id="ag-toc-panel" style="display: ${tocExpanded ? 'flex' : 'none'};">
-                <div id="ag-toc-header">
-                    <h4 id="ag-toc-title">Table of Contents</h4>
-                    <span id="ag-toc-count">${items.length} prompts</span>
-                </div>
-                <div id="ag-toc-list">
-                    ${items.map(item => `
-                        <button class="ag-toc-item" data-target="${item.anchorId}">
-                            <span class="ag-toc-num">${item.index}.</span>
-                            <span class="ag-toc-text">${item.title}</span>
-                        </button>
-                    `).join('')}
-                </div>
+                ${items.map((item, idx) => `
+                    <button class="ag-toc-item" data-target="${item.anchorId}" data-toc-item-index="${idx}" ${idx === activePromptIndex ? 'data-toc-active="true"' : ''}>
+                        <span class="ag-toc-text">${item.title}</span>
+                    </button>
+                `).join('')}
             </div>
         `;
 
-        const trigger = widget.querySelector('#ag-toc-trigger');
-        const panel = widget.querySelector('#ag-toc-panel');
+        // Click listeners on minimap dash buttons
+        widget.querySelectorAll('.ag-toc-dash').forEach(dash => {
+            dash.onclick = (e) => {
+                e.stopPropagation();
+                const idx = parseInt(dash.getAttribute('data-toc-item-index'));
+                activePromptIndex = idx;
+                const targetId = items[idx] ? items[idx].anchorId : null;
+                if (targetId) scrollToPrompt(targetId);
+                // Toggle expanded view when clicking minimap bar
+                tocExpanded = !tocExpanded;
+                const panel = widget.querySelector('#ag-toc-panel');
+                if (panel) panel.style.display = tocExpanded ? 'flex' : 'none';
+                updateActiveState(items);
+            };
+        });
 
-        trigger.onclick = (e) => {
-            e.stopPropagation();
-            tocExpanded = !tocExpanded;
-            panel.style.display = tocExpanded ? 'flex' : 'none';
-        };
-
+        // Click listeners inside expanded panel items
         widget.querySelectorAll('.ag-toc-item').forEach(btn => {
             btn.onclick = (e) => {
                 e.stopPropagation();
+                const idx = parseInt(btn.getAttribute('data-toc-item-index'));
+                activePromptIndex = idx;
                 const targetId = btn.getAttribute('data-target');
-                scrollToPrompt(targetId);
+                if (targetId) scrollToPrompt(targetId);
                 tocExpanded = false;
-                panel.style.display = 'none';
+                const panel = widget.querySelector('#ag-toc-panel');
+                if (panel) panel.style.display = 'none';
+                updateActiveState(items);
             };
+        });
+    }
+
+    function updateActiveState(items) {
+        const widget = document.getElementById('ag-toc-widget');
+        if (!widget) return;
+
+        widget.querySelectorAll('.ag-toc-dash').forEach((dash, idx) => {
+            if (idx === activePromptIndex) {
+                dash.setAttribute('data-toc-active', 'true');
+            } else {
+                dash.removeAttribute('data-toc-active');
+            }
+        });
+
+        widget.querySelectorAll('.ag-toc-item').forEach((item, idx) => {
+            if (idx === activePromptIndex) {
+                item.setAttribute('data-toc-active', 'true');
+            } else {
+                item.removeAttribute('data-toc-active');
+            }
         });
     }
 
@@ -1976,15 +2004,6 @@
         if (!target) return;
 
         target.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        
-        target.classList.remove('ag-prompt-pulse');
-        // Force reflow
-        void target.offsetWidth;
-        target.classList.add('ag-prompt-pulse');
-
-        setTimeout(() => {
-            target.classList.remove('ag-prompt-pulse');
-        }, 2000);
     }
 
     function setupTOCObserver() {
