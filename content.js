@@ -1888,9 +1888,15 @@
                 promptEl.id = anchorId;
             }
 
-            const rawText = promptEl.innerText || promptEl.textContent || '';
-            const cleanedText = rawText.replace(/\s+/g, ' ').trim();
-            const snippet = cleanedText.length > 50 ? cleanedText.slice(0, 50) + '...' : (cleanedText || `Prompt ${index + 1}`);
+            // Prefer querying .query-text or user-query-content directly to exclude header text
+            const queryTextEl = promptEl.querySelector('.query-text, [data-test-id="user-query-content"], .user-query-container');
+            let rawText = (queryTextEl ? queryTextEl.innerText || queryTextEl.textContent : promptEl.innerText || promptEl.textContent) || '';
+            
+            // Clean up whitespace and strip leading "You said", "You said:", "You:"
+            let cleanedText = rawText.replace(/\s+/g, ' ').trim();
+            cleanedText = cleanedText.replace(/^(you said|you:)\s*/i, '').trim();
+
+            const snippet = cleanedText.length > 55 ? cleanedText.slice(0, 55) + '...' : (cleanedText || `Prompt ${index + 1}`);
 
             items.push({
                 index: index,
