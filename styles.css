@@ -318,3 +318,160 @@
   font-weight: 400;
   text-align: left !important;
 }
+
+/* ── Native Gemini Material 3 Smart Paste Dialog & Toast ───────────────── */
+.ag-sp-dialog-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 999999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: ag-sp-fade-in 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes ag-sp-fade-in {
+  from { opacity: 0; transform: scale(0.96); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+.ag-sp-dialog-card {
+  background: #1e1e24;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 28px;
+  padding: 24px 28px;
+  width: 100%;
+  max-width: 440px;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.5), 0 4px 12px rgba(0, 0, 0, 0.3);
+  font-family: 'Google Sans', 'Roboto', -apple-system, sans-serif;
+  box-sizing: border-box;
+}
+
+.ag-sp-dialog-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.ag-sp-dialog-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: rgba(168, 199, 250, 0.15);
+  color: #a8c7fa;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.ag-sp-dialog-title {
+  font-size: 18px;
+  font-weight: 500;
+  color: #e6e0e9;
+  margin: 0;
+  letter-spacing: -0.2px;
+}
+
+.ag-sp-dialog-body {
+  font-size: 14px;
+  color: #c4c6d0;
+  line-height: 1.55;
+  margin: 0 0 24px 0;
+}
+
+.ag-sp-dialog-body strong {
+  color: #a8c7fa;
+  font-weight: 600;
+}
+
+.ag-sp-dialog-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+.ag-sp-btn-primary {
+  background: #a8c7fa;
+  color: #001d35;
+  border: none;
+  border-radius: 100px;
+  padding: 10px 22px;
+  font-family: 'Google Sans', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+
+.ag-sp-btn-primary:hover {
+  background: #c3dcff;
+}
+
+.ag-sp-btn-secondary {
+  background: transparent;
+  color: #a8c7fa;
+  border: 1px solid rgba(168, 199, 250, 0.3);
+  border-radius: 100px;
+  padding: 9px 20px;
+  font-family: 'Google Sans', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.ag-sp-btn-secondary:hover {
+  background: rgba(168, 199, 250, 0.1);
+  border-color: rgba(168, 199, 250, 0.5);
+}
+
+.ag-sp-toast-card {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 999999;
+  background: #1e1e24;
+  border: 1px solid rgba(168, 199, 250, 0.3);
+  border-radius: 20px;
+  padding: 18px 22px;
+  color: #e6e0e9;
+  font-family: 'Google Sans', 'Roboto', sans-serif;
+  font-size: 13.5px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  max-width: 380px;
+  animation: ag-sp-fade-in 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  box-sizing: border-box;
+}
+
+.ag-sp-tag-btn {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 100px;
+  color: #c4c6d0;
+  padding: 6px 12px;
+  font-family: 'Google Sans', sans-serif;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.ag-sp-tag-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+}
+
+.ag-sp-tag-btn.active {
+  background: rgba(168, 199, 250, 0.2);
+  border-color: #a8c7fa;
+  color: #a8c7fa;
+  font-weight: 500;
+}

@@ -72,7 +72,8 @@ class PopupController {
         const res = await chrome.storage.local.get([
             'multi_quote_display',
             'usage_limits_enabled',
-            'multi_quote_enabled'
+            'multi_quote_enabled',
+            'smart_paste_behavior'
         ]);
         const display = res.multi_quote_display || 'expanded';
         this.applyToggleState(display);
@@ -82,6 +83,9 @@ class PopupController {
 
         const mq = res.multi_quote_enabled !== false;
         this.applyMqToggleState(mq);
+
+        const sp = res.smart_paste_behavior || 'auto';
+        this.applySpToggleState(sp);
     }
 
     applyToggleState(value) {
@@ -97,6 +101,12 @@ class PopupController {
     applyMqToggleState(enabled) {
         document.getElementById('toggle-mq-on').classList.toggle('active', enabled);
         document.getElementById('toggle-mq-off').classList.toggle('active', !enabled);
+    }
+
+    applySpToggleState(behavior) {
+        document.getElementById('toggle-sp-auto').classList.toggle('active', behavior === 'auto');
+        document.getElementById('toggle-sp-ask').classList.toggle('active', behavior === 'ask');
+        document.getElementById('toggle-sp-off').classList.toggle('active', behavior === 'off');
     }
 
     async saveMultiQuoteStyle(value) {
@@ -128,6 +138,21 @@ class PopupController {
         });
     }
 
+    async saveSmartPasteBehavior(behavior) {
+        await chrome.storage.local.set({ 
+            smart_paste_behavior: behavior,
+            smart_paste_enabled: behavior !== 'off',
+            smart_paste_preference_explicitly_set: true
+        });
+        this.applySpToggleState(behavior);
+
+        chrome.runtime.sendMessage({ 
+            type: 'TRACK_EVENT', 
+            name: 'setting_smart_paste_changed',
+            params: { behavior }
+        });
+    }
+
     setupEventListeners() {
         this.reportProblemLink.addEventListener('click', (e) => {
             e.preventDefault();
@@ -142,6 +167,10 @@ class PopupController {
 
         document.getElementById('toggle-mq-on').addEventListener('click', () => this.saveMultiQuoteState(true));
         document.getElementById('toggle-mq-off').addEventListener('click', () => this.saveMultiQuoteState(false));
+
+        document.getElementById('toggle-sp-auto').addEventListener('click', () => this.saveSmartPasteBehavior('auto'));
+        document.getElementById('toggle-sp-ask').addEventListener('click', () => this.saveSmartPasteBehavior('ask'));
+        document.getElementById('toggle-sp-off').addEventListener('click', () => this.saveSmartPasteBehavior('off'));
 
         const rateBtn = document.getElementById('rate-extension-btn');
         if (rateBtn) {

@@ -183,20 +183,50 @@ body.mode-update .show-on-install { display: none !important; }
     margin-bottom: 20px;
 }
 
-.ob-changelog {
-    list-style: none;
+.ob-updates-grid {
     display: flex;
     flex-direction: column;
-    gap: 14px;
+    gap: 12px;
 }
 
-.ob-changelog li {
-    font-size: 14px;
+.ob-update-card {
+    background: var(--ob-surface-2);
+    border: 1px solid var(--ob-border);
+    border-radius: 14px;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    transition: transform 0.15s ease, border-color 0.15s ease;
+}
+
+.ob-update-card:hover {
+    border-color: rgba(168, 199, 250, 0.3);
+    transform: translateY(-1px);
+}
+
+.ob-card-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.ob-card-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: #ffffff;
+    letter-spacing: -0.2px;
+}
+
+.ob-card-desc {
+    font-size: 13.5px;
     color: var(--ob-text-dim);
     line-height: 1.5;
-    display: flex;
-    align-items: flex-start;
-    gap: 10px;
+}
+
+.ob-card-desc strong {
+    color: var(--ob-primary);
+    font-weight: 600;
 }
 
 .ob-tag {
