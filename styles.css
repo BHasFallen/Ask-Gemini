@@ -475,3 +475,152 @@
   color: #a8c7fa;
   font-weight: 500;
 }
+
+/* ── Dynamic Table of Contents (TOC) ─────────────────────────────────── */
+#ag-toc-widget {
+  position: fixed;
+  top: 80px;
+  right: 24px;
+  z-index: 999990;
+  font-family: 'Google Sans', 'Roboto', -apple-system, sans-serif;
+  box-sizing: border-box;
+}
+
+#ag-toc-trigger {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #1e1e24;
+  border: 1px solid rgba(168, 199, 250, 0.25);
+  border-radius: 100px;
+  padding: 8px 16px;
+  color: #e6e0e9;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(10px);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+#ag-toc-trigger:hover {
+  background: #28292e;
+  border-color: rgba(168, 199, 250, 0.5);
+  transform: translateY(-1px);
+}
+
+#ag-toc-trigger svg {
+  color: #a8c7fa;
+  flex-shrink: 0;
+}
+
+#ag-toc-panel {
+  position: absolute;
+  top: 42px;
+  right: 0;
+  width: 320px;
+  max-height: 420px;
+  background: #1e1e24;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
+  padding: 16px;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  animation: ag-sp-fade-in 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-sizing: border-box;
+}
+
+#ag-toc-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+#ag-toc-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #a8c7fa;
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+#ag-toc-count {
+  font-size: 11px;
+  color: #c4c6d0;
+  background: rgba(255, 255, 255, 0.08);
+  padding: 2px 8px;
+  border-radius: 100px;
+}
+
+#ag-toc-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  overflow-y: auto;
+  max-height: 340px;
+  padding-right: 4px;
+}
+
+#ag-toc-list::-webkit-scrollbar {
+  width: 5px;
+}
+
+#ag-toc-list::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 10px;
+}
+
+.ag-toc-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: transparent;
+  border: none;
+  color: #e6e0e9;
+  font-family: inherit;
+  font-size: 12.5px;
+  line-height: 1.4;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.ag-toc-item:hover {
+  background: rgba(168, 199, 250, 0.12);
+  color: #ffffff;
+}
+
+.ag-toc-num {
+  font-size: 11px;
+  font-weight: 600;
+  color: #a8c7fa;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.ag-toc-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+
+/* Prompt Target Pulse Highlight */
+@keyframes ag-prompt-pulse-anim {
+  0% { box-shadow: 0 0 0 0 rgba(168, 199, 250, 0); }
+  30% { box-shadow: 0 0 0 4px rgba(168, 199, 250, 0.5); }
+  70% { box-shadow: 0 0 0 4px rgba(168, 199, 250, 0.5); }
+  100% { box-shadow: 0 0 0 0 rgba(168, 199, 250, 0); }
+}
+
+.ag-prompt-pulse {
+  animation: ag-prompt-pulse-anim 1.8s ease-in-out;
+  border-radius: 12px;
+}

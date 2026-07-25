@@ -86,6 +86,9 @@ class PopupController {
 
         const sp = res.smart_paste_behavior || 'auto';
         this.applySpToggleState(sp);
+
+        const toc = res.toc_enabled !== false;
+        this.applyTocToggleState(toc);
     }
 
     applyToggleState(value) {
@@ -107,6 +110,11 @@ class PopupController {
         document.getElementById('toggle-sp-auto').classList.toggle('active', behavior === 'auto');
         document.getElementById('toggle-sp-ask').classList.toggle('active', behavior === 'ask');
         document.getElementById('toggle-sp-off').classList.toggle('active', behavior === 'off');
+    }
+
+    applyTocToggleState(enabled) {
+        document.getElementById('toggle-toc-on').classList.toggle('active', enabled);
+        document.getElementById('toggle-toc-off').classList.toggle('active', !enabled);
     }
 
     async saveMultiQuoteStyle(value) {
@@ -153,6 +161,17 @@ class PopupController {
         });
     }
 
+    async saveTocState(enabled) {
+        await chrome.storage.local.set({ toc_enabled: enabled });
+        this.applyTocToggleState(enabled);
+
+        chrome.runtime.sendMessage({ 
+            type: 'TRACK_EVENT', 
+            name: 'setting_toc_changed',
+            params: { enabled }
+        });
+    }
+
     setupEventListeners() {
         this.reportProblemLink.addEventListener('click', (e) => {
             e.preventDefault();
@@ -171,6 +190,9 @@ class PopupController {
         document.getElementById('toggle-sp-auto').addEventListener('click', () => this.saveSmartPasteBehavior('auto'));
         document.getElementById('toggle-sp-ask').addEventListener('click', () => this.saveSmartPasteBehavior('ask'));
         document.getElementById('toggle-sp-off').addEventListener('click', () => this.saveSmartPasteBehavior('off'));
+
+        document.getElementById('toggle-toc-on').addEventListener('click', () => this.saveTocState(true));
+        document.getElementById('toggle-toc-off').addEventListener('click', () => this.saveTocState(false));
 
         const rateBtn = document.getElementById('rate-extension-btn');
         if (rateBtn) {

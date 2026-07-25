@@ -1791,7 +1791,8 @@
         'multi_quote_enabled',
         'smart_paste_behavior',
         'smart_paste_threshold',
-        'smart_paste_feedback_done'
+        'smart_paste_feedback_done',
+        'toc_enabled'
     ], (res) => {
         multiQuoteDisplay = res.multi_quote_display || 'expanded';
         usageLimitsEnabled = res.usage_limits_enabled !== false;
@@ -1799,12 +1800,16 @@
         smartPasteBehavior = res.smart_paste_behavior || 'auto';
         smartPasteThreshold = res.smart_paste_threshold || 20000;
         smartPasteFeedbackDone = res.smart_paste_feedback_done === true;
+        tocEnabled = res.toc_enabled !== false;
 
         // Hide sidebar immediately if limits are disabled
         if (!usageLimitsEnabled) {
             const card = document.getElementById('ag-quota-sidebar');
             if (card) card.remove();
         }
+
+        buildTableOfContents();
+        setupTOCObserver();
     });
 
     // React to preference changes from the popup in real-time
@@ -1838,14 +1843,153 @@
             if (changes.smart_paste_feedback_done) {
                 smartPasteFeedbackDone = changes.smart_paste_feedback_done.newValue === true;
             }
+            if (changes.toc_enabled) {
+                tocEnabled = changes.toc_enabled.newValue !== false;
+                buildTableOfContents();
+            }
         }
     });
+
+    // ═══════════════════════════════════════════════════════════════════════════════
+    // SECTION 4.4: DYNAMIC TABLE OF CONTENTS (TOC)
+    // ═══════════════════════════════════════════════════════════════════════════════
+
+    let tocEnabled = true;
+    let tocExpanded = false;
+    let tocObserver = null;
+
+    function buildTableOfContents() {
+        if (!tocEnabled) {
+            removeTOCWidget();
+            return;
+        }
+
+        const prompts = document.querySelectorAll('user-query');
+        if (!prompts || prompts.length === 0) {
+            removeTOCWidget();
+            return;
+        }
+
+        const items = [];
+        prompts.forEach((promptEl, index) => {
+            const anchorId = `ag-toc-prompt-${index}`;
+            if (!promptEl.id || !promptEl.id.startsWith('ag-toc-prompt-')) {
+                promptEl.id = anchorId;
+            }
+
+            const rawText = promptEl.innerText || promptEl.textContent || '';
+            const cleanedText = rawText.replace(/\s+/g, ' ').trim();
+            const snippet = cleanedText.length > 50 ? cleanedText.slice(0, 50) + '...' : (cleanedText || `Prompt ${index + 1}`);
+
+            items.push({
+                index: index + 1,
+                anchorId: promptEl.id,
+                title: snippet
+            });
+        });
+
+        renderTOCWidget(items);
+    }
+
+    function renderTOCWidget(items) {
+        let widget = document.getElementById('ag-toc-widget');
+        if (!widget) {
+            widget = document.createElement('div');
+            widget.id = 'ag-toc-widget';
+            document.body.appendChild(widget);
+        }
+
+        widget.innerHTML = `
+            <button id="ag-toc-trigger" aria-label="Table of Contents">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="8" y1="6" x2="21" y2="6"></line>
+                    <line x1="8" y1="12" x2="21" y2="12"></line>
+                    <line x1="8" y1="18" x2="21" y2="18"></line>
+                    <line x1="3" y1="6" x2="3.01" y2="6"></line>
+                    <line x1="3" y1="12" x2="3.01" y2="12"></line>
+                    <line x1="3" y1="18" x2="3.01" y2="18"></line>
+                </svg>
+                <span>Contents (${items.length})</span>
+            </button>
+            <div id="ag-toc-panel" style="display: ${tocExpanded ? 'flex' : 'none'};">
+                <div id="ag-toc-header">
+                    <h4 id="ag-toc-title">Table of Contents</h4>
+                    <span id="ag-toc-count">${items.length} prompts</span>
+                </div>
+                <div id="ag-toc-list">
+                    ${items.map(item => `
+                        <button class="ag-toc-item" data-target="${item.anchorId}">
+                            <span class="ag-toc-num">${item.index}.</span>
+                            <span class="ag-toc-text">${item.title}</span>
+                        </button>
+                    `).join('')}
+                </div>
+            </div>
+        `;
+
+        const trigger = widget.querySelector('#ag-toc-trigger');
+        const panel = widget.querySelector('#ag-toc-panel');
+
+        trigger.onclick = (e) => {
+            e.stopPropagation();
+            tocExpanded = !tocExpanded;
+            panel.style.display = tocExpanded ? 'flex' : 'none';
+        };
+
+        widget.querySelectorAll('.ag-toc-item').forEach(btn => {
+            btn.onclick = (e) => {
+                e.stopPropagation();
+                const targetId = btn.getAttribute('data-target');
+                scrollToPrompt(targetId);
+                tocExpanded = false;
+                panel.style.display = 'none';
+            };
+        });
+    }
+
+    function removeTOCWidget() {
+        const widget = document.getElementById('ag-toc-widget');
+        if (widget) widget.remove();
+        tocExpanded = false;
+    }
+
+    function scrollToPrompt(targetId) {
+        const target = document.getElementById(targetId);
+        if (!target) return;
+
+        target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        
+        target.classList.remove('ag-prompt-pulse');
+        // Force reflow
+        void target.offsetWidth;
+        target.classList.add('ag-prompt-pulse');
+
+        setTimeout(() => {
+            target.classList.remove('ag-prompt-pulse');
+        }, 2000);
+    }
+
+    function setupTOCObserver() {
+        if (tocObserver) return;
+
+        const targetNode = document.querySelector('infinite-scroller') || document.body;
+        tocObserver = new MutationObserver(() => {
+            buildTableOfContents();
+        });
+
+        tocObserver.observe(targetNode, {
+            childList: true,
+            subtree: true
+        });
+    }
 
     // Initial run
     transformMessages();
     requestUsageLimits();
     updateUserProfile().catch(console.error);
     incrementSessionVisits().catch(console.error);
+    buildTableOfContents();
+    setupTOCObserver();
     
     // Auto-refresh limits every 60 seconds
     setInterval(requestUsageLimits, 60000);
