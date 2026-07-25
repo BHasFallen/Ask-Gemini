@@ -1857,6 +1857,16 @@
     let tocEnabled = true;
     let tocExpanded = false;
     let tocObserver = null;
+    let tocScheduledTimer = null;
+    let lastTOCSignature = '';
+
+    function scheduleTOCBuild() {
+        if (tocScheduledTimer) return;
+        tocScheduledTimer = requestAnimationFrame(() => {
+            tocScheduledTimer = null;
+            buildTableOfContents();
+        });
+    }
 
     function buildTableOfContents() {
         if (!tocEnabled) {
@@ -1887,6 +1897,13 @@
                 title: snippet
             });
         });
+
+        // Compare signature to prevent unnecessary DOM re-renders & loops
+        const currentSignature = items.map(i => `${i.anchorId}:${i.title}`).join('|');
+        if (currentSignature === lastTOCSignature && document.getElementById('ag-toc-widget')) {
+            return;
+        }
+        lastTOCSignature = currentSignature;
 
         renderTOCWidget(items);
     }
@@ -1951,6 +1968,7 @@
         const widget = document.getElementById('ag-toc-widget');
         if (widget) widget.remove();
         tocExpanded = false;
+        lastTOCSignature = '';
     }
 
     function scrollToPrompt(targetId) {
@@ -1973,8 +1991,15 @@
         if (tocObserver) return;
 
         const targetNode = document.querySelector('infinite-scroller') || document.body;
-        tocObserver = new MutationObserver(() => {
-            buildTableOfContents();
+        tocObserver = new MutationObserver((mutations) => {
+            // Filter out self-mutations originating inside the TOC widget
+            const isSelfMutation = mutations.every(m => {
+                return (m.target && m.target.closest && m.target.closest('#ag-toc-widget')) ||
+                       (m.target && m.target.id === 'ag-toc-widget');
+            });
+            if (isSelfMutation) return;
+
+            scheduleTOCBuild();
         });
 
         tocObserver.observe(targetNode, {
