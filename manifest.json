@@ -24,6 +24,10 @@
         "https://gemini.google.com/*"
       ],
       "js": [
+        "quote-reply.js",
+        "smart-paste.js",
+        "toc.js",
+        "rating-banner.js",
         "content.js",
         "tour.js"
       ],
