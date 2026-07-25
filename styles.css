@@ -341,16 +341,18 @@
   to   { opacity: 1; transform: scale(1); }
 }
 
+/* ── Smart Paste Dialog & Toast (Dynamic Themes) ─────────────────── */
 .ag-sp-dialog-card {
-  background: #1e1e24;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--ag-bg, #1e1e24);
+  border: 1px solid var(--ag-border, rgba(255, 255, 255, 0.1));
   border-radius: 28px;
   padding: 24px 28px;
   width: 100%;
   max-width: 440px;
-  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.5), 0 4px 12px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 12px 36px var(--ag-shadow, rgba(0, 0, 0, 0.5));
   font-family: 'Google Sans', 'Roboto', -apple-system, sans-serif;
   box-sizing: border-box;
+  color: var(--ag-text, #e6e0e9);
 }
 
 .ag-sp-dialog-header {
@@ -364,8 +366,8 @@
   width: 40px;
   height: 40px;
   border-radius: 12px;
-  background: rgba(168, 199, 250, 0.15);
-  color: #a8c7fa;
+  background: var(--ag-bg-hover, rgba(168, 199, 250, 0.15));
+  color: var(--ag-primary, #a8c7fa);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -375,20 +377,20 @@
 .ag-sp-dialog-title {
   font-size: 18px;
   font-weight: 500;
-  color: #e6e0e9;
+  color: var(--ag-text, #e6e0e9);
   margin: 0;
   letter-spacing: -0.2px;
 }
 
 .ag-sp-dialog-body {
   font-size: 14px;
-  color: #c4c6d0;
+  color: var(--ag-text-dim, #c4c6d0);
   line-height: 1.55;
   margin: 0 0 24px 0;
 }
 
 .ag-sp-dialog-body strong {
-  color: #a8c7fa;
+  color: var(--ag-primary, #a8c7fa);
   font-weight: 600;
 }
 
@@ -400,7 +402,7 @@
 }
 
 .ag-sp-btn-primary {
-  background: #a8c7fa;
+  background: var(--ag-primary, #a8c7fa);
   color: #001d35;
   border: none;
   border-radius: 100px;
@@ -412,14 +414,18 @@
   transition: background 0.15s ease, transform 0.15s ease;
 }
 
+body.light-theme .ag-sp-btn-primary {
+  color: #ffffff !important;
+}
+
 .ag-sp-btn-primary:hover {
-  background: #c3dcff;
+  background: var(--ag-primary-hover, #c3dcff);
 }
 
 .ag-sp-btn-secondary {
   background: transparent;
-  color: #a8c7fa;
-  border: 1px solid rgba(168, 199, 250, 0.3);
+  color: var(--ag-text, #a8c7fa);
+  border: 1px solid var(--ag-border, rgba(168, 199, 250, 0.3));
   border-radius: 100px;
   padding: 9px 20px;
   font-family: 'Google Sans', sans-serif;
@@ -430,8 +436,8 @@
 }
 
 .ag-sp-btn-secondary:hover {
-  background: rgba(168, 199, 250, 0.1);
-  border-color: rgba(168, 199, 250, 0.5);
+  background: var(--ag-bg-hover, rgba(168, 199, 250, 0.1));
+  border-color: var(--ag-primary, #a8c7fa);
 }
 
 .ag-sp-toast-card {
@@ -439,24 +445,24 @@
   bottom: 24px;
   right: 24px;
   z-index: 999999;
-  background: #1e1e24;
-  border: 1px solid rgba(168, 199, 250, 0.3);
+  background: var(--ag-bg, #1e1e24);
+  border: 1px solid var(--ag-border, rgba(168, 199, 250, 0.3));
   border-radius: 20px;
   padding: 18px 22px;
-  color: #e6e0e9;
+  color: var(--ag-text, #e6e0e9);
   font-family: 'Google Sans', 'Roboto', sans-serif;
   font-size: 13.5px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 8px 32px var(--ag-shadow, rgba(0, 0, 0, 0.5));
   max-width: 380px;
   animation: ag-sp-fade-in 0.25s cubic-bezier(0.16, 1, 0.3, 1);
   box-sizing: border-box;
 }
 
 .ag-sp-tag-btn {
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: var(--ag-bg-hover, rgba(255, 255, 255, 0.06));
+  border: 1px solid var(--ag-border, rgba(255, 255, 255, 0.12));
   border-radius: 100px;
-  color: #c4c6d0;
+  color: var(--ag-text-dim, #c4c6d0);
   padding: 6px 12px;
   font-family: 'Google Sans', sans-serif;
   font-size: 12px;
@@ -465,14 +471,14 @@
 }
 
 .ag-sp-tag-btn:hover {
-  background: rgba(255, 255, 255, 0.12);
-  color: #fff;
+  background: var(--ag-bg-hover, rgba(255, 255, 255, 0.12));
+  color: var(--ag-text, #fff);
 }
 
 .ag-sp-tag-btn.active {
-  background: rgba(168, 199, 250, 0.2);
-  border-color: #a8c7fa;
-  color: #a8c7fa;
+  background: rgba(61, 90, 254, 0.2);
+  border-color: var(--ag-primary, #a8c7fa);
+  color: var(--ag-primary, #a8c7fa);
   font-weight: 500;
 }
 
@@ -491,7 +497,7 @@
   padding: 8px 4px;
 }
 
-/* Frameless Dash Bar Container (No outer container pill / borders) */
+/* Frameless Dash Bar Container */
 #ag-toc-bar {
   display: flex;
   flex-direction: column;
@@ -517,24 +523,28 @@
   flex-shrink: 0;
   border-radius: 9999px;
   border: none;
-  background: rgba(255, 255, 255, 0.28);
+  background: rgba(255, 255, 255, 0.35);
   cursor: pointer;
   padding: 0;
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 1px 4px var(--ag-shadow, rgba(0, 0, 0, 0.3));
+}
+
+body.light-theme .ag-toc-dash {
+  background: rgba(0, 0, 0, 0.35);
 }
 
 .ag-toc-dash:hover {
-  background: rgba(255, 255, 255, 0.85);
+  background: var(--ag-text, rgba(255, 255, 255, 0.85));
   width: 18px;
 }
 
 .ag-toc-dash[data-toc-active],
 .ag-toc-dash.active {
-  background: #a8c7fa !important;
+  background: var(--ag-primary, #a8c7fa) !important;
   width: 22px;
   height: 3px;
-  box-shadow: 0 0 10px rgba(168, 199, 250, 0.6);
+  box-shadow: 0 0 10px rgba(61, 90, 254, 0.5);
 }
 
 /* Sleek Floating Hover Menu Panel */
@@ -545,11 +555,11 @@
   transform: translateY(-50%) translateX(8px);
   width: 280px;
   max-height: 360px;
-  background: rgba(26, 27, 30, 0.95);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--ag-bg, rgba(26, 27, 30, 0.95));
+  border: 1px solid var(--ag-border, rgba(255, 255, 255, 0.1));
   border-radius: 16px;
   padding: 6px;
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6);
+  box-shadow: 0 16px 40px var(--ag-shadow, rgba(0, 0, 0, 0.4));
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -576,7 +586,7 @@
 }
 
 #ag-toc-panel::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.18);
+  background: var(--ag-border, rgba(255, 255, 255, 0.18));
   border-radius: 100px;
 }
 
@@ -587,7 +597,7 @@
   border-radius: 10px;
   background: transparent;
   border: none;
-  color: #c4c6d0;
+  color: var(--ag-text-dim, #c4c6d0);
   font-family: inherit;
   font-size: 13px;
   line-height: 1.4;
@@ -599,14 +609,14 @@
 }
 
 .ag-toc-item:hover {
-  background: rgba(168, 199, 250, 0.12);
-  color: #ffffff;
+  background: var(--ag-bg-hover, rgba(168, 199, 250, 0.12));
+  color: var(--ag-text, #ffffff);
 }
 
 .ag-toc-item.active,
 .ag-toc-item[data-toc-active] {
-  background: rgba(168, 199, 250, 0.2);
-  color: #a8c7fa;
+  background: rgba(61, 90, 254, 0.18);
+  color: var(--ag-primary, #a8c7fa);
   font-weight: 500;
 }
 
