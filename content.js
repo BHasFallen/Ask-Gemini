@@ -1918,42 +1918,28 @@
             document.body.appendChild(widget);
         }
 
+        const DASH_COUNT = 6;
+        const activeDashIdx = Math.min(DASH_COUNT - 1, Math.floor((activePromptIndex / Math.max(1, items.length - 1)) * DASH_COUNT));
+
+        let dashesHtml = '';
+        for (let i = 0; i < DASH_COUNT; i++) {
+            const isActive = (i === activeDashIdx);
+            dashesHtml += `<div class="ag-toc-dash ${isActive ? 'active' : ''}"></div>`;
+        }
+
         widget.innerHTML = `
-            <div id="ag-toc-bar" class="flex flex-col items-center gap-2 py-1">
-                ${items.map((item, idx) => `
-                    <button type="button" 
-                        class="ag-toc-dash h-0.5 w-4.5 shrink-0 rounded-full transition-all" 
-                        aria-label="Prompt ${item.num}" 
-                        data-tooltip="${item.title}"
-                        data-toc-item-index="${idx}"
-                        ${idx === activePromptIndex ? 'data-toc-active="true"' : ''}>
-                    </button>
-                `).join('')}
+            <div id="ag-toc-bar" aria-label="Table of Contents">
+                ${dashesHtml}
             </div>
-            <div id="ag-toc-panel" style="display: ${tocExpanded ? 'flex' : 'none'};">
+            <div id="ag-toc-panel">
                 ${items.map((item, idx) => `
-                    <button class="ag-toc-item" data-target="${item.anchorId}" data-toc-item-index="${idx}" ${idx === activePromptIndex ? 'data-toc-active="true"' : ''}>
+                    <button class="ag-toc-item ${idx === activePromptIndex ? 'active' : ''}" data-target="${item.anchorId}" data-toc-item-index="${idx}">
+                        <span class="ag-toc-num">${item.num}.</span>
                         <span class="ag-toc-text">${item.title}</span>
                     </button>
                 `).join('')}
             </div>
         `;
-
-        // Click listeners on minimap dash buttons
-        widget.querySelectorAll('.ag-toc-dash').forEach(dash => {
-            dash.onclick = (e) => {
-                e.stopPropagation();
-                const idx = parseInt(dash.getAttribute('data-toc-item-index'));
-                activePromptIndex = idx;
-                const targetId = items[idx] ? items[idx].anchorId : null;
-                if (targetId) scrollToPrompt(targetId);
-                // Toggle expanded view when clicking minimap bar
-                tocExpanded = !tocExpanded;
-                const panel = widget.querySelector('#ag-toc-panel');
-                if (panel) panel.style.display = tocExpanded ? 'flex' : 'none';
-                updateActiveState(items);
-            };
-        });
 
         // Click listeners inside expanded panel items
         widget.querySelectorAll('.ag-toc-item').forEach(btn => {
@@ -1963,9 +1949,6 @@
                 activePromptIndex = idx;
                 const targetId = btn.getAttribute('data-target');
                 if (targetId) scrollToPrompt(targetId);
-                tocExpanded = false;
-                const panel = widget.querySelector('#ag-toc-panel');
-                if (panel) panel.style.display = 'none';
                 updateActiveState(items);
             };
         });
@@ -1975,19 +1958,22 @@
         const widget = document.getElementById('ag-toc-widget');
         if (!widget) return;
 
+        const DASH_COUNT = 6;
+        const activeDashIdx = Math.min(DASH_COUNT - 1, Math.floor((activePromptIndex / Math.max(1, items.length - 1)) * DASH_COUNT));
+
         widget.querySelectorAll('.ag-toc-dash').forEach((dash, idx) => {
-            if (idx === activePromptIndex) {
-                dash.setAttribute('data-toc-active', 'true');
+            if (idx === activeDashIdx) {
+                dash.classList.add('active');
             } else {
-                dash.removeAttribute('data-toc-active');
+                dash.classList.remove('active');
             }
         });
 
         widget.querySelectorAll('.ag-toc-item').forEach((item, idx) => {
             if (idx === activePromptIndex) {
-                item.setAttribute('data-toc-active', 'true');
+                item.classList.add('active');
             } else {
-                item.removeAttribute('data-toc-active');
+                item.classList.remove('active');
             }
         });
     }

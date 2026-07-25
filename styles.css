@@ -476,108 +476,96 @@
   font-weight: 500;
 }
 
-/* ── Dynamic Table of Contents (Minimal Vertical Minimap Bar) ── */
+/* ── Dynamic Table of Contents (Minimalist Vertical Bar + Hover Menu) ── */
 #ag-toc-widget {
   position: fixed;
-  right: 14px;
+  right: 12px;
   top: 50%;
   transform: translateY(-50%);
   z-index: 999990;
   display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 8px;
+  align-items: center;
+  gap: 10px;
   font-family: 'Google Sans', 'Roboto', -apple-system, sans-serif;
   box-sizing: border-box;
+  padding: 10px 4px;
 }
 
-/* Vertical Bar Container */
+/* Minimalist Fixed Vertical Bar */
 #ag-toc-bar {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
-  padding: 8px 6px;
-  background: rgba(30, 30, 36, 0.75);
+  justify-content: space-between;
+  height: 140px;
+  width: 20px;
+  padding: 10px 0;
+  background: rgba(26, 27, 30, 0.65);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 100px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
-  transition: all 0.2s ease;
-}
-
-/* Individual Minimap Dash Pill Button */
-.ag-toc-dash {
-  height: 3px;
-  width: 18px;
-  flex-shrink: 0;
-  border-radius: 9999px;
-  border: none;
-  background: rgba(255, 255, 255, 0.35);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
   cursor: pointer;
-  padding: 0;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  box-sizing: border-box;
+}
+
+#ag-toc-widget:hover #ag-toc-bar {
+  background: rgba(34, 35, 40, 0.9);
+  border-color: rgba(168, 199, 250, 0.3);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.5);
+}
+
+/* Fixed Micro Dashes */
+.ag-toc-dash {
+  height: 2px;
+  width: 10px;
+  border-radius: 100px;
+  background: rgba(255, 255, 255, 0.25);
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-  position: relative;
-}
-
-.ag-toc-dash:hover {
-  background: rgba(255, 255, 255, 0.85);
-  width: 22px;
-}
-
-.ag-toc-dash[data-toc-active="true"] {
-  background: #a8c7fa !important;
-  width: 24px;
-  box-shadow: 0 0 8px rgba(168, 199, 250, 0.6);
-}
-
-/* Tooltip on Dash Hover */
-.ag-toc-dash::after {
-  content: attr(data-tooltip);
-  position: absolute;
-  right: 28px;
-  top: 50%;
-  transform: translateY(-50%) scale(0.95);
-  background: #1e1e24;
-  color: #e6e0e9;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 8px;
-  padding: 4px 10px;
-  font-size: 12px;
-  white-space: nowrap;
   pointer-events: none;
-  opacity: 0;
-  transition: all 0.15s ease;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.4);
 }
 
-.ag-toc-dash:hover::after {
-  opacity: 1;
-  transform: translateY(-50%) scale(1);
+.ag-toc-dash.active {
+  background: #a8c7fa !important;
+  width: 14px;
+  height: 3px;
+  box-shadow: 0 0 10px rgba(168, 199, 250, 0.7);
 }
 
-/* Simplified Expanded Panel */
+/* Hover-Activated Prompt Selection Menu */
 #ag-toc-panel {
   position: absolute;
-  right: 36px;
+  right: 32px;
   top: 50%;
-  transform: translateY(-50%);
-  width: 260px;
-  max-height: 380px;
-  background: #1e1e24;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 16px;
+  transform: translateY(-50%) translateX(10px);
+  width: 280px;
+  max-height: 340px;
+  background: rgba(26, 27, 30, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 18px;
   padding: 8px;
-  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6);
   display: flex;
   flex-direction: column;
   gap: 2px;
   overflow-y: auto;
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  animation: ag-sp-fade-in 0.15s ease;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s;
   box-sizing: border-box;
+}
+
+#ag-toc-widget:hover #ag-toc-panel,
+#ag-toc-panel:hover {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transform: translateY(-50%) translateX(0);
 }
 
 #ag-toc-panel::-webkit-scrollbar {
@@ -592,9 +580,9 @@
 .ag-toc-item {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-  border-radius: 10px;
+  gap: 10px;
+  padding: 9px 12px;
+  border-radius: 12px;
   background: transparent;
   border: none;
   color: #c4c6d0;
@@ -608,14 +596,21 @@
 }
 
 .ag-toc-item:hover {
-  background: rgba(168, 199, 250, 0.12);
+  background: rgba(168, 199, 250, 0.14);
   color: #ffffff;
 }
 
-.ag-toc-item[data-toc-active="true"] {
-  background: rgba(168, 199, 250, 0.2);
+.ag-toc-item.active {
+  background: rgba(168, 199, 250, 0.22);
   color: #a8c7fa;
   font-weight: 500;
+}
+
+.ag-toc-num {
+  font-size: 11px;
+  font-weight: 600;
+  color: #a8c7fa;
+  flex-shrink: 0;
 }
 
 .ag-toc-text {
