@@ -1918,28 +1918,37 @@
             document.body.appendChild(widget);
         }
 
-        const DASH_COUNT = 6;
-        const activeDashIdx = Math.min(DASH_COUNT - 1, Math.floor((activePromptIndex / Math.max(1, items.length - 1)) * DASH_COUNT));
-
-        let dashesHtml = '';
-        for (let i = 0; i < DASH_COUNT; i++) {
-            const isActive = (i === activeDashIdx);
-            dashesHtml += `<div class="ag-toc-dash ${isActive ? 'active' : ''}"></div>`;
-        }
-
         widget.innerHTML = `
-            <div id="ag-toc-bar" aria-label="Table of Contents">
-                ${dashesHtml}
+            <div id="ag-toc-bar" class="flex flex-col items-center gap-2 py-1">
+                ${items.map((item, idx) => `
+                    <button type="button" 
+                        class="ag-toc-dash h-0.5 w-4.5 shrink-0 rounded-full transition-all ${idx === activePromptIndex ? 'active' : ''}" 
+                        aria-label="Prompt ${item.num}" 
+                        data-toc-item-index="${idx}"
+                        ${idx === activePromptIndex ? 'data-toc-active=""' : ''}>
+                    </button>
+                `).join('')}
             </div>
             <div id="ag-toc-panel">
                 ${items.map((item, idx) => `
-                    <button class="ag-toc-item ${idx === activePromptIndex ? 'active' : ''}" data-target="${item.anchorId}" data-toc-item-index="${idx}">
-                        <span class="ag-toc-num">${item.num}.</span>
+                    <button class="ag-toc-item ${idx === activePromptIndex ? 'active' : ''}" data-target="${item.anchorId}" data-toc-item-index="${idx}" ${idx === activePromptIndex ? 'data-toc-active=""' : ''}>
                         <span class="ag-toc-text">${item.title}</span>
                     </button>
                 `).join('')}
             </div>
         `;
+
+        // Click listeners on 1:1 dash buttons
+        widget.querySelectorAll('.ag-toc-dash').forEach(dash => {
+            dash.onclick = (e) => {
+                e.stopPropagation();
+                const idx = parseInt(dash.getAttribute('data-toc-item-index'));
+                activePromptIndex = idx;
+                const targetId = items[idx] ? items[idx].anchorId : null;
+                if (targetId) scrollToPrompt(targetId);
+                updateActiveState(items);
+            };
+        });
 
         // Click listeners inside expanded panel items
         widget.querySelectorAll('.ag-toc-item').forEach(btn => {
@@ -1958,22 +1967,23 @@
         const widget = document.getElementById('ag-toc-widget');
         if (!widget) return;
 
-        const DASH_COUNT = 6;
-        const activeDashIdx = Math.min(DASH_COUNT - 1, Math.floor((activePromptIndex / Math.max(1, items.length - 1)) * DASH_COUNT));
-
         widget.querySelectorAll('.ag-toc-dash').forEach((dash, idx) => {
-            if (idx === activeDashIdx) {
+            if (idx === activePromptIndex) {
                 dash.classList.add('active');
+                dash.setAttribute('data-toc-active', '');
             } else {
                 dash.classList.remove('active');
+                dash.removeAttribute('data-toc-active');
             }
         });
 
         widget.querySelectorAll('.ag-toc-item').forEach((item, idx) => {
             if (idx === activePromptIndex) {
                 item.classList.add('active');
+                item.setAttribute('data-toc-active', '');
             } else {
                 item.classList.remove('active');
+                item.removeAttribute('data-toc-active');
             }
         });
     }

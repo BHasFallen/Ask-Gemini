@@ -476,7 +476,7 @@
   font-weight: 500;
 }
 
-/* ── Dynamic Table of Contents (Minimalist Vertical Bar + Hover Menu) ── */
+/* ── Dynamic Table of Contents (1:1 Dash Minimap Bar + Minimal Hover Menu) ── */
 #ag-toc-widget {
   position: fixed;
   right: 12px;
@@ -491,57 +491,68 @@
   padding: 10px 4px;
 }
 
-/* Minimalist Fixed Vertical Bar */
+/* 1:1 Vertical Bar Container */
 #ag-toc-bar {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: space-between;
-  height: 140px;
-  width: 20px;
-  padding: 10px 0;
+  gap: 6px;
+  padding: 8px 6px;
+  max-height: 480px;
+  overflow-y: auto;
   background: rgba(26, 27, 30, 0.65);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 100px;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
-  cursor: pointer;
-  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: all 0.25s ease;
   box-sizing: border-box;
+}
+
+#ag-toc-bar::-webkit-scrollbar {
+  display: none;
 }
 
 #ag-toc-widget:hover #ag-toc-bar {
   background: rgba(34, 35, 40, 0.9);
   border-color: rgba(168, 199, 250, 0.3);
-  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.5);
 }
 
-/* Fixed Micro Dashes */
+/* Dash Pill Buttons */
 .ag-toc-dash {
   height: 2px;
-  width: 10px;
-  border-radius: 100px;
-  background: rgba(255, 255, 255, 0.25);
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-  pointer-events: none;
+  width: 18px;
+  flex-shrink: 0;
+  border-radius: 9999px;
+  border: none;
+  background: rgba(255, 255, 255, 0.35);
+  cursor: pointer;
+  padding: 0;
+  transition: all 0.15s ease;
 }
 
+.ag-toc-dash:hover {
+  background: rgba(255, 255, 255, 0.75);
+  width: 20px;
+}
+
+.ag-toc-dash[data-toc-active],
 .ag-toc-dash.active {
-  background: #a8c7fa !important;
-  width: 14px;
-  height: 3px;
-  box-shadow: 0 0 10px rgba(168, 199, 250, 0.7);
+  background: #ffffff !important;
+  width: 22px;
+  height: 2.5px;
+  box-shadow: 0 0 8px rgba(255, 255, 255, 0.6);
 }
 
-/* Hover-Activated Prompt Selection Menu */
+/* Minimalist Hover Menu Panel */
 #ag-toc-panel {
   position: absolute;
-  right: 32px;
+  right: 36px;
   top: 50%;
   transform: translateY(-50%) translateX(10px);
   width: 280px;
-  max-height: 340px;
+  max-height: 360px;
   background: rgba(26, 27, 30, 0.95);
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 18px;
@@ -580,9 +591,8 @@
 .ag-toc-item {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 9px 12px;
-  border-radius: 12px;
+  padding: 8px 12px;
+  border-radius: 10px;
   background: transparent;
   border: none;
   color: #c4c6d0;
@@ -600,17 +610,11 @@
   color: #ffffff;
 }
 
-.ag-toc-item.active {
+.ag-toc-item.active,
+.ag-toc-item[data-toc-active] {
   background: rgba(168, 199, 250, 0.22);
   color: #a8c7fa;
   font-weight: 500;
-}
-
-.ag-toc-num {
-  font-size: 11px;
-  font-weight: 600;
-  color: #a8c7fa;
-  flex-shrink: 0;
 }
 
 .ag-toc-text {
