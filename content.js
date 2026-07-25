@@ -1869,6 +1869,45 @@
         });
     }
 
+    function extractCleanPromptText(promptEl) {
+        if (!promptEl) return '';
+
+        // Clone node so we can strip unwanted attachment chips and elements without affecting the page DOM
+        const clone = promptEl.cloneNode(true);
+
+        // Selectors for attachments, icons, file chips, and metadata buttons
+        const unwantedSelectors = [
+            'file-chip',
+            '.file-chip',
+            '[class*="chip"]',
+            '[class*="attachment"]',
+            'button',
+            'mat-icon',
+            'svg'
+        ];
+
+        unwantedSelectors.forEach(sel => {
+            clone.querySelectorAll(sel).forEach(node => node.remove());
+        });
+
+        // Prefer querying .query-text or [data-test-id="user-query-content"] inside the clone
+        const queryTextEl = clone.querySelector('.query-text, [data-test-id="user-query-content"]');
+        let rawText = (queryTextEl ? queryTextEl.innerText || queryTextEl.textContent : clone.innerText || clone.textContent) || '';
+
+        // Clean up whitespace
+        let cleaned = rawText.replace(/\s+/g, ' ').trim();
+
+        // Strip leading "You said", "You:", "You said:"
+        cleaned = cleaned.replace(/^(you said|you:)\s*/i, '').trim();
+
+        // Unwrap surrounding quotes e.g. "my prompt"
+        if (cleaned.startsWith('"') && cleaned.endsWith('"') && cleaned.length > 2) {
+            cleaned = cleaned.slice(1, -1).trim();
+        }
+
+        return cleaned;
+    }
+
     function buildTableOfContents() {
         if (!tocEnabled) {
             removeTOCWidget();
@@ -1888,14 +1927,7 @@
                 promptEl.id = anchorId;
             }
 
-            // Prefer querying .query-text or user-query-content directly to exclude header text
-            const queryTextEl = promptEl.querySelector('.query-text, [data-test-id="user-query-content"], .user-query-container');
-            let rawText = (queryTextEl ? queryTextEl.innerText || queryTextEl.textContent : promptEl.innerText || promptEl.textContent) || '';
-            
-            // Clean up whitespace and strip leading "You said", "You said:", "You:"
-            let cleanedText = rawText.replace(/\s+/g, ' ').trim();
-            cleanedText = cleanedText.replace(/^(you said|you:)\s*/i, '').trim();
-
+            const cleanedText = extractCleanPromptText(promptEl);
             const snippet = cleanedText.length > 55 ? cleanedText.slice(0, 55) + '...' : (cleanedText || `Prompt ${index + 1}`);
 
             items.push({
