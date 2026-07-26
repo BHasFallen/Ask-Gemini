@@ -661,6 +661,70 @@ body.mode-update .ob-page {
     margin-bottom: 0;
 }
 
+/* ── Other features list ──────────────────────────────────────── */
+.ob-other-features {
+    margin-top: 8px;
+    margin-bottom: 28px;
+}
+
+.ob-other-title {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.7px;
+    text-transform: uppercase;
+    color: var(--ob-text-muted);
+    margin-bottom: 12px;
+}
+
+.ob-other-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    background: var(--ob-surface);
+    border: 1px solid var(--ob-border);
+    border-radius: 16px;
+    overflow: hidden;
+}
+
+.ob-other-item {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 13px 18px;
+    border-bottom: 1px solid var(--ob-border);
+}
+
+.ob-other-item:last-child {
+    border-bottom: none;
+}
+
+.ob-other-icon {
+    font-size: 18px;
+    flex-shrink: 0;
+    width: 24px;
+    text-align: center;
+}
+
+.ob-other-body {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.ob-other-name {
+    font-size: 13.5px;
+    font-weight: 600;
+    color: var(--ob-text);
+}
+
+.ob-other-desc {
+    font-size: 12px;
+    color: var(--ob-text-muted);
+    line-height: 1.4;
+}
+
+
 /* ── Update eyebrow ──────────────────────────────────────────── */
 .ob-update-eyebrow {
     display: flex;
