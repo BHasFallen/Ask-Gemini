@@ -1,9 +1,9 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Quote Reply for Gemini</title>
+    <title>Quote Reply for Gemini — What's New</title>
     <link rel="stylesheet" href="onboarding.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&family=Google+Sans+Display:wght@400;700&display=swap" rel="stylesheet">
@@ -26,8 +26,6 @@
             <section class="ob-hero">
                 <h1 class="ob-headline">How to use Quote Reply</h1>
             </section>
-
-            <!-- Steps -->
             <section class="ob-steps">
                 <div class="ob-step">
                     <div class="ob-step-num">1</div>
@@ -57,69 +55,87 @@
 
         <!-- UPDATE MODE -->
         <div class="show-on-update">
-            <section class="ob-hero">
-                <h1 class="ob-headline">Quote Reply has been updated!</h1>
+
+            <!-- Update hero -->
+            <section class="ob-update-hero">
+                <div class="ob-update-eyebrow">
+                    <span class="ob-update-pill">✦ Just updated</span>
+                    <span id="ob-version-inline" class="ob-update-version"></span>
+                </div>
+                <h1 class="ob-update-headline">Three new<br><span class="ob-gradient-text">superpowers.</span></h1>
+                <p class="ob-update-sub">Here's what's waiting for you inside Gemini.</p>
             </section>
 
-            <!-- What's New -->
-            <section class="ob-whats-new">
-                <h2 class="ob-section-title">What's new in <span id="ob-version-inline"></span></h2>
-                <div class="ob-updates-grid">
-                    <div class="ob-update-card">
-                        <div class="ob-card-header">
-                            <span class="ob-tag ob-tag-new">New Feature</span>
-                            <h3 class="ob-card-title">Multi-Quote Replies</h3>
-                        </div>
-                        <p class="ob-card-desc">Highlight multiple passages in Gemini's response and queue them into a <strong>single laser-focused reply</strong>.</p>
+            <!-- NEW FEATURES — Hero grid -->
+            <section class="ob-new-features">
+                <div class="ob-feature-card ob-stagger-1">
+                    <div class="ob-feature-icon ob-feature-icon--paste">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 12a1 1 0 0 0-1 1v1a1 1 0 0 1-1 1 1 1 0 0 1 1 1v1a1 1 0 0 0 1 1"/><path d="M14 18a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1 1 1 0 0 1-1-1v-1a1 1 0 0 0-1-1"/></svg>
                     </div>
+                    <div class="ob-feature-tag ob-tag-new">New</div>
+                    <h2 class="ob-feature-title">Smart Paste</h2>
+                    <p class="ob-feature-desc">Pasting a wall of text? Smart Paste detects it and lets you <strong>attach it as a file</strong> so Gemini actually reads it properly.</p>
+                </div>
 
-                    <div class="ob-update-card">
-                        <div class="ob-card-header">
-                            <span class="ob-tag ob-tag-new">New Feature</span>
-                            <h3 class="ob-card-title">Interactive Guided Tour</h3>
-                        </div>
-                        <p class="ob-card-desc">Master multi-quoting in seconds with a <strong>step-by-step interactive walkthrough</strong> right inside Gemini.</p>
+                <div class="ob-feature-card ob-stagger-2">
+                    <div class="ob-feature-icon ob-feature-icon--toc">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h.01"/><path d="M3 18h.01"/><path d="M3 6h.01"/><path d="M8 12h13"/><path d="M8 18h13"/><path d="M8 6h13"/></svg>
                     </div>
+                    <div class="ob-feature-tag ob-tag-new">New</div>
+                    <h2 class="ob-feature-title">Table of Contents</h2>
+                    <p class="ob-feature-desc">A <strong>dash bar on the right edge</strong> maps your whole conversation. Hover to see prompts, click to jump — with live scroll tracking.</p>
+                </div>
 
-                    <div class="ob-update-card">
-                        <div class="ob-card-header">
-                            <span class="ob-tag ob-tag-new">New Controls</span>
-                            <h3 class="ob-card-title">Popup Settings Toggles</h3>
-                        </div>
-                        <p class="ob-card-desc">Easily control <strong>Multi-Quote Display</strong> (Expanded vs. Compact) &amp; <strong>Usage Limits</strong> directly from the popup.</p>
+                <div class="ob-feature-card ob-stagger-3">
+                    <div class="ob-feature-icon ob-feature-icon--quote">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21c3 0 7-1 7-8V5c0-1.25-.756-2.017-2-2H4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1v1c0 1-1 2-2 2s-1 .008-1 1.031V20c0 1 0 1 1 1z"/><path d="M15 21c3 0 7-1 7-8V5c0-1.25-.757-2.017-2-2h-4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2h.75c0 2.25.25 4-2.75 4v3c0 1 0 1 1 1z"/></svg>
                     </div>
+                    <div class="ob-feature-tag ob-tag-new">Upgraded</div>
+                    <h2 class="ob-feature-title">Multi-Quote</h2>
+                    <p class="ob-feature-desc">Queue up multiple excerpts before replying. They collapse into a <strong>clean compact chip</strong> so your message stays focused.</p>
+                </div>
+            </section>
 
-                    <div class="ob-update-card">
-                        <div class="ob-card-header">
-                            <span class="ob-tag ob-tag-improved">Improved</span>
-                            <h3 class="ob-card-title">One-Click Problem Reporting</h3>
-                        </div>
-                        <p class="ob-card-desc">Send feedback or report bugs effortlessly with your <strong>Device ID automatically attached</strong>.</p>
+            <!-- CTA right after features -->
+            <div class="ob-cta ob-cta--update">
+                <button id="ob-open-gemini" class="ob-btn-primary ob-btn-primary--lg">
+                    Try it now
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+                </button>
+            </div>
+
+            <!-- Secondary improvements -->
+            <section class="ob-secondary-updates">
+                <h3 class="ob-secondary-title">Also in this release</h3>
+                <div class="ob-secondary-grid">
+                    <div class="ob-secondary-item">
+                        <span class="ob-tag ob-tag-improved">Fixed</span>
+                        <span class="ob-secondary-label">Non-blocking rating prompt — no more modals interrupting your chat</span>
+                    </div>
+                    <div class="ob-secondary-item">
+                        <span class="ob-tag ob-tag-improved">Improved</span>
+                        <span class="ob-secondary-label">Better session tracking across browser restarts</span>
+                    </div>
+                    <div class="ob-secondary-item">
+                        <span class="ob-tag ob-tag-improved">Improved</span>
+                        <span class="ob-secondary-label">Smarter DOM observer reduces CPU load during streaming</span>
+                    </div>
+                    <div class="ob-secondary-item">
+                        <span class="ob-tag ob-tag-improved">Security</span>
+                        <span class="ob-secondary-label">HTML escaping on all quote injections</span>
                     </div>
                 </div>
             </section>
 
-            <!-- Feature Requests & Feedback -->
+            <!-- Feedback -->
             <section class="ob-feedback-card">
                 <h2 class="ob-section-title">Have feedback or feature requests?</h2>
                 <p class="ob-feedback-text">Help shape Quote Reply! Let us know what you want to see next or report any issues.</p>
                 <div class="ob-feedback-buttons">
-                    <a href="https://docs.google.com/forms/d/e/1FAIpQLSfr82mMdRgwSPY9ZsQkdRp_HXKKwmVuWO7GmjeZ3fS9XHpqsA/viewform" target="_blank" class="ob-btn-secondary">
-                        Submit Feature Request
-                    </a>
-                    <a href="https://docs.google.com/forms/d/e/1FAIpQLSfr82mMdRgwSPY9ZsQkdRp_HXKKwmVuWO7GmjeZ3fS9XHpqsA/viewform" target="_blank" class="ob-btn-secondary">
-                        Report an Issue
-                    </a>
+                    <a href="https://docs.google.com/forms/d/e/1FAIpQLSfr82mMdRgwSPY9ZsQkdRp_HXKKwmVuWO7GmjeZ3fS9XHpqsA/viewform" target="_blank" class="ob-btn-secondary">Submit Feature Request</a>
+                    <a href="https://docs.google.com/forms/d/e/1FAIpQLSfr82mMdRgwSPY9ZsQkdRp_HXKKwmVuWO7GmjeZ3fS9XHpqsA/viewform" target="_blank" class="ob-btn-secondary">Report an Issue</a>
                 </div>
             </section>
-        </div>
-
-        <!-- CTA & Footer -->
-        <div class="ob-cta">
-            <button id="ob-open-gemini" class="ob-btn-primary">
-                Open Gemini
-                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
-            </button>
         </div>
 
         <footer class="ob-footer">
