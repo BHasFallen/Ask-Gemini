@@ -5,8 +5,17 @@ document.addEventListener('DOMContentLoaded', () => {
     document.body.className = `mode-${reason}`;
 
     // ── Version badge ────────────────────────────────────────────────────────
-    const manifest = chrome.runtime.getManifest();
-    const version = manifest.version;
+    let version = '2.5.0';
+    try {
+        if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.getManifest) {
+            const manifest = chrome.runtime.getManifest();
+            if (manifest && manifest.version) {
+                version = manifest.version;
+            }
+        }
+    } catch (e) {
+        console.warn('Could not read manifest version:', e);
+    }
 
     const versionBadge = document.getElementById('ob-version');
     if (versionBadge) versionBadge.textContent = `v${version}`;

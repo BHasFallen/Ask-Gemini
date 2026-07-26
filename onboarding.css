@@ -680,6 +680,7 @@ body.mode-install .ob-header {
 }
 
 .ob-install-version {
+    display: inline-block;
     font-size: 12px;
     font-weight: 600;
     color: var(--ob-text-muted);
@@ -688,6 +689,11 @@ body.mode-install .ob-header {
     border-radius: var(--ob-radius-chip);
     padding: 3px 10px;
     align-self: flex-start;
+}
+
+/* Hide the pill entirely until JS populates it */
+.ob-install-version:empty {
+    display: none;
 }
 
 /* ── Compact steps override ───────────────────────────────────── */
