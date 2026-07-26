@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Ask Gemini: Table of Contents Module
  * Builds a dynamic TOC widget from user-query prompts in the conversation.
  */
@@ -79,10 +79,9 @@ window.AskGemini.buildTableOfContents = function buildTableOfContents() {
 
     const items = [];
     prompts.forEach((promptEl, index) => {
+        // Always assign sequential ID based on current DOM position to avoid duplicate IDs during lazy-loading
         const anchorId = `ag-toc-prompt-${index}`;
-        if (!promptEl.id || !promptEl.id.startsWith('ag-toc-prompt-')) {
-            promptEl.id = anchorId;
-        }
+        promptEl.id = anchorId;
 
         const cleanedText = AG.extractCleanPromptText(promptEl);
         const snippet = cleanedText.length > 55 ? cleanedText.slice(0, 55) + '...' : (cleanedText || `Prompt ${index + 1}`);
@@ -90,10 +89,13 @@ window.AskGemini.buildTableOfContents = function buildTableOfContents() {
         items.push({
             index: index,
             num: index + 1,
-            anchorId: promptEl.id,
+            anchorId: anchorId,
             title: snippet
         });
     });
+
+    // Attach ScrollSpy IntersectionObserver to user-query elements
+    AG.setupTOCScrollSpy();
 
     // Compare signature to prevent unnecessary DOM re-renders & loops
     const currentSignature = items.map(i => `${i.anchorId}:${i.title}`).join('|') + `|active:${AG.activePromptIndex}`;
@@ -105,6 +107,7 @@ window.AskGemini.buildTableOfContents = function buildTableOfContents() {
     AG.renderTOCWidget(items);
 };
 
+
 // ─── renderTOCWidget ──────────────────────────────────────────────────────────
 window.AskGemini.renderTOCWidget = function renderTOCWidget(items) {
     var AG = window.AskGemini;
@@ -115,35 +118,62 @@ window.AskGemini.renderTOCWidget = function renderTOCWidget(items) {
         document.body.appendChild(widget);
     }
 
+    // 1. Calculate 12-Dash Sliding Window for unhovered side bar (#ag-toc-bar)
+    const MAX_DASHES = 12;
+    let visibleDashes = items;
+    if (items.length > MAX_DASHES) {
+        let start = Math.max(0, AG.activePromptIndex - Math.floor(MAX_DASHES / 2));
+        let end = start + MAX_DASHES;
+        if (end > items.length) {
+            end = items.length;
+            start = Math.max(0, end - MAX_DASHES);
+        }
+        visibleDashes = items.slice(start, end);
+    }
+
+    const iconUrl = (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.getURL)
+        ? chrome.runtime.getURL('icons/icon48.png')
+        : '';
+
     widget.innerHTML = `
         <div id="ag-toc-bar" class="flex flex-col items-center gap-2 py-1">
-            ${items.map((item, idx) => `
+            ${visibleDashes.map((item) => `
                 <button type="button"
-                    class="ag-toc-dash h-0.5 w-4.5 shrink-0 rounded-full transition-all ${idx === AG.activePromptIndex ? 'active' : ''}"
+                    class="ag-toc-dash h-0.5 w-4.5 shrink-0 rounded-full transition-all ${item.index === AG.activePromptIndex ? 'active' : ''}"
                     aria-label="Prompt ${item.num}"
-                    data-toc-item-index="${idx}"
-                    ${idx === AG.activePromptIndex ? 'data-toc-active=""' : ''}>
+                    data-toc-item-index="${item.index}"
+                    ${item.index === AG.activePromptIndex ? 'data-toc-active=""' : ''}>
                 </button>
             `).join('')}
         </div>
         <div id="ag-toc-panel">
-            ${items.map((item, idx) => `
-                <button class="ag-toc-item ${idx === AG.activePromptIndex ? 'active' : ''}" data-target="${item.anchorId}" data-toc-item-index="${idx}" ${idx === AG.activePromptIndex ? 'data-toc-active=""' : ''}>
+            <div class="ag-toc-header">
+                <div class="ag-toc-brand">
+                    <img src="${iconUrl}" class="ag-toc-brand-icon" alt="Ask Gemini" onerror="this.style.display='none'" />
+
+                    <span class="ag-toc-brand-title">Quote Reply • Table of Contents</span>
+                </div>
+                <span class="ag-toc-count-badge">${items.length}</span>
+            </div>
+            ${items.map((item) => `
+                <button class="ag-toc-item ${item.index === AG.activePromptIndex ? 'active' : ''}" data-target="${item.anchorId}" data-toc-item-index="${item.index}" ${item.index === AG.activePromptIndex ? 'data-toc-active=""' : ''}>
                     <span class="ag-toc-text">${item.title}</span>
                 </button>
             `).join('')}
         </div>
     `;
 
-    // Click listeners on 1:1 dash buttons
+
+    // Click listeners on side dash buttons
     widget.querySelectorAll('.ag-toc-dash').forEach(dash => {
         dash.onclick = (e) => {
             e.stopPropagation();
             const idx = parseInt(dash.getAttribute('data-toc-item-index'));
             AG.activePromptIndex = idx;
+            if (items[idx]) AG.activeAnchorId = items[idx].anchorId;
             const targetId = items[idx] ? items[idx].anchorId : null;
-            if (targetId) AG.scrollToPrompt(targetId);
-            AG.updateActiveState(items);
+            if (targetId) AG.scrollToPrompt(targetId, idx);
+            AG.scheduleTOCBuild();
         };
     });
 
@@ -153,38 +183,89 @@ window.AskGemini.renderTOCWidget = function renderTOCWidget(items) {
             e.stopPropagation();
             const idx = parseInt(btn.getAttribute('data-toc-item-index'));
             AG.activePromptIndex = idx;
+            if (items[idx]) AG.activeAnchorId = items[idx].anchorId;
             const targetId = btn.getAttribute('data-target');
-            if (targetId) AG.scrollToPrompt(targetId);
-            AG.updateActiveState(items);
+            if (targetId) AG.scrollToPrompt(targetId, idx);
+            AG.scheduleTOCBuild();
         };
     });
+
+    // Auto-scroll expanded panel to center the active item when menu is opened
+    widget.onmouseenter = () => {
+        const panel = widget.querySelector('#ag-toc-panel');
+        const activeItem = widget.querySelector('.ag-toc-item.active');
+        if (panel && activeItem) {
+            const panelRect = panel.getBoundingClientRect();
+            const activeRect = activeItem.getBoundingClientRect();
+            const relativeTop = activeRect.top - panelRect.top + panel.scrollTop;
+            panel.scrollTop = Math.max(0, relativeTop - (panel.clientHeight / 2) + (activeItem.clientHeight / 2));
+        }
+    };
+};
+
+
+// ─── setupTOCScrollSpy ────────────────────────────────────────────────────────
+window.AskGemini.tocIntersectionObserver = null;
+window.AskGemini.hasTocWindowScrollListener = false;
+
+window.AskGemini.setupTOCScrollSpy = function setupTOCScrollSpy() {
+    var AG = window.AskGemini;
+    if (AG.tocIntersectionObserver) {
+        AG.tocIntersectionObserver.disconnect();
+    }
+
+    const prompts = document.querySelectorAll('user-query');
+    if (!prompts || prompts.length === 0) return;
+
+    // Window Bottom Scroll Detection (Guarantees bottom line is highlighted when at bottom of page)
+    if (!AG.hasTocWindowScrollListener) {
+        AG.hasTocWindowScrollListener = true;
+        window.addEventListener('scroll', () => {
+            const scrollPosition = window.innerHeight + window.scrollY;
+            const bodyHeight = Math.max(document.body.scrollHeight, document.documentElement.scrollHeight);
+            if (scrollPosition >= bodyHeight - 120) {
+                const currentPrompts = document.querySelectorAll('user-query');
+                if (currentPrompts.length > 0) {
+                    const lastIdx = currentPrompts.length - 1;
+                    if (AG.activePromptIndex !== lastIdx) {
+                        AG.activePromptIndex = lastIdx;
+                        if (currentPrompts[lastIdx].id) AG.activeAnchorId = currentPrompts[lastIdx].id;
+                        AG.scheduleTOCBuild();
+                    }
+                }
+            }
+        }, { passive: true });
+    }
+
+    AG.tocIntersectionObserver = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                const id = entry.target.id;
+                if (id && id.startsWith('ag-toc-prompt-')) {
+                    const promptEl = entry.target;
+                    const allPrompts = Array.from(document.querySelectorAll('user-query'));
+                    const idx = allPrompts.indexOf(promptEl);
+                    if (idx !== -1 && idx !== AG.activePromptIndex) {
+                        AG.activePromptIndex = idx;
+                        AG.activeAnchorId = id;
+                        AG.scheduleTOCBuild();
+                    }
+                }
+            }
+        });
+    }, {
+        root: null,
+        rootMargin: '-5% 0px -40% 0px',
+        threshold: 0.15
+    });
+
+    prompts.forEach(p => AG.tocIntersectionObserver.observe(p));
 };
 
 // ─── updateActiveState ────────────────────────────────────────────────────────
 window.AskGemini.updateActiveState = function updateActiveState(items) {
     var AG = window.AskGemini;
-    const widget = document.getElementById('ag-toc-widget');
-    if (!widget) return;
-
-    widget.querySelectorAll('.ag-toc-dash').forEach((dash, idx) => {
-        if (idx === AG.activePromptIndex) {
-            dash.classList.add('active');
-            dash.setAttribute('data-toc-active', '');
-        } else {
-            dash.classList.remove('active');
-            dash.removeAttribute('data-toc-active');
-        }
-    });
-
-    widget.querySelectorAll('.ag-toc-item').forEach((item, idx) => {
-        if (idx === AG.activePromptIndex) {
-            item.classList.add('active');
-            item.setAttribute('data-toc-active', '');
-        } else {
-            item.classList.remove('active');
-            item.removeAttribute('data-toc-active');
-        }
-    });
+    AG.scheduleTOCBuild();
 };
 
 // ─── removeTOCWidget ─────────────────────────────────────────────────────────
@@ -192,17 +273,29 @@ window.AskGemini.removeTOCWidget = function removeTOCWidget() {
     var AG = window.AskGemini;
     const widget = document.getElementById('ag-toc-widget');
     if (widget) widget.remove();
+    if (AG.tocIntersectionObserver) {
+        AG.tocIntersectionObserver.disconnect();
+        AG.tocIntersectionObserver = null;
+    }
     AG.tocExpanded = false;
     AG.lastTOCSignature = '';
 };
 
 // ─── scrollToPrompt ───────────────────────────────────────────────────────────
-window.AskGemini.scrollToPrompt = function scrollToPrompt(targetId) {
-    const target = document.getElementById(targetId);
+window.AskGemini.scrollToPrompt = function scrollToPrompt(targetId, index) {
+    var AG = window.AskGemini;
+    const prompts = document.querySelectorAll('user-query');
+    let target = (typeof index === 'number' && prompts[index]) ? prompts[index] : document.getElementById(targetId);
+
     if (!target) return;
 
-    target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    try {
+        target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    } catch (err) {
+        console.warn('Standard scrollIntoView failed:', err);
+    }
 };
+
 
 // ─── setupTOCObserver ─────────────────────────────────────────────────────────
 window.AskGemini.setupTOCObserver = function setupTOCObserver() {
@@ -226,3 +319,5 @@ window.AskGemini.setupTOCObserver = function setupTOCObserver() {
         subtree: true
     });
 };
+
+

@@ -75,8 +75,9 @@ class PopupController {
             'multi_quote_enabled',
             'smart_paste_behavior'
         ]);
-        const display = res.multi_quote_display || 'expanded';
+        const display = res.multi_quote_display || 'compact';
         this.applyToggleState(display);
+
 
         const limits = res.usage_limits_enabled !== false;
         this.applyLimitsToggleState(limits);

@@ -128,7 +128,7 @@ class RatingManager {
 
     static async getState() {
         const res = await chrome.storage.local.get(['rating_state']);
-        return res.rating_state || { ...this.DEFAULTS };
+        return { ...this.DEFAULTS, ...(res.rating_state || {}) };
     }
 
     static async setState(newState) {
@@ -144,19 +144,17 @@ class RatingManager {
 
         // 1. Track Active Days
         if (state.lastDayActive !== now) {
-            state.activeDays += 1;
+            state.activeDays = (state.activeDays || 0) + 1;
             state.lastDayActive = now;
         }
 
         // 2. Increment Lifetime Counters
-        if (eventName === 'text_highlight') {
-            state.highlightCount += 1;
+        if (eventName === 'context_reply_sent') {
+            state.replyCount = (state.replyCount || 0) + 1;
             state.totalWords = (state.totalWords || 0) + (params.word_count || 0);
             if (state.isExistingUser) {
-                state.postUpdateHighlights += 1;
+                state.postUpdateHighlights = (state.postUpdateHighlights || 0) + 1; // Increment reply counter after update
             }
-        } else if (eventName === 'context_reply_sent') {
-            state.replyCount += 1;
         }
 
         await RatingManager.setState(state);
@@ -180,7 +178,7 @@ class RatingManager {
         if (state.ratingStatus === 'feedback_given') return;
 
         const timeCriteria = state.activeDays >= 3;
-        const valueCriteria = state.highlightCount >= 15 || state.replyCount >= 3;
+        const valueCriteria = state.replyCount >= 3;
 
         // Rule: Initial Trigger Thresholds
         if (state.ratingStatus === null) {
@@ -191,9 +189,9 @@ class RatingManager {
         // Rule: Cooldown Phase (Second and Final Time)
         else if (state.ratingStatus === 'dismissed') {
             const daysSinceDismissal = state.activeDays >= (state.dismissedAtActiveDay + 7);
-            const highlightsSinceDismissal = state.highlightCount >= (state.dismissedAtHighlightCount + 30);
+            const repliesSinceDismissal = state.replyCount >= (state.dismissedAtHighlightCount + 10);
             
-            if (daysSinceDismissal && highlightsSinceDismissal) {
+            if (daysSinceDismissal && repliesSinceDismissal) {
                 this.triggerUI();
             }
         }
@@ -233,7 +231,7 @@ class RatingManager {
 
         if (status === 'dismissed') {
             state.dismissedAtActiveDay = state.activeDays;
-            state.dismissedAtHighlightCount = state.highlightCount;
+            state.dismissedAtHighlightCount = state.replyCount; // Save replyCount here
         }
 
         await this.setState(state);
@@ -243,7 +241,7 @@ class RatingManager {
         AmplitudeWizard.trackEvent('rating_interaction', {
             status: status,
             activeDays: state.activeDays,
-            highlightCount: state.highlightCount
+            replyCount: state.replyCount
         });
     }
 }

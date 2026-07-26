@@ -350,7 +350,8 @@ chrome.storage.local.get([
     'smart_paste_behavior', 'smart_paste_threshold', 'smart_paste_feedback_done', 'toc_enabled'
 ], (res) => {
     var AG = window.AskGemini;
-    AG.multiQuoteDisplay = res.multi_quote_display || 'expanded';
+    AG.multiQuoteDisplay = res.multi_quote_display || 'compact';
+
     AG.usageLimitsEnabled = res.usage_limits_enabled !== false;
     AG.multiQuoteEnabled = res.multi_quote_enabled !== false;
     AG.smartPasteBehavior = res.smart_paste_behavior || 'auto';

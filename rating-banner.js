@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Ask Gemini: Rating & Feature Banner Module
  * Handles the star-rating modal and the feature announcement banner.
  */
@@ -56,28 +56,49 @@ window.AskGemini.CURRENT_FEATURE = {
 };
 */
 
-// ─── showRatingModal ──────────────────────────────────────────────────────────
+// ─── showRatingModal (Option 2: Inline Non-Blocking Chat Banner) ─────────────
 window.AskGemini.showRatingModal = function showRatingModal() {
     var AG = window.AskGemini;
-    if (document.querySelector('.ag-rating-modal')) return;
+    if (document.querySelector('.ag-rating-inline-banner')) return;
 
-    const modal = document.createElement('div');
-    modal.className = 'ag-rating-modal';
-    modal.innerHTML = `
-        <button class="ag-rating-close" aria-label="Close">${AG.ICONS.close}</button>
-        <h3 class="ag-rating-title" style="text-align: center; font-size: 15px; margin-bottom: 2px;">Enjoying Quote Reply?</h3>
-        <div class="ag-rating-stars-container">
-            <button class="ag-star-btn" data-value="1" aria-label="1 star">${AG.ICONS.star}</button>
-            <button class="ag-star-btn" data-value="2" aria-label="2 stars">${AG.ICONS.star}</button>
-            <button class="ag-star-btn" data-value="3" aria-label="3 stars">${AG.ICONS.star}</button>
-            <button class="ag-star-btn" data-value="4" aria-label="4 stars">${AG.ICONS.star}</button>
-            <button class="ag-star-btn" data-value="5" aria-label="5 stars">${AG.ICONS.star}</button>
+    const input = AG.findInputArea();
+    const container = input ? (input.closest('.input-area-container') || input.closest('.chat-input-area') || input.closest('form') || input.parentElement) : document.body;
+
+    const banner = document.createElement('div');
+    banner.className = 'ag-rating-inline-banner';
+
+    banner.innerHTML = `
+        <div class="ag-rating-inline-left">
+            <div class="ag-rating-inline-icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+                </svg>
+            </div>
+            <div class="ag-rating-inline-text-col">
+                <span class="ag-rating-inline-title">Enjoying Quote Reply?</span>
+                <span class="ag-rating-inline-sub">Tap stars to rate your experience</span>
+            </div>
+        </div>
+
+        <div class="ag-rating-inline-actions">
+            <div class="ag-rating-stars-row">
+                <button class="ag-star-btn ag-star-item-btn" data-value="1" aria-label="1 star">${AG.ICONS.star}</button>
+                <button class="ag-star-btn ag-star-item-btn" data-value="2" aria-label="2 stars">${AG.ICONS.star}</button>
+                <button class="ag-star-btn ag-star-item-btn" data-value="3" aria-label="3 stars">${AG.ICONS.star}</button>
+                <button class="ag-star-btn ag-star-item-btn" data-value="4" aria-label="4 stars">${AG.ICONS.star}</button>
+                <button class="ag-star-btn ag-star-item-btn" data-value="5" aria-label="5 stars">${AG.ICONS.star}</button>
+            </div>
+            <button class="ag-rating-inline-close" aria-label="Close">${AG.ICONS.close}</button>
         </div>
     `;
 
-    document.body.appendChild(modal);
+    if (container && container.parentNode) {
+        container.parentNode.insertBefore(banner, container);
+    } else {
+        document.body.appendChild(banner);
+    }
 
-    const stars = modal.querySelectorAll('.ag-star-btn');
+    const stars = banner.querySelectorAll('.ag-star-item-btn');
 
     stars.forEach(star => {
         star.addEventListener('mouseenter', () => {
@@ -85,65 +106,87 @@ window.AskGemini.showRatingModal = function showRatingModal() {
             stars.forEach(s => {
                 const val = parseInt(s.getAttribute('data-value'));
                 if (val <= value) {
-                    s.classList.add('hovered');
+                    s.classList.add('hovered-star');
                 } else {
-                    s.classList.remove('hovered');
+                    s.classList.remove('hovered-star');
                 }
             });
         });
 
         star.addEventListener('mouseleave', () => {
-            stars.forEach(s => s.classList.remove('hovered'));
+            stars.forEach(s => s.classList.remove('hovered-star'));
         });
 
         star.addEventListener('click', () => {
             const rating = parseInt(star.getAttribute('data-value'));
 
             if (rating >= 4) {
-                modal.innerHTML = `
-                    <button class="ag-rating-close" aria-label="Close">${AG.ICONS.close}</button>
-                    <h3 class="ag-rating-title" style="font-size: 15px; text-align: center;">You're the best! 🌟</h3>
-                    <p class="ag-rating-text" style="font-size: 12px; text-align: center; margin: 4px 0 8px 0; line-height: 1.4;">A quick 5-star review helps us keep Quote Reply free and powerful.</p>
-                    <div class="ag-rating-buttons" style="margin-top: 4px;">
-                        <button class="ag-rating-btn ag-rating-btn-primary" id="ag-go-rate" style="padding: 8px;">Leave 5 Stars</button>
+                banner.innerHTML = `
+                    <div class="ag-rating-inline-left">
+                        <div class="ag-rating-inline-icon" style="background: rgba(168, 199, 250, 0.15); color: #a8c7fa;">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+                            </svg>
+                        </div>
+                        <div class="ag-rating-inline-text-col">
+                            <span class="ag-rating-inline-title">You're the best! 🌟</span>
+                            <span class="ag-rating-inline-sub">A quick review keeps Quote Reply free for everyone</span>
+                        </div>
+                    </div>
+                    <div class="ag-rating-inline-actions">
+                        <button class="ag-sp-btn-primary" id="ag-go-rate" style="padding: 7px 18px; font-size: 13px;">Leave 5 Stars</button>
+                        <button class="ag-rating-inline-close" aria-label="Close">${AG.ICONS.close}</button>
                     </div>
                 `;
-                modal.querySelector('.ag-rating-close').onclick = () => modal.remove();
-                modal.querySelector('#ag-go-rate').onclick = () => {
+                banner.querySelector('.ag-rating-inline-close').onclick = () => banner.remove();
+                banner.querySelector('#ag-go-rate').onclick = () => {
                     chrome.runtime.sendMessage({ type: 'SET_RATING_STATUS', status: 'rated' });
                     chrome.runtime.sendMessage({ type: 'OPEN_REVIEW_PAGE' });
-                    modal.remove();
+                    banner.remove();
                 };
             } else {
-                modal.innerHTML = `
-                    <button class="ag-rating-close" aria-label="Close">${AG.ICONS.close}</button>
-                    <h3 class="ag-rating-title" style="font-size: 15px; text-align: center;">How can we improve?</h3>
-                    <p class="ag-rating-text" style="font-size: 12px; text-align: center; margin: 4px 0 8px 0; line-height: 1.4;">Your feedback helps us improve. You can send private feedback or rate us on the store.</p>
-                    <div class="ag-rating-buttons" style="margin-top: 8px; flex-direction: column; gap: 8px;">
-                        <button class="ag-rating-btn ag-rating-btn-primary" id="ag-give-feedback" style="padding: 8px; width: 100%;">Send Private Feedback</button>
-                        <button class="ag-rating-btn" id="ag-go-rate-stars" style="padding: 8px; width: 100%; border: 1px solid var(--ag-border); background: transparent;">Rate ${rating} Stars</button>
+                banner.innerHTML = `
+                    <div class="ag-rating-inline-left">
+                        <div class="ag-rating-inline-icon" style="background: rgba(168, 199, 250, 0.15); color: #a8c7fa;">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <line x1="12" y1="8" x2="12" y2="12"></line>
+                                <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                            </svg>
+                        </div>
+                        <div class="ag-rating-inline-text-col">
+                            <span class="ag-rating-inline-title">How can we improve?</span>
+                            <span class="ag-rating-inline-sub">We'd love your feedback to make Quote Reply better</span>
+                        </div>
+                    </div>
+                    <div class="ag-rating-inline-actions">
+                        <button class="ag-sp-btn-primary" id="ag-give-feedback" style="padding: 6px 14px; font-size: 12.5px;">Send Feedback</button>
+                        <button class="ag-sp-btn-secondary" id="ag-go-rate-stars" style="padding: 5px 12px; font-size: 12.5px;">Rate ${rating} Stars</button>
+                        <button class="ag-rating-inline-close" aria-label="Close">${AG.ICONS.close}</button>
                     </div>
                 `;
-                modal.querySelector('.ag-rating-close').onclick = () => modal.remove();
-                modal.querySelector('#ag-give-feedback').onclick = () => {
+                banner.querySelector('.ag-rating-inline-close').onclick = () => banner.remove();
+                banner.querySelector('#ag-give-feedback').onclick = () => {
                     chrome.runtime.sendMessage({ type: 'SET_RATING_STATUS', status: 'feedback_given' });
                     window.open('https://docs.google.com/forms/d/e/1FAIpQLSfr82mMdRgwSPY9ZsQkdRp_HXKKwmVuWO7GmjeZ3fS9XHpqsA/viewform', '_blank');
-                    modal.remove();
+                    banner.remove();
                 };
-                modal.querySelector('#ag-go-rate-stars').onclick = () => {
+                banner.querySelector('#ag-go-rate-stars').onclick = () => {
                     chrome.runtime.sendMessage({ type: 'SET_RATING_STATUS', status: 'rated' });
                     chrome.runtime.sendMessage({ type: 'OPEN_REVIEW_PAGE' });
-                    modal.remove();
+                    banner.remove();
                 };
             }
         });
     });
 
-    modal.querySelector('.ag-rating-close').onclick = () => {
+    banner.querySelector('.ag-rating-inline-close').onclick = () => {
         chrome.runtime.sendMessage({ type: 'SET_RATING_STATUS', status: 'dismissed' });
-        modal.remove();
+        banner.remove();
     };
 };
+
+
 
 // ─── evaluateFeatureBanner ────────────────────────────────────────────────────
 window.AskGemini.evaluateFeatureBanner = async function evaluateFeatureBanner() {

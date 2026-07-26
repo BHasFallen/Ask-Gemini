@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Ask Gemini: Quote Reply Module
  * Handles text selection, float button, context box, injection, and message transformation.
  */
@@ -7,7 +7,8 @@ window.AskGemini = window.AskGemini || {};
 
 // ─── Owned State ─────────────────────────────────────────────────────────────
 window.AskGemini.currentContexts = [];
-window.AskGemini.multiQuoteDisplay = 'expanded'; // overwritten by boot prefs
+window.AskGemini.multiQuoteDisplay = 'compact'; // overwritten by boot prefs
+
 window.AskGemini.multiQuoteEnabled = true;       // overwritten by boot prefs
 window.AskGemini.floatButton = null;
 window.AskGemini.contextBox = null;
@@ -68,9 +69,11 @@ window.AskGemini.maybeInjectAndSend = function maybeInjectAndSend() {
             }, 50);
         });
 
+        const totalWords = AG.currentContexts.reduce((a, c) => a + c.trim().split(/\s+/).length, 0);
         AG.trackEvent('context_reply_sent', {
             length: AG.currentContexts.reduce((a, c) => a + c.length, 0),
-            quote_count: AG.currentContexts.length
+            quote_count: AG.currentContexts.length,
+            word_count: totalWords
         });
         return true;
     } catch (err) {

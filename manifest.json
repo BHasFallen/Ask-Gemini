@@ -1,7 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Quote Reply for Gemini",
-  "version": "2.4.0",
+  "version": "2.5.0",
+
   "description": "Highlight any Google Gemini response and quote-reply with full context. Sharper follow-ups, fewer hallucinations.",
   "permissions": [
     "storage",
@@ -42,5 +43,15 @@
     "16": "icons/icon16.png",
     "48": "icons/icon48.png",
     "128": "icons/icon128.png"
-  }
-}
+  },
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "icons/*.png"
+      ],
+      "matches": [
+        "https://gemini.google.com/*"
+      ]
+    }
+  ]
+}
