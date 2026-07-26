@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Quote Reply for Gemini — What's New</title>
+    <title>Quote Reply for Gemini</title>
     <link rel="stylesheet" href="onboarding.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&family=Google+Sans+Display:wght@400;700&display=swap" rel="stylesheet">
@@ -15,17 +15,23 @@
         <!-- Header -->
         <header class="ob-header">
             <div class="ob-logo">
-                <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/><path d="M5 3v4"/><path d="M19 17v4"/><path d="M3 5h4"/><path d="M17 19h4"/></svg>
+                <img src="icons/icon48.png" width="28" height="28" alt="Quote Reply" />
             </div>
             <span class="ob-logo-name">Quote Reply for Gemini</span>
             <span id="ob-version" class="ob-version-badge"></span>
         </header>
 
-        <!-- INSTALL MODE -->
+        <!-- ══════════ INSTALL MODE ══════════ -->
         <div class="show-on-install">
-            <section class="ob-hero">
-                <h1 class="ob-headline">How to use Quote Reply</h1>
+
+            <section class="ob-install-hero">
+                <div class="ob-install-icon">
+                    <img src="icons/icon128.png" width="56" height="56" alt="Quote Reply" />
+                </div>
+                <h1 class="ob-install-headline">Welcome to<br><span class="ob-gradient-text">Quote Reply.</span></h1>
+                <p class="ob-install-sub">Quote any part of Gemini's response and send smarter, more focused follow-ups — in three steps.</p>
             </section>
+
             <section class="ob-steps">
                 <div class="ob-step">
                     <div class="ob-step-num">1</div>
@@ -39,7 +45,7 @@
                     <div class="ob-step-num">2</div>
                     <div class="ob-step-body">
                         <h3 class="ob-step-title">Click "Ask Gemini"</h3>
-                        <p class="ob-step-desc">A floating button will pop up near your cursor. Click it to lock in your context.</p>
+                        <p class="ob-step-desc">A floating button appears near your cursor. Click it to lock in your context.</p>
                     </div>
                 </div>
                 <div class="ob-step-connector"></div>
@@ -47,19 +53,34 @@
                     <div class="ob-step-num">3</div>
                     <div class="ob-step-body">
                         <h3 class="ob-step-title">Type &amp; Send</h3>
-                        <p class="ob-step-desc">Enter your follow-up reply in the text area and press enter. Your highlighted context is sent with it.</p>
+                        <p class="ob-step-desc">Write your follow-up and press enter. Your quoted context is sent alongside it automatically.</p>
                     </div>
                 </div>
             </section>
+
+            <!-- Install feature pills -->
+            <div class="ob-install-pills">
+                <span class="ob-install-pill">📋 Table of Contents</span>
+                <span class="ob-install-pill">🧠 Smart Paste</span>
+                <span class="ob-install-pill">❝ Multi-Quote</span>
+            </div>
+
+            <div class="ob-cta ob-cta--install">
+                <button id="ob-open-gemini" class="ob-btn-primary ob-btn-primary--lg">
+                    Open Gemini &amp; try it
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+                </button>
+            </div>
         </div>
 
-        <!-- UPDATE MODE -->
+        <!-- ══════════ UPDATE MODE ══════════ -->
         <div class="show-on-update">
 
             <!-- Update hero -->
             <section class="ob-update-hero">
                 <div class="ob-update-eyebrow">
-                    <span class="ob-update-pill">✦ Just updated</span>
+                    <img src="icons/icon48.png" width="20" height="20" alt="" class="ob-eyebrow-icon" />
+                    <span>Quote Reply has been updated</span>
                     <span id="ob-version-inline" class="ob-update-version"></span>
                 </div>
                 <h1 class="ob-update-headline">Three new<br><span class="ob-gradient-text">superpowers.</span></h1>

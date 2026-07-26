@@ -69,7 +69,15 @@ body.mode-update .show-on-install { display: none !important; }
     justify-content: center;
     color: var(--ob-primary);
     flex-shrink: 0;
+    overflow: hidden;
 }
+
+.ob-logo img {
+    width: 28px;
+    height: 28px;
+    object-fit: contain;
+}
+
 
 .ob-logo-name {
     font-size: 15px;
@@ -584,3 +592,95 @@ body.mode-update .ob-page {
     }
 }
 
+/* ── Install hero ─────────────────────────────────────────────── */
+.ob-install-hero {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+    margin-bottom: 32px;
+    padding-top: 8px;
+}
+
+.ob-install-icon {
+    width: 72px;
+    height: 72px;
+    background: var(--ob-primary-dim);
+    border: 1px solid rgba(168, 199, 250, 0.2);
+    border-radius: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+.ob-install-icon img {
+    width: 56px;
+    height: 56px;
+    object-fit: contain;
+}
+
+.ob-install-headline {
+    font-size: clamp(2.2rem, 6.5vw, 3.2rem);
+    font-weight: 700;
+    line-height: 1.1;
+    letter-spacing: -0.8px;
+    color: var(--ob-text);
+    margin: 0;
+}
+
+.ob-install-sub {
+    font-size: 15px;
+    color: var(--ob-text-muted);
+    line-height: 1.6;
+    max-width: 480px;
+}
+
+/* ── Install feature pills ────────────────────────────────────── */
+.ob-install-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 4px;
+    margin-bottom: 28px;
+}
+
+.ob-install-pill {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--ob-text-dim);
+    background: var(--ob-surface);
+    border: 1px solid var(--ob-border);
+    border-radius: var(--ob-radius-chip);
+    padding: 5px 14px;
+}
+
+/* ── Install CTA ──────────────────────────────────────────────── */
+.ob-cta--install {
+    justify-content: flex-start;
+    margin-bottom: 0;
+}
+
+/* ── Update eyebrow with real icon ───────────────────────────── */
+.ob-update-eyebrow {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 20px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ob-text-muted);
+}
+
+.ob-eyebrow-icon {
+    width: 20px;
+    height: 20px;
+    border-radius: 5px;
+    object-fit: contain;
+    flex-shrink: 0;
+}
+
+/* Remove the old pill — eyebrow is now text-based */
+.ob-update-pill {
+    display: none;
+}
