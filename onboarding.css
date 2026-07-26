@@ -59,22 +59,17 @@ body.mode-update .show-on-install { display: none !important; }
 }
 
 .ob-logo {
-    width: 44px;
-    height: 44px;
-    background: var(--ob-primary-dim);
-    border: 1px solid rgba(168, 199, 250, 0.2);
-    border-radius: 12px;
+    width: 36px;
+    height: 36px;
     display: flex;
     align-items: center;
     justify-content: center;
-    color: var(--ob-primary);
     flex-shrink: 0;
-    overflow: hidden;
 }
 
 .ob-logo img {
-    width: 28px;
-    height: 28px;
+    width: 36px;
+    height: 36px;
     object-fit: contain;
 }
 
@@ -419,6 +414,11 @@ body.mode-update .ob-page {
     line-height: 1.5;
 }
 
+.ob-update-sub-feature {
+    font-weight: 600;
+    font-size: inherit;
+}
+
 /* ── Feature cards — 3-column hero grid ──────────────────────── */
 .ob-new-features {
     display: grid;
@@ -661,26 +661,19 @@ body.mode-update .ob-page {
     margin-bottom: 0;
 }
 
-/* ── Update eyebrow with real icon ───────────────────────────── */
+/* ── Update eyebrow ──────────────────────────────────────────── */
 .ob-update-eyebrow {
     display: flex;
     align-items: center;
-    gap: 10px;
-    margin-bottom: 20px;
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--ob-text-muted);
+    gap: 8px;
+    margin-bottom: 16px;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.6px;
+    text-transform: uppercase;
+    color: var(--ob-primary);
 }
 
-.ob-eyebrow-icon {
-    width: 20px;
-    height: 20px;
-    border-radius: 5px;
-    object-fit: contain;
-    flex-shrink: 0;
-}
+.ob-eyebrow-icon { display: none; }
 
-/* Remove the old pill — eyebrow is now text-based */
-.ob-update-pill {
-    display: none;
-}
+.ob-update-pill { display: none; }
