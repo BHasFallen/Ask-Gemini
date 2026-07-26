@@ -26,13 +26,22 @@ document.addEventListener('DOMContentLoaded', () => {
     const versionInstall = document.getElementById('ob-version-install');
     if (versionInstall) versionInstall.textContent = `v${version}`;
 
-    // ── Open Gemini button ───────────────────────────────────────────────────
-    const openBtn = document.getElementById('ob-open-gemini');
-    if (openBtn) {
-        openBtn.addEventListener('click', () => {
-            chrome.tabs.create({ url: 'https://gemini.google.com/app' });
+    // ── Open Gemini buttons ──────────────────────────────────────────────────
+    const openBtns = document.querySelectorAll('#ob-open-gemini, .ob-btn-primary, .ob-install-cta');
+    openBtns.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            try {
+                if (typeof chrome !== 'undefined' && chrome.tabs && chrome.tabs.create) {
+                    chrome.tabs.create({ url: 'https://gemini.google.com/app' });
+                } else {
+                    window.open('https://gemini.google.com/app', '_blank');
+                }
+            } catch (err) {
+                window.open('https://gemini.google.com/app', '_blank');
+            }
         });
-    }
+    });
 
     // ── Analytics ────────────────────────────────────────────────────────────
     if (chrome.runtime && chrome.runtime.sendMessage) {
