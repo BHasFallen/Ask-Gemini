@@ -5,6 +5,16 @@
 
 window.AskGemini = window.AskGemini || {};
 
+// ─── Security Helpers ────────────────────────────────────────────────────────
+window.AskGemini.escapeHtml = function escapeHtml(str) {
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+};
+
 // ─── Owned State ─────────────────────────────────────────────────────────────
 window.AskGemini.currentContexts = [];
 window.AskGemini.multiQuoteDisplay = 'compact'; // overwritten by boot prefs
@@ -336,11 +346,11 @@ window.AskGemini.transformMessages = function transformMessages() {
                     <button class="ask-gemini-reply-preview" type="button">
                         <div class="ask-gemini-reply-icon">${AG.ICONS.reply}</div>
                         <div class="ask-gemini-reply-text-wrapper">
-                            <p class="ask-gemini-reply-text">${context}</p>
+                            <p class="ask-gemini-reply-text">${AG.escapeHtml(context)}</p>
                         </div>
                     </button>
                     <div class="ask-gemini-message-bubble">
-                        <div class="ask-gemini-bubble-text"><p>${actualMessage}</p></div>
+                        <div class="ask-gemini-bubble-text"><p>${AG.escapeHtml(actualMessage)}</p></div>
                     </div>
                 </div>
             `;
@@ -380,7 +390,7 @@ window.AskGemini.transformMessages = function transformMessages() {
                 <button class="ask-gemini-reply-preview" type="button">
                     <div class="ask-gemini-reply-icon">${AG.ICONS.reply}</div>
                     <div class="ask-gemini-reply-text-wrapper">
-                        <p class="ask-gemini-reply-text">${q}</p>
+                        <p class="ask-gemini-reply-text">${AG.escapeHtml(q)}</p>
                     </div>
                 </button>
             `).join('');
@@ -390,14 +400,14 @@ window.AskGemini.transformMessages = function transformMessages() {
                 chipHtml = `
                     <div class="ask-gemini-proxy-content">
                         <button class="ask-gemini-reply-preview" type="button"
-                            title="${quotes.map((q, i) => `${i + 1}. ${q}`).join('\n')}">
+                            title="${AG.escapeHtml(quotes.map((q, i) => `${i + 1}. ${q}`).join('\n'))}">
                             <div class="ask-gemini-reply-icon">${AG.ICONS.reply}</div>
                             <div class="ask-gemini-reply-text-wrapper">
                                 <p class="ask-gemini-reply-text">${quotes.length} quoted excerpts</p>
                             </div>
                         </button>
                         <div class="ask-gemini-message-bubble">
-                            <div class="ask-gemini-bubble-text"><p>${actualMessage}</p></div>
+                            <div class="ask-gemini-bubble-text"><p>${AG.escapeHtml(actualMessage)}</p></div>
                         </div>
                     </div>
                 `;
@@ -406,7 +416,7 @@ window.AskGemini.transformMessages = function transformMessages() {
                     <div class="ask-gemini-proxy-content">
                         ${chipsHtml}
                         <div class="ask-gemini-message-bubble">
-                            <div class="ask-gemini-bubble-text"><p>${actualMessage}</p></div>
+                            <div class="ask-gemini-bubble-text"><p>${AG.escapeHtml(actualMessage)}</p></div>
                         </div>
                     </div>
                 `;

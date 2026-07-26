@@ -420,8 +420,34 @@ class BackgroundLogManager {
     constructor() {
         this.logs = [];
         this.maxLogs = 200;
+        // Defaults used synchronously until storage resolves
         this.sessionId = this.generateSessionId();
         this.startTime = Date.now();
+        // Restore persisted session (30-min window — Amplitude's standard timeout)
+        this._restoreSession();
+    }
+
+    async _restoreSession() {
+        try {
+            const SESSION_TTL = 30 * 60 * 1000; // 30 minutes
+            const res = await chrome.storage.local.get(['ag_session_id', 'ag_session_start']);
+            const storedId = res.ag_session_id;
+            const storedStart = res.ag_session_start;
+            const now = Date.now();
+            if (storedId && storedStart && (now - storedStart) < SESSION_TTL) {
+                // Resume the existing session
+                this.sessionId = storedId;
+                this.startTime = storedStart;
+            } else {
+                // Persist the newly generated session
+                await chrome.storage.local.set({
+                    ag_session_id: this.sessionId,
+                    ag_session_start: this.startTime
+                });
+            }
+        } catch (e) {
+            // Storage unavailable — keep in-memory defaults
+        }
     }
 
     generateSessionId() {

@@ -332,7 +332,14 @@ document.addEventListener('click', (e) => {
 
 document.addEventListener('mouseup', () => window.AskGemini.handleSelection());
 
-const observer = new MutationObserver(() => window.AskGemini.transformMessages());
+let _transformDebounceTimer = null;
+const observer = new MutationObserver(() => {
+    if (_transformDebounceTimer) return; // leading-edge: already queued
+    _transformDebounceTimer = setTimeout(() => {
+        _transformDebounceTimer = null;
+        window.AskGemini.transformMessages();
+    }, 150);
+});
 observer.observe(document.body, { childList: true, subtree: true });
 
 chrome.runtime.onMessage.addListener((message) => {
