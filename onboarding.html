@@ -23,80 +23,84 @@
 
         <!-- ══════════ INSTALL MODE ══════════ -->
         <div class="show-on-install">
+            <div class="ob-install-layout">
 
-            <section class="ob-install-hero">
-                <h1 class="ob-install-headline">Welcome to<br><span class="ob-gradient-text">Quote Reply.</span></h1>
-                <p class="ob-install-sub">Quote any part of Gemini's response and send smarter, more focused follow-ups — in three steps.</p>
-            </section>
-
-            <section class="ob-steps">
-                <div class="ob-step">
-                    <div class="ob-step-num">1</div>
-                    <div class="ob-step-body">
-                        <h3 class="ob-step-title">Highlight target text</h3>
-                        <p class="ob-step-desc">Select any text in Gemini's response that you want to reply to.</p>
-                    </div>
+                <!-- Left: headline + CTA -->
+                <div class="ob-install-left">
+                    <h1 class="ob-install-headline">Welcome to<br><span class="ob-gradient-text">Quote Reply.</span></h1>
+                    <p class="ob-install-sub">Quote any part of Gemini's response and send smarter, more focused follow-ups.</p>
+                    <button id="ob-open-gemini" class="ob-btn-primary ob-btn-primary--lg ob-install-cta">
+                        Open Gemini &amp; try it
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+                    </button>
                 </div>
-                <div class="ob-step-connector"></div>
-                <div class="ob-step">
-                    <div class="ob-step-num">2</div>
-                    <div class="ob-step-body">
-                        <h3 class="ob-step-title">Click "Ask Gemini"</h3>
-                        <p class="ob-step-desc">A floating button appears near your cursor. Click it to lock in your context.</p>
-                    </div>
-                </div>
-                <div class="ob-step-connector"></div>
-                <div class="ob-step">
-                    <div class="ob-step-num">3</div>
-                    <div class="ob-step-body">
-                        <h3 class="ob-step-title">Type &amp; Send</h3>
-                        <p class="ob-step-desc">Write your follow-up and press enter. Your quoted context is sent alongside it automatically.</p>
-                    </div>
-                </div>
-            </section>
 
-            <!-- Other features -->
-            <section class="ob-other-features">
-                <h3 class="ob-other-title">Other features</h3>
-                <ul class="ob-other-list">
-                    <li class="ob-other-item">
-                        <span class="ob-other-icon">📋</span>
-                        <div class="ob-other-body">
-                            <span class="ob-other-name">Table of Contents</span>
-                            <span class="ob-other-desc">A dash bar that maps your conversation and lets you jump between prompts instantly.</span>
+                <!-- Right: steps + other features -->
+                <div class="ob-install-right">
+                    <section class="ob-steps ob-steps--compact">
+                        <div class="ob-step">
+                            <div class="ob-step-num">1</div>
+                            <div class="ob-step-body">
+                                <h3 class="ob-step-title">Highlight target text</h3>
+                                <p class="ob-step-desc">Select any text in Gemini's response you want to reply to.</p>
+                            </div>
                         </div>
-                    </li>
-                    <li class="ob-other-item">
-                        <span class="ob-other-icon">🧠</span>
-                        <div class="ob-other-body">
-                            <span class="ob-other-name">Smart Paste</span>
-                            <span class="ob-other-desc">Large pastes are automatically offered as file attachments so Gemini reads them properly.</span>
+                        <div class="ob-step-connector"></div>
+                        <div class="ob-step">
+                            <div class="ob-step-num">2</div>
+                            <div class="ob-step-body">
+                                <h3 class="ob-step-title">Click "Ask Gemini"</h3>
+                                <p class="ob-step-desc">A floating button appears. Click it to lock in your context.</p>
+                            </div>
                         </div>
-                    </li>
-                    <li class="ob-other-item">
-                        <span class="ob-other-icon">❝</span>
-                        <div class="ob-other-body">
-                            <span class="ob-other-name">Multi-Quote</span>
-                            <span class="ob-other-desc">Select multiple excerpts and send them in one focused reply — shown as a single chip.</span>
+                        <div class="ob-step-connector"></div>
+                        <div class="ob-step">
+                            <div class="ob-step-num">3</div>
+                            <div class="ob-step-body">
+                                <h3 class="ob-step-title">Type &amp; Send</h3>
+                                <p class="ob-step-desc">Write your follow-up and press enter. Context is sent automatically.</p>
+                            </div>
                         </div>
-                    </li>
-                    <li class="ob-other-item">
-                        <span class="ob-other-icon">📊</span>
-                        <div class="ob-other-body">
-                            <span class="ob-other-name">Usage Limits</span>
-                            <span class="ob-other-desc">See your Gemini quota at a glance directly in the extension popup.</span>
-                        </div>
-                    </li>
-                </ul>
-            </section>
+                    </section>
 
-            <div class="ob-cta ob-cta--install">
-                <button id="ob-open-gemini" class="ob-btn-primary ob-btn-primary--lg">
-                    Open Gemini &amp; try it
-                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
-                </button>
+                    <section class="ob-other-features ob-other-features--compact">
+                        <h3 class="ob-other-title">Other features</h3>
+                        <ul class="ob-other-list">
+                            <li class="ob-other-item">
+                                <span class="ob-other-icon">📋</span>
+                                <div class="ob-other-body">
+                                    <span class="ob-other-name">Table of Contents</span>
+                                    <span class="ob-other-desc">Dash bar on the right — jump between prompts instantly.</span>
+                                </div>
+                            </li>
+                            <li class="ob-other-item">
+                                <span class="ob-other-icon">🧠</span>
+                                <div class="ob-other-body">
+                                    <span class="ob-other-name">Smart Paste</span>
+                                    <span class="ob-other-desc">Large pastes offered as file attachments automatically.</span>
+                                </div>
+                            </li>
+                            <li class="ob-other-item">
+                                <span class="ob-other-icon">❝</span>
+                                <div class="ob-other-body">
+                                    <span class="ob-other-name">Multi-Quote</span>
+                                    <span class="ob-other-desc">Queue multiple excerpts into one focused reply.</span>
+                                </div>
+                            </li>
+                            <li class="ob-other-item">
+                                <span class="ob-other-icon">📊</span>
+                                <div class="ob-other-body">
+                                    <span class="ob-other-name">Usage Limits</span>
+                                    <span class="ob-other-desc">See your Gemini quota at a glance in the popup.</span>
+                                </div>
+                            </li>
+                        </ul>
+                    </section>
+                </div>
+
             </div>
         </div>
+
 
         <!-- ══════════ UPDATE MODE ══════════ -->
         <div class="show-on-update">
