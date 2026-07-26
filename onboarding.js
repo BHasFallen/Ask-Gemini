@@ -14,6 +14,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const versionInline = document.getElementById('ob-version-inline');
     if (versionInline) versionInline.textContent = `v${version}`;
 
+    const versionInstall = document.getElementById('ob-version-install');
+    if (versionInstall) versionInstall.textContent = `v${version}`;
+
     // ── Open Gemini button ───────────────────────────────────────────────────
     const openBtn = document.getElementById('ob-open-gemini');
     if (openBtn) {
