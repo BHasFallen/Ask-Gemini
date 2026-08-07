@@ -59,17 +59,20 @@ body.mode-update .show-on-install { display: none !important; }
 }
 
 .ob-logo {
-    width: 44px;
-    height: 44px;
-    background: var(--ob-primary-dim);
-    border: 1px solid rgba(168, 199, 250, 0.2);
-    border-radius: 12px;
+    width: 36px;
+    height: 36px;
     display: flex;
     align-items: center;
     justify-content: center;
-    color: var(--ob-primary);
     flex-shrink: 0;
 }
+
+.ob-logo img {
+    width: 36px;
+    height: 36px;
+    object-fit: contain;
+}
+
 
 .ob-logo-name {
     font-size: 15px;
@@ -348,3 +351,495 @@ body.mode-update .show-on-install { display: none !important; }
     .ob-feedback-buttons { flex-direction: column; width: 100%; }
     .ob-btn-secondary { width: 100%; }
 }
+
+/* ══════════════════════════════════════════════════════════════════
+   UPDATE SCREEN REDESIGN — v2.5
+══════════════════════════════════════════════════════════════════ */
+
+/* Wider container for update mode */
+body.mode-update .ob-page {
+    max-width: 760px;
+}
+
+/* ── Update hero ──────────────────────────────────────────────── */
+.ob-update-hero {
+    margin-bottom: 40px;
+    padding-top: 12px;
+}
+
+.ob-update-eyebrow {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.ob-update-pill {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.6px;
+    text-transform: uppercase;
+    color: var(--ob-primary);
+    background: var(--ob-primary-dim);
+    border: 1px solid rgba(168, 199, 250, 0.25);
+    padding: 5px 12px;
+    border-radius: var(--ob-radius-chip);
+}
+
+.ob-update-version {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--ob-text-muted);
+}
+
+.ob-update-headline {
+    font-size: clamp(2.4rem, 7vw, 3.5rem);
+    font-weight: 700;
+    line-height: 1.1;
+    letter-spacing: -1px;
+    color: var(--ob-text);
+    margin-bottom: 14px;
+}
+
+.ob-gradient-text {
+    background: linear-gradient(135deg, #a8c7fa 0%, #c4b5fd 50%, #93c5fd 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.ob-update-sub {
+    font-size: 16px;
+    color: var(--ob-text-muted);
+    line-height: 1.5;
+}
+
+.ob-update-sub-feature {
+    font-weight: 600;
+    font-size: inherit;
+}
+
+/* ── Feature cards — 3-column hero grid ──────────────────────── */
+.ob-new-features {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin-bottom: 36px;
+}
+
+.ob-feature-card {
+    background: var(--ob-surface);
+    border: 1px solid var(--ob-border);
+    border-radius: 20px;
+    padding: 24px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    position: relative;
+    overflow: hidden;
+    transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+    /* stagger animations */
+    opacity: 0;
+    transform: translateY(16px);
+    animation: ob-card-in 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.ob-stagger-1 { animation-delay: 0.05s; }
+.ob-stagger-2 { animation-delay: 0.15s; }
+.ob-stagger-3 { animation-delay: 0.25s; }
+
+@keyframes ob-card-in {
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.ob-feature-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    transition: opacity 0.3s;
+    border-radius: inherit;
+    pointer-events: none;
+}
+
+.ob-feature-card:hover {
+    transform: translateY(-3px);
+    border-color: rgba(168, 199, 250, 0.35);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+/* Icon container */
+.ob-feature-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.ob-feature-icon--paste {
+    background: rgba(168, 199, 250, 0.12);
+    color: #a8c7fa;
+    border: 1px solid rgba(168, 199, 250, 0.2);
+}
+
+.ob-feature-icon--toc {
+    background: rgba(196, 181, 253, 0.12);
+    color: #c4b5fd;
+    border: 1px solid rgba(196, 181, 253, 0.2);
+}
+
+.ob-feature-icon--quote {
+    background: rgba(109, 213, 140, 0.1);
+    color: #6dd58c;
+    border: 1px solid rgba(109, 213, 140, 0.2);
+}
+
+.ob-feature-tag {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    padding: 3px 8px;
+    border-radius: var(--ob-radius-chip);
+    align-self: flex-start;
+}
+
+.ob-feature-title {
+    font-size: 17px;
+    font-weight: 700;
+    color: #ffffff;
+    letter-spacing: -0.3px;
+    line-height: 1.2;
+}
+
+.ob-feature-desc {
+    font-size: 13px;
+    color: var(--ob-text-dim);
+    line-height: 1.55;
+}
+
+.ob-feature-desc strong {
+    color: var(--ob-primary);
+    font-weight: 600;
+}
+
+/* ── CTA update variant ───────────────────────────────────────── */
+.ob-cta--update {
+    justify-content: flex-start;
+    margin-bottom: 40px;
+}
+
+.ob-btn-primary--lg {
+    font-size: 16px;
+    padding: 14px 30px;
+    gap: 10px;
+    box-shadow: 0 4px 24px rgba(168, 199, 250, 0.35);
+}
+
+.ob-btn-primary--lg:hover {
+    box-shadow: 0 6px 32px rgba(168, 199, 250, 0.5);
+}
+
+/* ── Secondary improvements ──────────────────────────────────── */
+.ob-secondary-updates {
+    margin-bottom: 24px;
+}
+
+.ob-secondary-title {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--ob-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    margin-bottom: 14px;
+}
+
+.ob-secondary-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.ob-secondary-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: var(--ob-surface);
+    border: 1px solid var(--ob-border);
+    border-radius: 12px;
+    padding: 12px 16px;
+}
+
+.ob-secondary-label {
+    font-size: 13.5px;
+    color: var(--ob-text-dim);
+    line-height: 1.4;
+}
+
+/* ── Responsive — collapse to 1 col on mobile ────────────────── */
+@media (max-width: 600px) {
+    .ob-new-features {
+        grid-template-columns: 1fr;
+    }
+    .ob-update-headline {
+        font-size: 2.2rem;
+    }
+    body.mode-update .ob-page {
+        max-width: 100%;
+    }
+}
+
+/* ── Install: lock to one viewport ───────────────────────────── */
+body.mode-install {
+    height: 100vh;
+    overflow: hidden;
+    padding: 0;
+}
+
+body.mode-install .ob-page {
+    height: 100vh;
+    max-width: 100%;
+    display: flex;
+    flex-direction: column;
+    padding: 0 40px 0;
+    box-sizing: border-box;
+    overflow: hidden;
+}
+
+body.mode-install .ob-header {
+    flex-shrink: 0;
+    padding: 20px 0 16px;
+    border-bottom: 1px solid var(--ob-border);
+    margin-bottom: 0;
+}
+
+/* Full-height install section */
+.show-on-install {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+/* Two-column grid */
+.ob-install-layout {
+    flex: 1;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 40px;
+    align-items: center;
+    padding: 28px 0 20px;
+    overflow: hidden;
+}
+
+/* Left column */
+.ob-install-left {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    justify-content: center;
+}
+
+.ob-install-cta {
+    align-self: flex-start;
+    margin-top: 4px;
+}
+
+/* Right column */
+.ob-install-right {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    overflow: hidden;
+}
+
+/* ── Install hero headline ────────────────────────────────────── */
+.ob-install-hero {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.ob-install-headline {
+    font-size: clamp(1.9rem, 4vw, 2.8rem);
+    font-weight: 700;
+    line-height: 1.1;
+    letter-spacing: -0.8px;
+    color: var(--ob-text);
+    margin: 0;
+}
+
+.ob-install-sub {
+    font-size: 14px;
+    color: var(--ob-text-muted);
+    line-height: 1.55;
+    max-width: 340px;
+}
+
+.ob-install-version {
+    display: inline-block;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--ob-text-muted);
+    background: var(--ob-surface);
+    border: 1px solid var(--ob-border);
+    border-radius: var(--ob-radius-chip);
+    padding: 3px 10px;
+    align-self: flex-start;
+}
+
+/* Hide the pill entirely until JS populates it */
+.ob-install-version:empty {
+    display: none;
+}
+
+/* ── Compact steps override ───────────────────────────────────── */
+.ob-steps--compact {
+    background: var(--ob-surface);
+    border: 1px solid var(--ob-border);
+    border-radius: 16px;
+    padding: 14px 16px;
+    gap: 0;
+}
+
+.ob-steps--compact .ob-step {
+    padding: 8px 4px;
+    gap: 12px;
+}
+
+.ob-steps--compact .ob-step-num {
+    width: 26px;
+    height: 26px;
+    font-size: 12px;
+    flex-shrink: 0;
+}
+
+.ob-steps--compact .ob-step-title {
+    font-size: 14px;
+    margin-bottom: 2px;
+}
+
+.ob-steps--compact .ob-step-desc {
+    font-size: 12.5px;
+}
+
+.ob-steps--compact .ob-step-connector {
+    margin-left: 13px;
+    height: 10px;
+}
+
+/* ── Compact other features override ─────────────────────────── */
+.ob-other-features--compact {
+    margin-top: 0;
+    margin-bottom: 0;
+}
+
+.ob-other-features--compact .ob-other-title {
+    margin-bottom: 8px;
+}
+
+.ob-other-features--compact .ob-other-list {
+    border-radius: 14px;
+}
+
+.ob-other-features--compact .ob-other-item {
+    padding: 9px 14px;
+    gap: 12px;
+}
+
+.ob-other-features--compact .ob-other-icon {
+    font-size: 15px;
+}
+
+.ob-other-features--compact .ob-other-name {
+    font-size: 13.5px;
+}
+
+.ob-other-features--compact .ob-other-desc {
+    font-size: 12px;
+}
+
+
+/* ── Other features list ──────────────────────────────────────── */
+.ob-other-features {
+    margin-top: 8px;
+    margin-bottom: 28px;
+}
+
+.ob-other-title {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.7px;
+    text-transform: uppercase;
+    color: var(--ob-text-muted);
+    margin-bottom: 12px;
+}
+
+.ob-other-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    background: var(--ob-surface);
+    border: 1px solid var(--ob-border);
+    border-radius: 16px;
+    overflow: hidden;
+}
+
+.ob-other-item {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 13px 18px;
+    border-bottom: 1px solid var(--ob-border);
+}
+
+.ob-other-item:last-child {
+    border-bottom: none;
+}
+
+.ob-other-icon {
+    font-size: 18px;
+    flex-shrink: 0;
+    width: 24px;
+    text-align: center;
+}
+
+.ob-other-body {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.ob-other-name {
+    font-size: 13.5px;
+    font-weight: 600;
+    color: var(--ob-text);
+}
+
+.ob-other-desc {
+    font-size: 12px;
+    color: var(--ob-text-muted);
+    line-height: 1.4;
+}
+
+
+/* ── Update eyebrow ──────────────────────────────────────────── */
+.ob-update-eyebrow {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 16px;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.6px;
+    text-transform: uppercase;
+    color: var(--ob-primary);
+}
+
+.ob-eyebrow-icon { display: none; }
+
+.ob-update-pill { display: none; }

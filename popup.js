@@ -114,8 +114,10 @@ class PopupController {
     }
 
     applyTocToggleState(enabled) {
-        document.getElementById('toggle-toc-on').classList.toggle('active', enabled);
-        document.getElementById('toggle-toc-off').classList.toggle('active', !enabled);
+        const tocOn = document.getElementById('toggle-toc-on');
+        const tocOff = document.getElementById('toggle-toc-off');
+        if (tocOn) tocOn.classList.toggle('active', enabled);
+        if (tocOff) tocOff.classList.toggle('active', !enabled);
     }
 
     async saveMultiQuoteStyle(value) {
@@ -192,8 +194,10 @@ class PopupController {
         document.getElementById('toggle-sp-ask').addEventListener('click', () => this.saveSmartPasteBehavior('ask'));
         document.getElementById('toggle-sp-off').addEventListener('click', () => this.saveSmartPasteBehavior('off'));
 
-        document.getElementById('toggle-toc-on').addEventListener('click', () => this.saveTocState(true));
-        document.getElementById('toggle-toc-off').addEventListener('click', () => this.saveTocState(false));
+        const tocOn = document.getElementById('toggle-toc-on');
+        const tocOff = document.getElementById('toggle-toc-off');
+        if (tocOn) tocOn.addEventListener('click', () => this.saveTocState(true));
+        if (tocOff) tocOff.addEventListener('click', () => this.saveTocState(false));
 
         const rateBtn = document.getElementById('rate-extension-btn');
         if (rateBtn) {
@@ -205,6 +209,24 @@ class PopupController {
                 chrome.runtime.sendMessage({ type: 'OPEN_REVIEW_PAGE' });
             });
         }
+
+        // Load & Copy Device ID
+        const copyDevIdBtn = document.getElementById('copy-device-id-btn');
+        const devIdText = document.getElementById('popup-device-id-text');
+        
+        chrome.runtime.sendMessage({ type: 'GET_DEVICE_ID' }, (resp) => {
+            const devId = (resp && resp.deviceId) ? resp.deviceId : 'dev_zks1hxk72';
+            if (devIdText) devIdText.textContent = devId.slice(0, 12) + '...';
+            if (copyDevIdBtn) {
+                copyDevIdBtn.onclick = () => {
+                    navigator.clipboard.writeText(devId);
+                    if (devIdText) devIdText.textContent = 'Copied!';
+                    setTimeout(() => {
+                        if (devIdText) devIdText.textContent = devId.slice(0, 12) + '...';
+                    }, 1500);
+                };
+            }
+        });
     }
 
     async reportProblem() {

@@ -5,6 +5,16 @@
 
 window.AskGemini = window.AskGemini || {};
 
+// ─── Security Helpers ────────────────────────────────────────────────────────
+window.AskGemini.escapeHtml = function escapeHtml(str) {
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+};
+
 // ─── Owned State ─────────────────────────────────────────────────────────────
 window.AskGemini.currentContexts = [];
 window.AskGemini.multiQuoteDisplay = 'compact'; // overwritten by boot prefs
@@ -45,6 +55,14 @@ window.AskGemini.maybeInjectAndSend = function maybeInjectAndSend() {
         document.execCommand('selectAll', false, null);
         document.execCommand('insertText', false, composed);
 
+        const savedContexts = [...AG.currentContexts];
+        const totalWords = savedContexts.reduce((a, c) => a + c.trim().split(/\s+/).length, 0);
+        const eventParams = {
+            length: savedContexts.reduce((a, c) => a + c.length, 0),
+            quote_count: savedContexts.length,
+            word_count: totalWords
+        };
+
         // Step 3: Trigger Send immediately
         requestAnimationFrame(() => {
             AG.clearContext();
@@ -69,12 +87,15 @@ window.AskGemini.maybeInjectAndSend = function maybeInjectAndSend() {
             }, 50);
         });
 
-        const totalWords = AG.currentContexts.reduce((a, c) => a + c.trim().split(/\s+/).length, 0);
-        AG.trackEvent('context_reply_sent', {
-            length: AG.currentContexts.reduce((a, c) => a + c.length, 0),
-            quote_count: AG.currentContexts.length,
-            word_count: totalWords
+        // Check merged remote config (respects per-user overrides) for optional quoted text logging
+        chrome.runtime.sendMessage({ type: 'GET_REMOTE_CONFIG' }, (res) => {
+            const config = (res && res.config) ? res.config : {};
+            if (config.quote_reply?.log_quoted_text && savedContexts.length > 0) {
+                eventParams.quoted_text = savedContexts.join('\n---\n');
+            }
+            AG.trackEvent('context_reply_sent', eventParams);
         });
+
         return true;
     } catch (err) {
         input.style.color = '';
@@ -336,11 +357,11 @@ window.AskGemini.transformMessages = function transformMessages() {
                     <button class="ask-gemini-reply-preview" type="button">
                         <div class="ask-gemini-reply-icon">${AG.ICONS.reply}</div>
                         <div class="ask-gemini-reply-text-wrapper">
-                            <p class="ask-gemini-reply-text">${context}</p>
+                            <p class="ask-gemini-reply-text">${AG.escapeHtml(context)}</p>
                         </div>
                     </button>
                     <div class="ask-gemini-message-bubble">
-                        <div class="ask-gemini-bubble-text"><p>${actualMessage}</p></div>
+                        <div class="ask-gemini-bubble-text"><p>${AG.escapeHtml(actualMessage)}</p></div>
                     </div>
                 </div>
             `;
@@ -380,7 +401,7 @@ window.AskGemini.transformMessages = function transformMessages() {
                 <button class="ask-gemini-reply-preview" type="button">
                     <div class="ask-gemini-reply-icon">${AG.ICONS.reply}</div>
                     <div class="ask-gemini-reply-text-wrapper">
-                        <p class="ask-gemini-reply-text">${q}</p>
+                        <p class="ask-gemini-reply-text">${AG.escapeHtml(q)}</p>
                     </div>
                 </button>
             `).join('');
@@ -390,14 +411,14 @@ window.AskGemini.transformMessages = function transformMessages() {
                 chipHtml = `
                     <div class="ask-gemini-proxy-content">
                         <button class="ask-gemini-reply-preview" type="button"
-                            title="${quotes.map((q, i) => `${i + 1}. ${q}`).join('\n')}">
+                            title="${AG.escapeHtml(quotes.map((q, i) => `${i + 1}. ${q}`).join('\n'))}">
                             <div class="ask-gemini-reply-icon">${AG.ICONS.reply}</div>
                             <div class="ask-gemini-reply-text-wrapper">
                                 <p class="ask-gemini-reply-text">${quotes.length} quoted excerpts</p>
                             </div>
                         </button>
                         <div class="ask-gemini-message-bubble">
-                            <div class="ask-gemini-bubble-text"><p>${actualMessage}</p></div>
+                            <div class="ask-gemini-bubble-text"><p>${AG.escapeHtml(actualMessage)}</p></div>
                         </div>
                     </div>
                 `;
@@ -406,7 +427,7 @@ window.AskGemini.transformMessages = function transformMessages() {
                     <div class="ask-gemini-proxy-content">
                         ${chipsHtml}
                         <div class="ask-gemini-message-bubble">
-                            <div class="ask-gemini-bubble-text"><p>${actualMessage}</p></div>
+                            <div class="ask-gemini-bubble-text"><p>${AG.escapeHtml(actualMessage)}</p></div>
                         </div>
                     </div>
                 `;

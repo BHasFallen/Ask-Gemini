@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Ask Gemini — Remote Config Command Center</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="admin.css">
+</head>
+<body class="dark-theme">
+    <div id="app">
+        <!-- Top App Bar -->
+        <header class="app-header">
+            <div class="header-left">
+                <div class="logo-badge">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+                    </svg>
+                </div>
+                <div>
+                    <h1 class="header-title">Ask Gemini</h1>
+                    <span class="header-subtitle">Remote Config Hub</span>
+                </div>
+            </div>
+            <div class="header-right">
+                <button id="btn-emergency" class="btn-emergency" title="Emergency Master Switch">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"/>
+                        <line x1="12" y1="8" x2="12" y2="12"/>
+                        <line x1="12" y1="16" x2="12.01" y2="16"/>
+                    </svg>
+                    <span>Lockdown</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- Navigation Tabs (Mobile Swipeable Scroll) -->
+        <nav class="nav-scroll-container">
+            <div class="nav-tabs">
+                <button class="nav-tab active" data-target="tab-flags">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
+                    <span>Flags</span>
+                </button>
+                <button class="nav-tab" data-target="tab-smartpaste">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg>
+                    <span>Smart Paste</span>
+                </button>
+                <button class="nav-tab" data-target="tab-users">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                    <span>Users</span>
+                </button>
+                <button class="nav-tab" data-target="tab-banner">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
+                    <span>Banner</span>
+                </button>
+                <button class="nav-tab" data-target="tab-rating">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                    <span>Rating</span>
+                </button>
+                <button class="nav-tab" data-target="tab-publish">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                    <span>Sync</span>
+                </button>
+            </div>
+        </nav>
+
+        <!-- Main Content Area -->
+        <main class="content-container">
+
+            <!-- TAB 1: FEATURE FLAGS -->
+            <section id="tab-flags" class="tab-pane active">
+                <div class="pane-header">
+                    <h2>Global Feature Switches</h2>
+                    <p>Toggle capabilities on/off instantly across all installed extensions.</p>
+                </div>
+
+                <div class="card-grid">
+                    <div class="toggle-card">
+                        <div class="toggle-info">
+                            <span class="toggle-title">Smart Paste</span>
+                            <span class="toggle-desc">Interception of large text pastes into .txt upload</span>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" id="flag-smart-paste" checked>
+                            <span class="slider round"></span>
+                        </label>
+                    </div>
+
+                    <div class="toggle-card">
+                        <div class="toggle-info">
+                            <span class="toggle-title">Paste Analytics</span>
+                            <span class="toggle-desc">Silent classification background daily stat logging</span>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" id="flag-paste-analytics" checked>
+                            <span class="slider round"></span>
+                        </label>
+                    </div>
+
+                    <div class="toggle-card">
+                        <div class="toggle-info">
+                            <span class="toggle-title">Table of Contents</span>
+                            <span class="toggle-desc">Dynamic prompt sidebar widget on Gemini page</span>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" id="flag-toc" checked>
+                            <span class="slider round"></span>
+                        </label>
+                    </div>
+
+                    <div class="toggle-card">
+                        <div class="toggle-info">
+                            <span class="toggle-title">Usage Limits Scraper</span>
+                            <span class="toggle-desc">Background polling of Gemini jSf9Qc usage RPC</span>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" id="flag-quota" checked>
+                            <span class="slider round"></span>
+                        </label>
+                    </div>
+
+                    <div class="toggle-card">
+                        <div class="toggle-info">
+                            <span class="toggle-title">Star Rating Prompts</span>
+                            <span class="toggle-desc">Inline Chrome Web Store 5-star review request</span>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" id="flag-rating" checked>
+                            <span class="slider round"></span>
+                        </label>
+                    </div>
+
+                    <div class="toggle-card">
+                        <div class="toggle-info">
+                            <span class="toggle-title">Feature Announcement Banner</span>
+                            <span class="toggle-desc">Inline update notification banner above chat input</span>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" id="flag-banner" checked>
+                            <span class="slider round"></span>
+                        </label>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 2: SMART PASTE & TELEMETRY -->
+            <section id="tab-smartpaste" class="tab-pane">
+                <div class="pane-header">
+                    <h2>Smart Paste & Telemetry</h2>
+                    <p>Threshold cutoffs, enabled file classifiers, and text logging safeguards.</p>
+                </div>
+
+                <div class="card">
+                    <div class="input-group-header">
+                        <label for="input-sp-threshold">Trigger Threshold (Characters)</label>
+                        <span class="badge-value" id="val-sp-threshold">20,000</span>
+                    </div>
+                    <input type="range" id="input-sp-threshold" min="2000" max="50000" step="1000" value="20000" class="range-slider">
+                    <div class="range-labels">
+                        <span>2k chars</span>
+                        <span>20k (default)</span>
+                        <span>50k chars</span>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3 class="card-subtitle">Enabled Classifiers (Unchecked = Fallback to .txt)</h3>
+                    <div class="chip-grid">
+                        <label class="chip-checkbox"><input type="checkbox" value="json" checked><span>JSON</span></label>
+                        <label class="chip-checkbox"><input type="checkbox" value="csv" checked><span>CSV</span></label>
+                        <label class="chip-checkbox"><input type="checkbox" value="html" checked><span>HTML</span></label>
+                        <label class="chip-checkbox"><input type="checkbox" value="javascript" checked><span>JavaScript</span></label>
+                        <label class="chip-checkbox"><input type="checkbox" value="python" checked><span>Python</span></label>
+                        <label class="chip-checkbox"><input type="checkbox" value="markdown" checked><span>Markdown</span></label>
+                        <label class="chip-checkbox"><input type="checkbox" value="plaintext" checked><span>Plaintext</span></label>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3 class="card-subtitle">Telemetry & Content Logging</h3>
+                    
+                    <div class="toggle-card inline-card">
+                        <div class="toggle-info">
+                            <span class="toggle-title">Log Pasted Content</span>
+                            <span class="toggle-desc">Send raw pasted text samples to Amplitude telemetry</span>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" id="log-pasted-text">
+                            <span class="slider round"></span>
+                        </label>
+                    </div>
+
+                    <div class="toggle-card inline-card">
+                        <div class="toggle-info">
+                            <span class="toggle-title">Log Quoted Context</span>
+                            <span class="toggle-desc">Send raw quoted text excerpts on reply sent</span>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" id="log-quoted-text">
+                            <span class="slider round"></span>
+                        </label>
+                    </div>
+
+                    <div class="form-group margin-top">
+                        <label for="input-max-text-len">Max Text Log Length (0 = Untruncated Full Text via Chunking Array)</label>
+                        <input type="number" id="input-max-text-len" class="form-control" value="0" placeholder="0 for full text">
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 3: PER-USER OVERRIDES MANAGER -->
+            <section id="tab-users" class="tab-pane">
+                <div class="pane-header">
+                    <h2>Per-User Master Overrides</h2>
+                    <p>Enforce custom settings or kill switches on specific device IDs / emails.</p>
+                </div>
+
+                <div class="card">
+                    <h3 class="card-subtitle">Visual User Override Form</h3>
+                    <div class="form-group">
+                        <label for="override-device-id">Device ID or Email</label>
+                        <input type="text" id="override-device-id" class="form-control" placeholder="e.g. dev_zks1hxk72 or user@gmail.com">
+                        <span class="form-hint" id="override-fetch-status">Defaults pre-filled. Enter ID to edit custom settings.</span>
+                    </div>
+
+                    <div class="preset-buttons">
+                        <button type="button" class="btn-preset" id="preset-force-debug">Preset: Force Debug Logging</button>
+                        <button type="button" class="btn-preset" id="preset-block-user">Preset: Lockdown User</button>
+                        <button type="button" class="btn-preset" id="preset-reset-user">Preset: Reset to Defaults</button>
+                    </div>
+
+                    <!-- Visual Form Controls for User Override -->
+                    <div class="user-form-controls">
+                        <!-- Smart Paste & Behavior -->
+                        <div class="form-row margin-bottom">
+                            <div class="form-group col">
+                                <label for="user-sp-enabled">Smart Paste Flag</label>
+                                <select id="user-sp-enabled" class="form-control">
+                                    <option value="inherit">Inherit Global Default</option>
+                                    <option value="true">Force ENABLED (true)</option>
+                                    <option value="false">Force DISABLED (false)</option>
+                                </select>
+                            </div>
+                            <div class="form-group col">
+                                <label for="user-sp-behavior">Smart Paste Behavior</label>
+                                <select id="user-sp-behavior" class="form-control">
+                                    <option value="inherit">Inherit Global Default</option>
+                                    <option value="auto">Force AUTO (Instant .txt)</option>
+                                    <option value="ask">Force ASK (Confirm modal)</option>
+                                    <option value="off">Force OFF (Disabled)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Telemetry: Log Pasted & Quoted Content -->
+                        <div class="form-row margin-bottom">
+                            <div class="form-group col">
+                                <label for="user-log-pasted">Log Pasted Content</label>
+                                <select id="user-log-pasted" class="form-control">
+                                    <option value="inherit">Inherit Global Default</option>
+                                    <option value="true">Force LOGGED (true)</option>
+                                    <option value="false">Force OFF (false)</option>
+                                </select>
+                            </div>
+                            <div class="form-group col">
+                                <label for="user-log-quoted">Log Quoted Content</label>
+                                <select id="user-log-quoted" class="form-control">
+                                    <option value="inherit">Inherit Global Default</option>
+                                    <option value="true">Force LOGGED (true)</option>
+                                    <option value="false">Force OFF (false)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Multi-Quote & Style -->
+                        <div class="form-row margin-bottom">
+                            <div class="form-group col">
+                                <label for="user-mq-enabled">Multi-Quote Flag</label>
+                                <select id="user-mq-enabled" class="form-control">
+                                    <option value="inherit">Inherit Global Default</option>
+                                    <option value="true">Force ENABLED (true)</option>
+                                    <option value="false">Force DISABLED (false)</option>
+                                </select>
+                            </div>
+                            <div class="form-group col">
+                                <label for="user-mq-style">Multi-Quote Style</label>
+                                <select id="user-mq-style" class="form-control">
+                                    <option value="inherit">Inherit Global Default</option>
+                                    <option value="expanded">Force EXPANDED</option>
+                                    <option value="compact">Force COMPACT</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Table of Contents & Quota View -->
+                        <div class="form-row margin-bottom">
+                            <div class="form-group col">
+                                <label for="user-toc-enabled">Table of Contents Flag</label>
+                                <select id="user-toc-enabled" class="form-control">
+                                    <option value="inherit">Inherit Global Default</option>
+                                    <option value="true">Force ENABLED (true)</option>
+                                    <option value="false">Force DISABLED (false)</option>
+                                </select>
+                            </div>
+                            <div class="form-group col">
+                                <label for="user-quota-enabled">Quota Limits View Flag</label>
+                                <select id="user-quota-enabled" class="form-control">
+                                    <option value="inherit">Inherit Global Default</option>
+                                    <option value="true">Force ENABLED (true)</option>
+                                    <option value="false">Force DISABLED (false)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Analytics & Rating -->
+                        <div class="form-row margin-bottom">
+                            <div class="form-group col">
+                                <label for="user-analytics-enabled">Paste Analytics Flag</label>
+                                <select id="user-analytics-enabled" class="form-control">
+                                    <option value="inherit">Inherit Global Default</option>
+                                    <option value="true">Force ENABLED (true)</option>
+                                    <option value="false">Force DISABLED (false)</option>
+                                </select>
+                            </div>
+                            <div class="form-group col">
+                                <label for="user-rating-enabled">Star Rating Prompt Flag</label>
+                                <select id="user-rating-enabled" class="form-control">
+                                    <option value="inherit">Inherit Global Default</option>
+                                    <option value="true">Force ENABLED (true)</option>
+                                    <option value="false">Force DISABLED (false)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Banner & Max Text Log Length -->
+                        <div class="form-row margin-bottom">
+                            <div class="form-group col">
+                                <label for="user-banner-enabled">Feature Banner Flag</label>
+                                <select id="user-banner-enabled" class="form-control">
+                                    <option value="inherit">Inherit Global Default</option>
+                                    <option value="true">Force ENABLED (true)</option>
+                                    <option value="false">Force DISABLED (false)</option>
+                                </select>
+                            </div>
+                            <div class="form-group col">
+                                <label for="user-max-text-len">Max Text Log Length</label>
+                                <select id="user-max-text-len" class="form-control">
+                                    <option value="inherit">Inherit Global Default</option>
+                                    <option value="0">0 (Full Untruncated Chunking)</option>
+                                    <option value="500">500 characters</option>
+                                    <option value="1000">1,000 characters</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button type="button" class="btn-primary btn-full" id="btn-save-user-override">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                        <span>Save User Override</span>
+                    </button>
+                </div>
+
+                <div class="card">
+                    <h3 class="card-subtitle">Active Targeted Users</h3>
+                    <div id="user-overrides-list" class="user-list">
+                        <!-- Populated dynamically -->
+                        <div class="empty-state">No per-user overrides configured yet.</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 4: FEATURE BANNER BUILDER -->
+            <section id="tab-banner" class="tab-pane">
+                <div class="pane-header">
+                    <h2>Feature Announcement Banner</h2>
+                    <p>Configure in-app notification banners pushed directly to Gemini users.</p>
+                </div>
+
+                <div class="card">
+                    <div class="toggle-card inline-card margin-bottom">
+                        <div class="toggle-info">
+                            <span class="toggle-title">Banner Active Status</span>
+                            <span class="toggle-desc">Show this banner to users who haven't seen it yet</span>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" id="banner-active" checked>
+                            <span class="slider round"></span>
+                        </label>
+                    </div>
+
+                    <div class="form-group">
+                        <div class="card-header-flex">
+                            <label for="banner-id">Feature ID (Must be unique per edit to pop up)</label>
+                            <button type="button" class="btn-preset" id="btn-gen-banner-id">✨ Auto-Generate New ID</button>
+                        </div>
+                        <input type="text" id="banner-id" class="form-control" value="banner_v1">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="banner-title">Title Text</label>
+                        <input type="text" id="banner-title" class="form-control" value="New: Quote multiple excerpts">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="banner-desc">Description Body</label>
+                        <textarea id="banner-desc" class="form-control" rows="3">Highlight text, then keep highlighting more — look for the '+ Add Quote' button to build a multi-quote reply.</textarea>
+                    </div>
+
+                    <!-- Primary Button Settings -->
+                    <div class="card-inner-box margin-bottom">
+                        <div class="toggle-card inline-card margin-bottom">
+                            <div class="toggle-info">
+                                <span class="toggle-title">Show Primary Button</span>
+                            </div>
+                            <label class="switch">
+                                <input type="checkbox" id="banner-show-primary" checked>
+                                <span class="slider round"></span>
+                            </label>
+                        </div>
+
+                        <div class="form-row margin-bottom">
+                            <div class="form-group col">
+                                <label for="banner-primary">Primary Button Label</label>
+                                <input type="text" id="banner-primary" class="form-control" value="Try it">
+                            </div>
+                            <div class="form-group col">
+                                <label for="banner-primary-action">Primary Action</label>
+                                <select id="banner-primary-action" class="form-control">
+                                    <option value="start_tour">Launch Feature Tour</option>
+                                    <option value="dismiss">Dismiss Banner</option>
+                                    <option value="open_url">Open Custom Link / Webpage</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-group" id="group-primary-url" style="display: none;">
+                            <label for="banner-primary-url">Primary Custom URL / Link</label>
+                            <input type="text" id="banner-primary-url" class="form-control" placeholder="https://chromewebstore.google.com/...">
+                        </div>
+                    </div>
+
+                    <!-- Secondary Button Settings -->
+                    <div class="card-inner-box">
+                        <div class="toggle-card inline-card margin-bottom">
+                            <div class="toggle-info">
+                                <span class="toggle-title">Show Secondary Button</span>
+                            </div>
+                            <label class="switch">
+                                <input type="checkbox" id="banner-show-secondary" checked>
+                                <span class="slider round"></span>
+                            </label>
+                        </div>
+
+                        <div class="form-row margin-bottom">
+                            <div class="form-group col">
+                                <label for="banner-secondary">Secondary Button Label</label>
+                                <input type="text" id="banner-secondary" class="form-control" value="Later">
+                            </div>
+                            <div class="form-group col">
+                                <label for="banner-secondary-action">Secondary Action</label>
+                                <select id="banner-secondary-action" class="form-control">
+                                    <option value="dismiss" selected>Dismiss Banner</option>
+                                    <option value="start_tour">Launch Feature Tour</option>
+                                    <option value="open_url">Open Custom Link / Webpage</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-group" id="group-secondary-url" style="display: none;">
+                            <label for="banner-secondary-url">Secondary Custom URL / Link</label>
+                            <input type="text" id="banner-secondary-url" class="form-control" placeholder="https://...">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Live In-App Visual Banner Preview -->
+                <div class="card preview-card">
+                    <h3 class="card-subtitle">Live Gemini In-App Preview</h3>
+                    <div class="ag-rating-inline-banner ag-feature-inline-banner preview-banner-box">
+                        <div class="ag-rating-inline-left">
+                            <div class="ag-rating-inline-icon">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+                                </svg>
+                            </div>
+                            <div class="ag-rating-inline-text-col">
+                                <span class="ag-rating-inline-title" id="prev-banner-title">New: Quote multiple excerpts</span>
+                                <span class="ag-rating-inline-sub" id="prev-banner-desc">Highlight text, then keep highlighting more — look for the '+ Add Quote' button to build a multi-quote reply.</span>
+                            </div>
+                        </div>
+                        <div class="ag-rating-inline-actions">
+                            <button class="ag-sp-btn-primary" id="prev-banner-primary">Try it</button>
+                            <button class="ag-sp-btn-secondary" id="prev-banner-secondary">Later</button>
+                            <button class="ag-rating-inline-close">&times;</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 5: STAR RATING PROMPT RULES -->
+            <section id="tab-rating" class="tab-pane">
+                <div class="pane-header">
+                    <h2>Star Rating Timing Rules</h2>
+                    <p>Adjust user engagement thresholds for triggering Chrome Web Store rating prompts.</p>
+                </div>
+
+                <div class="card">
+                    <div class="form-row">
+                        <div class="form-group col">
+                            <label for="rating-days">Initial Active Days Required</label>
+                            <input type="number" id="rating-days" class="form-control" value="3">
+                        </div>
+                        <div class="form-group col">
+                            <label for="rating-replies">Initial Replies Required</label>
+                            <input type="number" id="rating-replies" class="form-control" value="3">
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group col">
+                            <label for="rating-cooldown-days">Dismissal Cooldown (Days)</label>
+                            <input type="number" id="rating-cooldown-days" class="form-control" value="7">
+                        </div>
+                        <div class="form-group col">
+                            <label for="rating-cooldown-replies">Dismissal Cooldown (Replies)</label>
+                            <input type="number" id="rating-cooldown-replies" class="form-control" value="10">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="rating-review-url">Chrome Web Store Review URL</label>
+                        <input type="text" id="rating-review-url" class="form-control" value="https://chromewebstore.google.com/detail/jhkodgigeemnmdmdikdkpcbmgbbopgni/reviews">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="rating-feedback-url">Feedback Form URL (<4 Star Ratings)</label>
+                        <input type="text" id="rating-feedback-url" class="form-control" value="https://docs.google.com/forms/d/e/1FAIpQLSfr82mMdRgwSPY9ZsQkdRp_HXKKwmVuWO7GmjeZ3fS9XHpqsA/viewform">
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 6: GIST SYNC & RAW JSON -->
+            <section id="tab-publish" class="tab-pane">
+                <div class="pane-header">
+                    <h2>GitHub Gist Sync & Raw Output</h2>
+                    <p>One-tap publish directly to your remote JSON file via GitHub API.</p>
+                </div>
+
+                <div class="card">
+                    <h3 class="card-subtitle">GitHub API One-Tap Sync Credentials</h3>
+                    <div class="form-group">
+                        <label for="gist-token">GitHub Personal Access Token</label>
+                        <input type="password" id="gist-token" class="form-control" value="" placeholder="ghp_yourPersonalAccessTokenHere">
+                    </div>
+                    <div class="form-group">
+                        <label for="gist-id">Gist ID</label>
+                        <input type="text" id="gist-id" class="form-control" value="fcb206ffdca44bd3e5d2099de4c81636" placeholder="e.g. fcb206ffdca44bd3e5d2099de4c81636">
+                    </div>
+
+                    <button type="button" class="btn-success btn-full" id="btn-sync-gist">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                        <span>Publish Live to GitHub Gist</span>
+                    </button>
+                </div>
+
+                <div class="card">
+                    <div class="card-header-flex">
+                        <h3 class="card-subtitle">Generated Remote Config JSON</h3>
+                        <button type="button" class="btn-secondary btn-sm" id="btn-copy-json">Copy JSON</button>
+                    </div>
+                    <textarea id="raw-json-output" class="form-control code-font" rows="12" readonly></textarea>
+                </div>
+            </section>
+
+        </main>
+
+        <!-- Sticky Mobile Bottom Bar -->
+        <footer class="bottom-action-bar">
+            <button id="btn-export-preset" class="action-btn secondary">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                <span>Export</span>
+            </button>
+            <button id="btn-quick-publish" class="action-btn primary">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                <span>Publish Live</span>
+            </button>
+        </footer>
+
+        <!-- Toast Notifications -->
+        <div id="toast-container" class="toast-container"></div>
+    </div>
+
+    <script src="admin.js"></script>
+</body>
+</html>

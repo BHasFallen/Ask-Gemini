@@ -71,6 +71,16 @@ window.AskGemini.buildTableOfContents = function buildTableOfContents() {
         return;
     }
 
+    chrome.storage.local.get(['ag_remote_config'], (res) => {
+        const config = res.ag_remote_config || {};
+        const flags = config.flags || {};
+
+        if (flags.toc_enabled === false) {
+            AG.removeTOCWidget();
+            return;
+        }
+    });
+
     const prompts = document.querySelectorAll('user-query');
     if (!prompts || prompts.length === 0) {
         AG.removeTOCWidget();
@@ -164,6 +174,16 @@ window.AskGemini.renderTOCWidget = function renderTOCWidget(items) {
     `;
 
 
+    const recordTOCClick = (idx) => {
+        chrome.storage.local.get(['toc_click_count'], (res) => {
+            const current = res.toc_click_count || 0;
+            chrome.storage.local.set({ toc_click_count: current + 1 });
+        });
+        if (AG.trackEvent) {
+            AG.trackEvent('toc_item_clicked', { promptIndex: idx, totalPrompts: items.length });
+        }
+    };
+
     // Click listeners on side dash buttons
     widget.querySelectorAll('.ag-toc-dash').forEach(dash => {
         dash.onclick = (e) => {
@@ -173,6 +193,7 @@ window.AskGemini.renderTOCWidget = function renderTOCWidget(items) {
             if (items[idx]) AG.activeAnchorId = items[idx].anchorId;
             const targetId = items[idx] ? items[idx].anchorId : null;
             if (targetId) AG.scrollToPrompt(targetId, idx);
+            recordTOCClick(idx);
             AG.scheduleTOCBuild();
         };
     });
@@ -186,6 +207,7 @@ window.AskGemini.renderTOCWidget = function renderTOCWidget(items) {
             if (items[idx]) AG.activeAnchorId = items[idx].anchorId;
             const targetId = btn.getAttribute('data-target');
             if (targetId) AG.scrollToPrompt(targetId, idx);
+            recordTOCClick(idx);
             AG.scheduleTOCBuild();
         };
     });

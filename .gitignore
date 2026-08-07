@@ -1,0 +1,7 @@
+# Zip packages
+*.zip
+
+# Temporary CSV exports & test files
+*.csv
+test-request.json
+gemini.google.comm.json

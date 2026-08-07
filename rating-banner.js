@@ -189,93 +189,144 @@ window.AskGemini.showRatingModal = function showRatingModal() {
 
 
 // ─── evaluateFeatureBanner ────────────────────────────────────────────────────
-window.AskGemini.evaluateFeatureBanner = async function evaluateFeatureBanner() {
+window.AskGemini.evaluateFeatureBanner = async function evaluateFeatureBanner(retryCount = 0) {
     var AG = window.AskGemini;
-    if (!AG.CURRENT_FEATURE || !AG.CURRENT_FEATURE.id) return;
     if (AG.hasEvaluatedFeatureBanner) return;
 
     const input = AG.findInputArea();
-    if (!input) return;
+    if (!input) {
+        if (retryCount < 5) {
+            setTimeout(() => AG.evaluateFeatureBanner(retryCount + 1), 1000);
+        }
+        return;
+    }
 
-    const bannerKey = `feature_banner_seen_${AG.CURRENT_FEATURE.id}`;
-    const res = await chrome.storage.local.get([bannerKey]);
+    const resConfig = await chrome.storage.local.get(['ag_remote_config']);
+    const config = resConfig.ag_remote_config || {};
+    const flags = config.flags || {};
+    const featureCfg = config.feature_banner || AG.CURRENT_FEATURE;
 
-    // If already seen/dismissed, don't show
-    if (res[bannerKey]) {
+    // Check remote config kill switch and active status
+    if (flags.feature_banner_enabled === false || featureCfg.active === false || !featureCfg.id) {
         AG.hasEvaluatedFeatureBanner = true;
         return;
     }
 
-    // Don't show if any other modals (like rating modal or tour overlay) are active
-    if (document.querySelector('.ag-rating-modal') || document.getElementById('ag-tour-overlay') || document.querySelector('.ag-feature-banner')) {
+    const bannerKey = `feature_banner_seen_${featureCfg.id}`;
+    const resSeen = await chrome.storage.local.get([bannerKey]);
+
+    // If already seen/dismissed, don't show
+    if (resSeen[bannerKey]) {
+        AG.hasEvaluatedFeatureBanner = true;
+        return;
+    }
+
+    // If an existing feature banner is on the screen, remove it so the new update can display
+    const existingFeatureBanner = document.querySelector('.ag-feature-inline-banner');
+    if (existingFeatureBanner) {
+        existingFeatureBanner.remove();
+    }
+
+    // Don't show if rating prompt or tour overlay is open
+    if (document.querySelector('.ag-rating-inline-banner') || document.getElementById('ag-tour-overlay')) {
         return;
     }
 
     AG.hasEvaluatedFeatureBanner = true;
-
-    // Show after a short delay so it's not jarring
-    setTimeout(() => {
-        // Re-verify conditions before showing
-        if (document.querySelector('.ag-rating-modal') || document.getElementById('ag-tour-overlay') || document.querySelector('.ag-feature-banner')) {
-            AG.hasEvaluatedFeatureBanner = false;
-            return;
-        }
-        AG.showFeatureBanner();
-    }, 3000);
+    AG.showFeatureBanner(featureCfg);
 };
 
-// ─── showFeatureBanner ────────────────────────────────────────────────────────
-window.AskGemini.showFeatureBanner = function showFeatureBanner() {
+// ─── showFeatureBanner (Inline Native Banner Styled Identically to Rating Banner) ──
+window.AskGemini.showFeatureBanner = function showFeatureBanner(featureOverride = null) {
     var AG = window.AskGemini;
-    if (document.querySelector('.ag-feature-banner')) return;
+    const existing = document.querySelector('.ag-feature-inline-banner');
+    if (existing) existing.remove();
 
-    const banner = document.createElement('section');
-    banner.className = 'ag-feature-banner gem-banner-container ng-star-inserted';
-    banner.setAttribute('jslog', '307885;track:impression');
+    const feature = featureOverride || AG.CURRENT_FEATURE;
+    if (!feature || !feature.id) return;
+
+    const input = AG.findInputArea();
+    const container = input ? (input.closest('.input-area-container') || input.closest('.chat-input-area') || input.closest('form') || input.parentElement) : document.body;
+
+    const banner = document.createElement('div');
+    banner.className = 'ag-rating-inline-banner ag-feature-inline-banner';
+
+    const showPrimary = feature.show_primary !== false;
+    const showSecondary = feature.show_secondary !== false;
+
+    let actionsHtml = '';
+    if (showPrimary) {
+        actionsHtml += `<button class="ag-sp-btn-primary" id="ag-feature-btn-primary" style="padding: 6px 14px; font-size: 12.5px;">${AG.escapeHtml(feature.primary_text || feature.primaryText || 'Try it')}</button>`;
+    }
+    if (showSecondary) {
+        actionsHtml += `<button class="ag-sp-btn-secondary" id="ag-feature-btn-secondary" style="padding: 5px 12px; font-size: 12.5px;">${AG.escapeHtml(feature.secondary_text || feature.secondaryText || 'Later')}</button>`;
+    }
+    actionsHtml += `<button class="ag-rating-inline-close" aria-label="Close">${AG.ICONS.close}</button>`;
 
     banner.innerHTML = `
-        <div class="banner-top">
-            <div class="text-container">
-                <div class="title-container ng-star-inserted">
-                    <h3 class="banner-title gds-body-m">${AG.CURRENT_FEATURE.title}</h3>
-                </div>
-                <div class="body-text gds-body-m ng-star-inserted">${AG.CURRENT_FEATURE.description}</div>
+        <div class="ag-rating-inline-left">
+            <div class="ag-rating-inline-icon" style="background: rgba(168, 199, 250, 0.15); color: #a8c7fa;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+                </svg>
+            </div>
+            <div class="ag-rating-inline-text-col">
+                <span class="ag-rating-inline-title">${AG.escapeHtml(feature.title)}</span>
+                <span class="ag-rating-inline-sub">${AG.escapeHtml(feature.description)}</span>
             </div>
         </div>
-        <div class="actions-container ng-star-inserted">
-            <button class="banner-btn-primary" id="ag-banner-btn-try">${AG.CURRENT_FEATURE.primaryText}</button>
-            <button class="banner-btn-secondary" id="ag-banner-btn-dismiss">${AG.CURRENT_FEATURE.secondaryText}</button>
+
+        <div class="ag-rating-inline-actions">
+            ${actionsHtml}
         </div>
     `;
 
-    document.body.appendChild(banner);
+    if (container && container.parentNode) {
+        container.parentNode.insertBefore(banner, container);
+    } else {
+        document.body.appendChild(banner);
+    }
 
-    const dismissBtn = banner.querySelector('#ag-banner-btn-dismiss');
-    const tryBtn = banner.querySelector('#ag-banner-btn-try');
-
-    const closeBanner = (callback) => {
-        banner.classList.add('slide-out');
-        banner.addEventListener('animationend', () => {
+    const dismiss = () => {
+        const bannerKey = `feature_banner_seen_${feature.id}`;
+        chrome.storage.local.set({ [bannerKey]: true }, () => {
+            AG.trackEvent('feature_banner_dismissed', { feature_id: feature.id });
             banner.remove();
-            if (callback) callback();
-        }, { once: true });
-    };
-
-    dismissBtn.onclick = () => {
-        const bannerKey = `feature_banner_seen_${AG.CURRENT_FEATURE.id}`;
-        chrome.storage.local.set({ [bannerKey]: true }, () => {
-            AG.trackEvent('feature_banner_dismissed', { feature_id: AG.CURRENT_FEATURE.id });
-            closeBanner();
         });
     };
 
-    tryBtn.onclick = () => {
-        const bannerKey = `feature_banner_seen_${AG.CURRENT_FEATURE.id}`;
+    const handleBtnAction = (actionType, targetUrl, isPrimary) => {
+        const bannerKey = `feature_banner_seen_${feature.id}`;
         chrome.storage.local.set({ [bannerKey]: true }, () => {
-            AG.trackEvent('feature_banner_try_clicked', { feature_id: AG.CURRENT_FEATURE.id });
-            closeBanner(() => {
-                if (AG.CURRENT_FEATURE.onTry) AG.CURRENT_FEATURE.onTry();
-            });
+            AG.trackEvent(isPrimary ? 'feature_banner_primary_click' : 'feature_banner_secondary_click', { feature_id: feature.id, action: actionType });
+            banner.remove();
+
+            if (actionType === 'open_url' && targetUrl) {
+                window.open(targetUrl, '_blank');
+            } else if (actionType === 'start_tour') {
+                if (feature.onTry) {
+                    feature.onTry();
+                } else if (AG.CURRENT_FEATURE && AG.CURRENT_FEATURE.onTry) {
+                    AG.CURRENT_FEATURE.onTry();
+                }
+            }
         });
     };
+
+    const primaryBtn = banner.querySelector('#ag-feature-btn-primary');
+    if (primaryBtn) {
+        const action = feature.primary_action || feature.cta_action || 'start_tour';
+        const url = feature.primary_url || null;
+        primaryBtn.onclick = () => handleBtnAction(action, url, true);
+    }
+
+    const secondaryBtn = banner.querySelector('#ag-feature-btn-secondary');
+    if (secondaryBtn) {
+        const action = feature.secondary_action || 'dismiss';
+        const url = feature.secondary_url || null;
+        secondaryBtn.onclick = () => handleBtnAction(action, url, false);
+    }
+
+    const closeBtn = banner.querySelector('.ag-rating-inline-close');
+    if (closeBtn) closeBtn.onclick = dismiss;
 };
