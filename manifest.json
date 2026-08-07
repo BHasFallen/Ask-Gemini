@@ -10,7 +10,9 @@
   ],
   "host_permissions": [
     "https://api2.amplitude.com/*",
-    "https://gemini.google.com/*"
+    "https://gemini.google.com/*",
+    "https://raw.githubusercontent.com/*",
+    "https://api.github.com/*"
   ],
   "action": {
     "default_popup": "popup.html",

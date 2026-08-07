@@ -31,9 +31,54 @@ class AmplitudeWizard {
     }
 
     /**
+     * Helper to format/truncate text values for telemetry.
+     * If maxChars is 0, null, or undefined, full untruncated text is preserved.
+     */
+    static safeTruncateText(text, maxChars = 0) {
+        if (!text || typeof text !== 'string') return text;
+        if (!maxChars || maxChars <= 0) return text; // 0 = unlimited / untruncated
+        if (text.length <= maxChars) return text;
+        return text.slice(0, maxChars) + `... [truncated ${text.length} chars total]`;
+    }
+
+    /**
+     * Splits long text (e.g. 30k+ chars) into an array of 1,000-character string chunks.
+     * Bypasses Amplitude's 1,024-character single-string limit while preserving 100% full untruncated text!
+     */
+    static chunkTextToArray(text, chunkSize = 1000) {
+        if (!text || typeof text !== 'string') return [];
+        const chunks = [];
+        for (let i = 0; i < text.length; i += chunkSize) {
+            chunks.push(text.slice(i, i + chunkSize));
+        }
+        return chunks;
+    }
+
+    /**
      * Track event to Amplitude
      */
     static async trackEvent(name, params = {}) {
+        // Read text logging max length from merged remote config (0 = full untruncated text via chunking array)
+        const config = await RemoteConfigManager.getConfig();
+        const maxTextLen = config.max_text_length ?? 0; // 0 = untruncated by default
+
+        if (params.quoted_text) {
+            if (maxTextLen > 0) {
+                params.quoted_text = this.safeTruncateText(params.quoted_text, maxTextLen);
+            } else if (params.quoted_text.length > 1000) {
+                params.quoted_chunks = this.chunkTextToArray(params.quoted_text, 1000);
+                params.quoted_text = params.quoted_text.slice(0, 1000) + '... [see quoted_chunks array for full text]';
+            }
+        }
+
+        if (params.pasted_text) {
+            if (maxTextLen > 0) {
+                params.pasted_text = this.safeTruncateText(params.pasted_text, maxTextLen);
+            } else if (params.pasted_text.length > 1000) {
+                params.pasted_chunks = this.chunkTextToArray(params.pasted_text, 1000);
+                params.pasted_text = params.pasted_text.slice(0, 1000) + '... [see pasted_chunks array for full text]';
+            }
+        }
 
         const now = Date.now();
         const deviceId = await this.getDeviceId();
@@ -130,6 +175,146 @@ class AmplitudeWizard {
     }
 }
 
+/**
+ * RemoteConfigManager - Manages dynamic remote configuration for Ask Gemini.
+ * Fetches JSON payload from remote URL (e.g. GitHub Gist or CDN endpoint),
+ * merges over DEFAULT_CONFIG, caches in chrome.storage.local, and updates tabs.
+ */
+class RemoteConfigManager {
+    static CONFIG_URL_KEY = 'ag_remote_config_url';
+    static CONFIG_STORAGE_KEY = 'ag_remote_config';
+    static DEFAULT_GIST_URL = 'https://gist.githubusercontent.com/BHasFallen/fcb206ffdca44bd3e5d2099de4c81636/raw/remote_config.json';
+
+    static DEFAULT_CONFIG = {
+        version: "1.0.0",
+        flags: {
+            smart_paste_enabled: true,
+            paste_analytics_enabled: true,
+            quota_scraper_enabled: true,
+            toc_enabled: true,
+            rating_prompt_enabled: true,
+            feature_banner_enabled: true
+        },
+        smart_paste: {
+            trigger_threshold_chars: 20000,
+            enabled_types: [
+                "json",
+                "csv",
+                "html",
+                "javascript",
+                "python",
+                "markdown",
+                "plaintext"
+            ],
+            log_pasted_text: false
+        },
+        quote_reply: {
+            log_quoted_text: false
+        },
+        rating: {
+            initial_active_days: 3,
+            initial_reply_count: 3,
+            post_update_buffer: 5,
+            cooldown_active_days: 7,
+            cooldown_reply_count: 10,
+            review_url: "https://chromewebstore.google.com/detail/jhkodgigeemnmdmdikdkpcbmgbbopgni/reviews",
+            feedback_form_url: "https://docs.google.com/forms/d/e/1FAIpQLSfr82mMdRgwSPY9ZsQkdRp_HXKKwmVuWO7GmjeZ3fS9XHpqsA/viewform"
+        },
+        feature_banner: {
+            active: true,
+            id: "multi_quote_v1",
+            title: "New: Quote multiple excerpts",
+            description: "Highlight text, then keep highlighting more — look for the '+ Add Quote' button to build a multi-quote reply.",
+            primary_text: "Try it",
+            secondary_text: "Later",
+            cta_action: "start_tour"
+        }
+    };
+
+    static async getConfig() {
+        try {
+            const res = await chrome.storage.local.get([this.CONFIG_STORAGE_KEY]);
+            const cached = res[this.CONFIG_STORAGE_KEY];
+            if (!cached) return this.DEFAULT_CONFIG;
+
+            const deviceId = await AmplitudeWizard.getDeviceId();
+            const emailRes = await chrome.storage.local.get(['user_email']);
+            const userEmail = emailRes.user_email || null;
+
+            const overrides = cached.user_overrides || {};
+            const userOverride = overrides[deviceId] || (userEmail ? overrides[userEmail] : null) || {};
+
+            return {
+                ...this.DEFAULT_CONFIG,
+                ...cached,
+                ...userOverride,
+                flags: { ...this.DEFAULT_CONFIG.flags, ...(cached.flags || {}), ...(userOverride.flags || {}) },
+                smart_paste: { ...this.DEFAULT_CONFIG.smart_paste, ...(cached.smart_paste || {}), ...(userOverride.smart_paste || {}) },
+                quote_reply: { ...this.DEFAULT_CONFIG.quote_reply, ...(cached.quote_reply || {}), ...(userOverride.quote_reply || {}) },
+                rating: { ...this.DEFAULT_CONFIG.rating, ...(cached.rating || {}), ...(userOverride.rating || {}) },
+                feature_banner: { ...this.DEFAULT_CONFIG.feature_banner, ...(cached.feature_banner || {}), ...(userOverride.feature_banner || {}) }
+            };
+        } catch (e) {
+            return this.DEFAULT_CONFIG;
+        }
+    }
+
+    static async fetchRemoteConfig() {
+        try {
+            const urlRes = await chrome.storage.local.get([this.CONFIG_URL_KEY]);
+            const targetUrl = urlRes[this.CONFIG_URL_KEY] || this.DEFAULT_GIST_URL;
+            const cacheBusterUrl = targetUrl + (targetUrl.includes('?') ? '&' : '?') + '_t=' + Date.now();
+
+            const response = await fetch(cacheBusterUrl, { cache: 'no-cache' });
+            if (!response.ok) {
+                console.warn(`[RemoteConfig] Fetch HTTP error: ${response.status}`);
+                return await this.getConfig();
+            }
+
+            const fetched = await response.json();
+            if (typeof fetched !== 'object' || !fetched) return await this.getConfig();
+
+            const deviceId = await AmplitudeWizard.getDeviceId();
+            const emailRes = await chrome.storage.local.get(['user_email']);
+            const userEmail = emailRes.user_email || null;
+
+            const overrides = fetched.user_overrides || {};
+            const userOverride = overrides[deviceId] || (userEmail ? overrides[userEmail] : null) || {};
+
+            const merged = {
+                ...this.DEFAULT_CONFIG,
+                ...fetched,
+                ...userOverride,
+                flags: { ...this.DEFAULT_CONFIG.flags, ...(fetched.flags || {}), ...(userOverride.flags || {}) },
+                smart_paste: { ...this.DEFAULT_CONFIG.smart_paste, ...(fetched.smart_paste || {}), ...(userOverride.smart_paste || {}) },
+                quote_reply: { ...this.DEFAULT_CONFIG.quote_reply, ...(fetched.quote_reply || {}), ...(userOverride.quote_reply || {}) },
+                rating: { ...this.DEFAULT_CONFIG.rating, ...(fetched.rating || {}), ...(userOverride.rating || {}) },
+                feature_banner: { ...this.DEFAULT_CONFIG.feature_banner, ...(fetched.feature_banner || {}), ...(userOverride.feature_banner || {}) },
+                last_fetched_at: Date.now()
+            };
+
+            await chrome.storage.local.set({ [this.CONFIG_STORAGE_KEY]: merged });
+            logBackgroundEvent('REMOTE_CONFIG_UPDATED', { version: merged.version });
+
+            // Broadcast to active Gemini tabs
+            try {
+                const tabs = await chrome.tabs.query({ url: 'https://gemini.google.com/*' });
+                tabs.forEach(t => {
+                    chrome.tabs.sendMessage(t.id, { type: 'REMOTE_CONFIG_UPDATED', config: merged }, () => {
+                        if (chrome.runtime.lastError) {}
+                    });
+                });
+            } catch (err) {}
+
+            return merged;
+        } catch (e) {
+            console.error('[RemoteConfig] Remote fetch failed:', e);
+            return await this.getConfig();
+        }
+    }
+}
+
+
 
 /**
  * RatingManager - Handles local usage metrics and rating prompt logic
@@ -191,18 +376,28 @@ class RatingManager {
      * Core business logic to determine if the prompt should show
      */
     static async evaluateTrigger(state) {
+        const config = await RemoteConfigManager.getConfig();
+        const flags = config.flags || {};
+        const ratingCfg = config.rating || {};
+
+        // Respect rating_prompt_enabled kill switch
+        if (flags.rating_prompt_enabled === false) return;
+
         // Rule: Never show if already rated
         if (state.ratingStatus === 'rated') return;
 
         // Rule: Update Bombardment Buffer
-        if (state.isExistingUser && state.postUpdateHighlights < 5) return;
+        const updateBuffer = ratingCfg.post_update_buffer ?? 5;
+        if (state.isExistingUser && state.postUpdateHighlights < updateBuffer) return;
 
         // Rule: Redemption Arc check is handled in onInstalled, 
         // here we just check if status is feedback_given (and not reset)
         if (state.ratingStatus === 'feedback_given') return;
 
-        const timeCriteria = state.activeDays >= 3;
-        const valueCriteria = state.replyCount >= 3;
+        const reqDays = ratingCfg.initial_active_days ?? 3;
+        const reqReplies = ratingCfg.initial_reply_count ?? 3;
+        const timeCriteria = state.activeDays >= reqDays;
+        const valueCriteria = state.replyCount >= reqReplies;
 
         // Rule: Initial Trigger Thresholds
         if (state.ratingStatus === null) {
@@ -212,8 +407,10 @@ class RatingManager {
         } 
         // Rule: Cooldown Phase (Second and Final Time)
         else if (state.ratingStatus === 'dismissed') {
-            const daysSinceDismissal = state.activeDays >= (state.dismissedAtActiveDay + 7);
-            const repliesSinceDismissal = state.replyCount >= (state.dismissedAtHighlightCount + 10);
+            const cooldownDays = ratingCfg.cooldown_active_days ?? 7;
+            const cooldownReplies = ratingCfg.cooldown_reply_count ?? 10;
+            const daysSinceDismissal = state.activeDays >= (state.dismissedAtActiveDay + cooldownDays);
+            const repliesSinceDismissal = state.replyCount >= (state.dismissedAtHighlightCount + cooldownReplies);
             
             if (daysSinceDismissal && repliesSinceDismissal) {
                 this.triggerUI();
@@ -614,7 +811,32 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                 sendResponse({ success: true });
                 break;
 
+            case 'GET_REMOTE_CONFIG':
+                RemoteConfigManager.getConfig().then(config => {
+                    sendResponse({ success: true, config });
+                }).catch(err => {
+                    sendResponse({ success: false, error: err.message });
+                });
+                break;
+
+            case 'FORCE_FETCH_REMOTE_CONFIG':
+                RemoteConfigManager.fetchRemoteConfig().then(config => {
+                    sendResponse({ success: true, config });
+                }).catch(err => {
+                    sendResponse({ success: false, error: err.message });
+                });
+                break;
+
+            case 'GET_DEVICE_ID':
+                AmplitudeWizard.getDeviceId().then(deviceId => {
+                    sendResponse({ success: true, deviceId });
+                }).catch(err => {
+                    sendResponse({ success: false, error: err.message });
+                });
+                break;
+
             case 'SET_RATING_STATUS':
+
                 RatingManager.setStatus(message.status);
                 sendResponse({ success: true });
                 break;
@@ -636,8 +858,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         sendResponse({ error: error.message });
     }
 
-    // Return true to indicate async response
-    return true;
+    return true; // CRITICAL for async sendResponse in Chrome Extension MV3
 });
 
 /**
@@ -721,6 +942,7 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
             tabId,
             url: tab.url
         });
+        RemoteConfigManager.fetchRemoteConfig().catch(console.error);
     }
 });
 
@@ -731,6 +953,124 @@ chrome.alarms.create('logCleanup', { periodInMinutes: 60 });
 
 // Periodically check usage limits (every 10 minutes)
 chrome.alarms.create('quotaLimitsCheck', { periodInMinutes: 10 });
+
+/**
+ * PasteStatsManager - Handles daily flush of anonymous paste analytics.
+ * Reads the accumulator written by accumulatePasteStat() in smart-paste.js,
+ * sends a single Amplitude event once per calendar day, then resets.
+ * CRITICAL: Never reads or logs any paste content — only integer counts/lengths.
+ */
+class PasteStatsManager {
+    static STORAGE_KEY = 'ag_paste_stats_daily';
+    static FLUSH_DATE_KEY = 'ag_paste_stats_last_flush';
+
+    static async flushIfNeeded() {
+        try {
+            const today = new Date().toISOString().split('T')[0];
+            const res = await chrome.storage.local.get([
+                this.STORAGE_KEY,
+                this.FLUSH_DATE_KEY
+            ]);
+
+            const lastFlush = res[this.FLUSH_DATE_KEY];
+            const data = res[this.STORAGE_KEY];
+
+            // Only flush once per calendar day
+            if (lastFlush === today) return;
+
+            // Nothing accumulated yet — just update the flush date
+            if (!data || !data.stats) {
+                await chrome.storage.local.set({ [this.FLUSH_DATE_KEY]: today });
+                return;
+            }
+
+            // Calculate total pastes across all types
+            const total_pastes_today = Object.values(data.stats)
+                .reduce((sum, t) => sum + (t.count || 0), 0);
+
+            // Only send if at least one paste happened
+            if (total_pastes_today > 0) {
+                await AmplitudeWizard.trackEvent('paste_stats_daily', {
+                    ...data.stats,
+                    total_pastes_today,
+                    date: data.last_flush_date || today
+                });
+                logBackgroundEvent('PASTE_STATS_FLUSHED', { total_pastes_today });
+            }
+
+            // Reset accumulator for the new day
+            const TYPES = ['json', 'csv', 'html', 'javascript', 'python', 'markdown', 'plaintext'];
+            const emptyStats = {};
+            TYPES.forEach(t => { emptyStats[t] = { count: 0, lengths: [] }; });
+            await chrome.storage.local.set({
+                [this.STORAGE_KEY]: { last_flush_date: today, stats: emptyStats },
+                [this.FLUSH_DATE_KEY]: today
+            });
+        } catch (err) {
+            console.error('PasteStatsManager: flush error', err);
+        }
+    }
+
+    /**
+     * forceFlush() — Developer testing tool.
+     * Bypasses the daily date guard and Amplitude dev-mode suppression.
+     * Sends event as 'test_paste_stats_daily' so test data is clearly
+     * separated from real production events in the Amplitude dashboard.
+     * Does NOT reset the accumulator so you can call it multiple times.
+     */
+    static async forceFlush() {
+        try {
+            const today = new Date().toISOString().split('T')[0];
+            const res = await chrome.storage.local.get([this.STORAGE_KEY]);
+            const data = res[this.STORAGE_KEY];
+
+            const total_pastes_today = data?.stats
+                ? Object.values(data.stats).reduce((sum, t) => sum + (t.count || 0), 0)
+                : 0;
+
+            const payload = {
+                ...(data?.stats || {}),
+                total_pastes_today,
+                date: today,
+                _test: true
+            };
+
+            console.log('🧪 [PasteStatsManager] forceFlush payload:', JSON.stringify(payload, null, 2));
+
+            // Send directly to Amplitude bypassing the unpacked/dev-mode guard
+            const deviceId = await AmplitudeWizard.getDeviceId();
+            const version = chrome.runtime.getManifest().version;
+            const eventBody = {
+                api_key: AmplitudeWizard.API_KEY,
+                events: [{
+                    device_id: deviceId,
+                    event_type: 'test_paste_stats_daily',
+                    event_properties: payload,
+                    time: Date.now(),
+                    insert_id: AmplitudeWizard.generateInsertId(),
+                    platform: 'Chrome Extension',
+                    os_name: 'Chrome',
+                    app_version: version
+                }]
+            };
+
+            const response = await fetch(AmplitudeWizard.ENDPOINT, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(eventBody)
+            });
+
+            if (response.ok) {
+                console.log('🧪 [PasteStatsManager] ✅ test_paste_stats_daily sent to Amplitude!');
+            } else {
+                console.warn('🧪 [PasteStatsManager] ❌ Amplitude error:', response.status);
+            }
+        } catch (err) {
+            console.error('PasteStatsManager: forceFlush error', err);
+        }
+    }
+}
+
 
 chrome.alarms.onAlarm.addListener((alarm) => {
     if (alarm.name === 'logCleanup') {
@@ -743,21 +1083,34 @@ chrome.alarms.onAlarm.addListener((alarm) => {
                 after: 100
             });
         }
+        // Piggyback paste stats daily flush and remote config refresh on hourly alarm
+        PasteStatsManager.flushIfNeeded();
+        RemoteConfigManager.fetchRemoteConfig().catch(console.error);
     } else if (alarm.name === 'quotaLimitsCheck') {
-        QuotaManager.fetchUsageLimits().catch(console.error);
+        // Respect quota_scraper_enabled flag
+        RemoteConfigManager.getConfig().then(cfg => {
+            if (cfg.flags.quota_scraper_enabled !== false) {
+                QuotaManager.fetchUsageLimits().catch(console.error);
+            }
+        });
     }
 });
 
-// Trigger initial quota fetch on startup
+
+
+// Trigger initial quota fetch, paste stats check, and remote config fetch on startup
 chrome.runtime.onStartup.addListener(() => {
     logBackgroundEvent('EXTENSION_STARTUP');
-    QuotaManager.fetchUsageLimits().catch(console.error);
+    RemoteConfigManager.fetchRemoteConfig().catch(console.error);
+    PasteStatsManager.flushIfNeeded();
 });
 
 // Also trigger on install/load
 chrome.runtime.onInstalled.addListener(() => {
-    QuotaManager.fetchUsageLimits().catch(console.error);
+    RemoteConfigManager.fetchRemoteConfig().catch(console.error);
+    PasteStatsManager.flushIfNeeded();
 });
+
 
 // Log that background script has initialized
 logBackgroundEvent('BACKGROUND_INITIALIZED', {
@@ -769,3 +1122,6 @@ console.log('🏰 Fortress Framework Background Service Worker initialized');
 // Expose to console for testing
 self.RatingManager = RatingManager;
 self.QuotaManager = QuotaManager;
+self.PasteStatsManager = PasteStatsManager;
+self.RemoteConfigManager = RemoteConfigManager;
+

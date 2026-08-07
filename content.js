@@ -297,19 +297,46 @@ window.AskGemini.attachInputFocusListener = function attachInputFocusListener() 
 // ─── Event Listeners ──────────────────────────────────────────────────────────
 document.addEventListener('paste', (e) => {
     var AG = window.AskGemini;
-    if (AG.smartPasteBehavior === 'off') return;
     const input = AG.findInputArea();
     if (!input) return;
     const isInputTarget = input.contains(e.target) || e.target === input;
     if (!isInputTarget) return;
     const pastedText = (e.clipboardData || window.clipboardData)?.getData('text/plain');
-    if (!pastedText || pastedText.length < AG.smartPasteThreshold) return;
-    e.preventDefault();
-    if (AG.smartPasteBehavior === 'ask') {
-        AG.promptSmartPasteConfirmation(pastedText);
-    } else {
-        AG.processSmartPaste(pastedText);
-    }
+    if (!pastedText) return;
+
+    // Check remote config settings
+    chrome.storage.local.get(['ag_remote_config'], (res) => {
+        const config = res.ag_remote_config || {};
+        const flags = config.flags || {};
+        const smartPasteCfg = config.smart_paste || {};
+
+        // Respect smart_paste_enabled kill switch
+        if (flags.smart_paste_enabled === false) return;
+
+        // ── Silent paste analytics (runs on ALL pastes) ─────────────────────────
+        if (AG.detectFileType && AG.accumulatePasteStat && flags.paste_analytics_enabled !== false) {
+            try {
+                const enabledTypes = smartPasteCfg.enabled_types || null;
+                const detectedType = AG.detectFileType(pastedText, enabledTypes);
+                AG.accumulatePasteStat(detectedType, pastedText.length, pastedText);
+            } catch (err) {
+                // Never let analytics errors affect paste UX
+            }
+        }
+
+        // ── Smart Paste threshold gate ──────────────────────────────────────────
+        const effectiveThreshold = smartPasteCfg.trigger_threshold_chars || AG.smartPasteThreshold || 20000;
+        const effectiveBehavior = smartPasteCfg.behavior || AG.smartPasteBehavior || 'auto';
+
+        if (effectiveBehavior === 'off') return;
+        if (pastedText.length < effectiveThreshold) return;
+        e.preventDefault();
+        if (effectiveBehavior === 'ask') {
+            AG.promptSmartPasteConfirmation(pastedText);
+        } else {
+            AG.processSmartPaste(pastedText);
+        }
+    });
 }, true);
 
 document.addEventListener('keydown', (e) => {
@@ -400,6 +427,17 @@ chrome.storage.onChanged.addListener((changes, area) => {
     if (changes.toc_enabled) {
         AG.tocEnabled = changes.toc_enabled.newValue !== false;
         AG.buildTableOfContents();
+    }
+});
+
+// ─── Boot: React to Remote Config Updates ─────────────────────────────────────
+chrome.runtime.onMessage.addListener((message) => {
+    if (message.type === 'REMOTE_CONFIG_UPDATED') {
+        var AG = window.AskGemini;
+        AG.hasEvaluatedFeatureBanner = false;
+        if (AG.evaluateFeatureBanner) {
+            AG.evaluateFeatureBanner();
+        }
     }
 });
 

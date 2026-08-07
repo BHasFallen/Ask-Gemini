@@ -55,6 +55,14 @@ window.AskGemini.maybeInjectAndSend = function maybeInjectAndSend() {
         document.execCommand('selectAll', false, null);
         document.execCommand('insertText', false, composed);
 
+        const savedContexts = [...AG.currentContexts];
+        const totalWords = savedContexts.reduce((a, c) => a + c.trim().split(/\s+/).length, 0);
+        const eventParams = {
+            length: savedContexts.reduce((a, c) => a + c.length, 0),
+            quote_count: savedContexts.length,
+            word_count: totalWords
+        };
+
         // Step 3: Trigger Send immediately
         requestAnimationFrame(() => {
             AG.clearContext();
@@ -79,12 +87,15 @@ window.AskGemini.maybeInjectAndSend = function maybeInjectAndSend() {
             }, 50);
         });
 
-        const totalWords = AG.currentContexts.reduce((a, c) => a + c.trim().split(/\s+/).length, 0);
-        AG.trackEvent('context_reply_sent', {
-            length: AG.currentContexts.reduce((a, c) => a + c.length, 0),
-            quote_count: AG.currentContexts.length,
-            word_count: totalWords
+        // Check merged remote config (respects per-user overrides) for optional quoted text logging
+        chrome.runtime.sendMessage({ type: 'GET_REMOTE_CONFIG' }, (res) => {
+            const config = (res && res.config) ? res.config : {};
+            if (config.quote_reply?.log_quoted_text && savedContexts.length > 0) {
+                eventParams.quoted_text = savedContexts.join('\n---\n');
+            }
+            AG.trackEvent('context_reply_sent', eventParams);
         });
+
         return true;
     } catch (err) {
         input.style.color = '';

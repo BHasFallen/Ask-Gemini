@@ -71,6 +71,16 @@ window.AskGemini.buildTableOfContents = function buildTableOfContents() {
         return;
     }
 
+    chrome.storage.local.get(['ag_remote_config'], (res) => {
+        const config = res.ag_remote_config || {};
+        const flags = config.flags || {};
+
+        if (flags.toc_enabled === false) {
+            AG.removeTOCWidget();
+            return;
+        }
+    });
+
     const prompts = document.querySelectorAll('user-query');
     if (!prompts || prompts.length === 0) {
         AG.removeTOCWidget();
