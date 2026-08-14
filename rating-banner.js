@@ -157,6 +157,18 @@ window.AskGemini.showRatingModal = function showRatingModal(options = {}) {
                         });
                     }
 
+                    // Save to local feedback inbox in chrome.storage.local
+                    chrome.storage.local.get(['ag_user_feedback_history'], (fRes) => {
+                        const history = fRes.ag_user_feedback_history || [];
+                        history.push({
+                            feedback: text,
+                            source: options.source || 'rating_banner',
+                            feature_name: options.featureName || 'Quote Reply for Gemini',
+                            date: new Date().toISOString()
+                        });
+                        chrome.storage.local.set({ ag_user_feedback_history: history });
+                    });
+
                     // 2. Mark rating status as feedback_given
                     chrome.runtime.sendMessage({ type: 'SET_RATING_STATUS', status: 'feedback_given' });
 
