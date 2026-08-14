@@ -123,9 +123,84 @@ window.AskGemini.showRatingModal = function showRatingModal(options = {}) {
 
         if (feedbackBtn) {
             feedbackBtn.onclick = () => {
-                chrome.runtime.sendMessage({ type: 'SET_RATING_STATUS', status: 'feedback_given' });
-                window.open('https://docs.google.com/forms/d/e/1FAIpQLSfr82mMdRgwSPY9ZsQkdRp_HXKKwmVuWO7GmjeZ3fS9XHpqsA/viewform', '_blank');
-                banner.remove();
+                // Expand into an inline feedback form directly inside the banner
+                banner.innerHTML = `
+                    <div class="ag-rating-inline-left" style="flex: 1; min-width: 0;">
+                        <div class="ag-rating-inline-icon" style="background: rgba(168, 199, 250, 0.15); color: #a8c7fa;">
+                            💬
+                        </div>
+                        <div class="ag-rating-inline-text-col" style="flex: 1; min-width: 0; margin-right: 8px;">
+                            <span class="ag-rating-inline-title" style="margin-bottom: 4px;">What feature or idea should I build next?</span>
+                            <input type="text" id="ag-inline-feedback-input" placeholder="e.g. Export chat to PDF, dark mode, custom shortcuts..." style="width: 100%; padding: 6px 12px; border-radius: 8px; border: 1px solid var(--ag-border, rgba(255, 255, 255, 0.2)); background: rgba(0, 0, 0, 0.25); color: var(--ag-text, #ffffff); font-size: 12.5px; outline: none; box-sizing: border-box;" />
+                        </div>
+                    </div>
+                    <div class="ag-rating-inline-actions">
+                        <button class="ag-sp-btn-primary" id="ag-submit-feedback-btn" style="padding: 6px 14px; font-size: 12.5px; display: inline-flex; align-items: center; gap: 4px; white-space: nowrap;">
+                            Send 🚀
+                        </button>
+                        <button class="ag-rating-inline-close" aria-label="Close">${AG.ICONS.close}</button>
+                    </div>
+                `;
+
+                const inputEl = banner.querySelector('#ag-inline-feedback-input');
+                const submitBtn = banner.querySelector('#ag-submit-feedback-btn');
+                const closeInlineBtn = banner.querySelector('.ag-rating-inline-close');
+
+                if (inputEl) inputEl.focus();
+
+                const handleFeedbackSubmit = () => {
+                    const text = inputEl ? inputEl.value.trim() : '';
+                    if (!text) {
+                        if (inputEl) inputEl.focus();
+                        return;
+                    }
+
+                    // 1. Send direct feedback telemetry to Amplitude
+                    if (AG.trackEvent) {
+                        AG.trackEvent('user_direct_feedback', {
+                            feedback: text,
+                            source: options.source || 'rating_banner',
+                            feature_name: options.featureName || 'Ask Gemini'
+                        });
+                    }
+
+                    // 2. Mark rating status as feedback_given
+                    chrome.runtime.sendMessage({ type: 'SET_RATING_STATUS', status: 'feedback_given' });
+
+                    // 3. Show inline thank you confirmation
+                    banner.innerHTML = `
+                        <div class="ag-rating-inline-left">
+                            <div class="ag-rating-inline-icon" style="background: rgba(76, 175, 80, 0.15); color: #81c784;">
+                                ✨
+                            </div>
+                            <div class="ag-rating-inline-text-col">
+                                <span class="ag-rating-inline-title">Thank you! 🚀</span>
+                                <span class="ag-rating-inline-sub">Your idea was sent directly to the builder.</span>
+                            </div>
+                        </div>
+                        <div class="ag-rating-inline-actions">
+                            <button class="ag-rating-inline-close" aria-label="Close">${AG.ICONS.close}</button>
+                        </div>
+                    `;
+
+                    banner.querySelector('.ag-rating-inline-close').onclick = () => banner.remove();
+                    setTimeout(() => {
+                        if (banner && banner.parentNode) banner.remove();
+                    }, 3000);
+                };
+
+                if (submitBtn) submitBtn.onclick = handleFeedbackSubmit;
+                if (inputEl) {
+                    inputEl.addEventListener('keydown', (e) => {
+                        if (e.key === 'Enter') {
+                            e.preventDefault();
+                            handleFeedbackSubmit();
+                        }
+                    });
+                }
+                if (closeInlineBtn) {
+                    closeInlineBtn.onclick = () => banner.remove();
+                }
             };
         }
 
@@ -297,4 +372,38 @@ window.AskGemini.showFeatureBanner = function showFeatureBanner() {
             });
         });
     };
+};
+
+// ─── maybeShowRandomFeedbackPrompt ─────────────────────────────────────────
+window.AskGemini.maybeShowRandomFeedbackPrompt = function maybeShowRandomFeedbackPrompt() {
+    var AG = window.AskGemini;
+    if (document.querySelector('.ag-rating-inline-banner')) return;
+
+    chrome.storage.local.get(['rating_state', 'ag_last_random_feedback_prompt_at'], (res) => {
+        const state = res.rating_state || {};
+
+        // 1. Skip if user has already rated or given feedback
+        if (state.ratingStatus === 'rated' || state.ratingStatus === 'feedback_given') return;
+
+        // 2. Cooldown check: max once every 5 days for random feature feedback prompt
+        const now = Date.now();
+        const lastPrompt = res.ag_last_random_feedback_prompt_at || 0;
+        const FIVE_DAYS_MS = 5 * 24 * 60 * 60 * 1000;
+        if (now - lastPrompt < FIVE_DAYS_MS) return;
+
+        // 3. 25% random roll when triggered
+        if (Math.random() > 0.25) return;
+
+        chrome.storage.local.set({ ag_last_random_feedback_prompt_at: now });
+
+        setTimeout(() => {
+            if (document.querySelector('.ag-rating-inline-banner')) return;
+            AG.showRatingModal({
+                source: 'random_prompt',
+                title: 'Got a feature idea for Ask Gemini? 💡',
+                subtitle: 'Your feedback goes directly to the developer!',
+                featureName: 'Ask Gemini'
+            });
+        }, 2000);
+    });
 };
