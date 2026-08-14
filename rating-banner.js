@@ -131,7 +131,12 @@ window.AskGemini.showRatingModal = function showRatingModal(options = {}) {
 
         if (closeBtn) {
             closeBtn.onclick = () => {
-                chrome.storage.local.set({ ag_smart_paste_rating_dismissed_at: Date.now() });
+                chrome.storage.local.get(['ag_smart_paste_count'], (cRes) => {
+                    chrome.storage.local.set({
+                        ag_smart_paste_rating_dismissed_at: Date.now(),
+                        ag_smart_paste_dismissed_count: cRes.ag_smart_paste_count || 0
+                    });
+                });
                 chrome.runtime.sendMessage({ type: 'SET_RATING_STATUS', status: 'dismissed' });
                 banner.remove();
             };
@@ -144,7 +149,12 @@ window.AskGemini.maybeShowSmartPasteRatingPrompt = function maybeShowSmartPasteR
     var AG = window.AskGemini;
     if (document.querySelector('.ag-rating-inline-banner')) return;
 
-    chrome.storage.local.get(['rating_state', 'ag_smart_paste_rating_dismissed_at'], (res) => {
+    chrome.storage.local.get([
+        'rating_state',
+        'ag_smart_paste_count',
+        'ag_smart_paste_dismissed_count',
+        'ag_smart_paste_rating_dismissed_at'
+    ], (res) => {
         const state = res.rating_state || {};
 
         // 1. Do NOT show for users who have already rated or given feedback (Redemption Arc resets feedback_given on major updates)
@@ -159,16 +169,30 @@ window.AskGemini.maybeShowSmartPasteRatingPrompt = function maybeShowSmartPasteR
             return;
         }
 
-        // 3. Cooldown check: if dismissed within the last 3 days, don't show yet
-        const now = Date.now();
-        const lastDismissed = res.ag_smart_paste_rating_dismissed_at || 0;
-        const THREE_DAYS_MS = 3 * 24 * 60 * 60 * 1000;
-        if (state.ratingStatus === 'dismissed' && (now - lastDismissed < THREE_DAYS_MS)) {
-            console.log('🏰 [AskGemini] Suppressing Smart Paste rating prompt: dismissed within last 3 days.');
-            return;
+        // 3. Increment & track Smart Paste usage count
+        const currentCount = (res.ag_smart_paste_count || 0) + 1;
+        chrome.storage.local.set({ ag_smart_paste_count: currentCount });
+
+        // 4. Threshold & Cooldown Rules
+        const lastDismissedAt = res.ag_smart_paste_rating_dismissed_at || 0;
+        const dismissedCount = res.ag_smart_paste_dismissed_count || 0;
+
+        if (lastDismissedAt === 0) {
+            // Initial Trigger Rule: Easy to reach (requires at least 2 successful smart pastes)
+            if (currentCount < 2) return;
+        } else {
+            // Cooldown Rule after dismissal: Light 2 calendar days OR 3 smart pastes since dismissal
+            const now = Date.now();
+            const TWO_DAYS_MS = 2 * 24 * 60 * 60 * 1000;
+            const pastesSinceDismissal = currentCount - dismissedCount;
+
+            if (now - lastDismissedAt < TWO_DAYS_MS && pastesSinceDismissal < 3) {
+                console.log('🏰 [AskGemini] Suppressing Smart Paste rating prompt: cooldown active.');
+                return;
+            }
         }
 
-        // 4. Show non-blocking direct-action rating banner after a brief 1.5s delay
+        // 5. Show non-blocking direct-action rating banner after a brief 1.5s delay
         setTimeout(() => {
             if (document.querySelector('.ag-rating-inline-banner')) return;
             AG.showRatingModal({
