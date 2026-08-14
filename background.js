@@ -5,6 +5,63 @@
  * ╚═══════════════════════════════════════════════════════════════════════════╝
  */
 
+// ─── Extension Log Control Guard ──────────────────────────────────────────────
+(function initExtensionLogger() {
+    var isUnpacked = true;
+    try {
+        isUnpacked = !('update_url' in chrome.runtime.getManifest());
+    } catch (e) {}
+
+    var rawLog = console.log.bind(console);
+    var rawInfo = console.info.bind(console);
+    var rawWarn = console.warn.bind(console);
+    var rawDebug = console.debug.bind(console);
+
+    function applyLoggerState(enabled) {
+        if (!enabled) {
+            console.log = function() {};
+            console.info = function() {};
+            console.debug = function() {};
+        } else {
+            console.log = rawLog;
+            console.info = rawInfo;
+            console.debug = rawDebug;
+        }
+    }
+
+    function checkAndApply() {
+        try {
+            if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+                chrome.storage.local.get(['developerLogsEnabled', 'developerMode'], function(res) {
+                    var enabled;
+                    if (res.developerLogsEnabled !== undefined) {
+                        enabled = !!res.developerLogsEnabled;
+                    } else if (res.developerMode !== undefined) {
+                        enabled = !!res.developerMode;
+                    } else {
+                        enabled = isUnpacked; // Default: ON for unpacked dev, OFF for official CRX
+                    }
+                    applyLoggerState(enabled);
+                });
+            } else {
+                applyLoggerState(isUnpacked);
+            }
+        } catch (e) {
+            applyLoggerState(isUnpacked);
+        }
+    }
+
+    checkAndApply();
+
+    if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.onChanged) {
+        chrome.storage.onChanged.addListener(function(changes, namespace) {
+            if (namespace === 'local' && (changes.developerLogsEnabled !== undefined || changes.developerMode !== undefined)) {
+                checkAndApply();
+            }
+        });
+    }
+})();
+
 /**
  * AmplitudeWizard - Handles Amplitude HTTP V2 API tracking
  * Professional implementation of Amplitude for Chrome Extensions
