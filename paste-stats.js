@@ -116,11 +116,13 @@ window.AskGemini.cancelLastPasteStat = function cancelLastPasteStat() {
 
 // ─── recordSmartPasteSuccess ──────────────────────────────────────────────────
 /**
- * Record a smart paste attachment that was actually sent in a message by the user.
+ * Record a smart paste attachment (or batch of attachments) that were actually sent in a message by the user.
  * Stored under stats.smart_pastes = { count, lengths } and flushed at UTC midnight.
  */
-window.AskGemini.recordSmartPasteSuccess = function recordSmartPasteSuccess(length) {
-    if (typeof length !== 'number' || length <= 0) return;
+window.AskGemini.recordSmartPasteSuccess = function recordSmartPasteSuccess(lengthsOrLength) {
+    const rawList = Array.isArray(lengthsOrLength) ? lengthsOrLength : [lengthsOrLength];
+    const validLengths = rawList.filter(l => typeof l === 'number' && l > 0);
+    if (validLengths.length === 0) return;
     const today = new Date().toISOString().slice(0, 10);
 
     chrome.storage.local.get(['ag_paste_stats_daily'], (res) => {
@@ -129,8 +131,8 @@ window.AskGemini.recordSmartPasteSuccess = function recordSmartPasteSuccess(leng
             stats = { date: today, types: {}, smart_pastes: { count: 0, lengths: [] }, _pending: [] };
         }
         stats.smart_pastes = stats.smart_pastes || { count: 0, lengths: [] };
-        stats.smart_pastes.count++;
-        stats.smart_pastes.lengths.push(length);
+        stats.smart_pastes.count += validLengths.length;
+        stats.smart_pastes.lengths.push(...validLengths);
 
         chrome.storage.local.set({ ag_paste_stats_daily: stats });
     });

@@ -291,11 +291,9 @@ window.AskGemini.flushPendingSmartPastesOnSend = function flushPendingSmartPaste
             total_length: sentItems.reduce((sum, item) => sum + item.length, 0)
         });
 
-        // Record each sent paste in the daily stats accumulator
-        for (const item of sentItems) {
-            if (AG.recordSmartPasteSuccess) {
-                AG.recordSmartPasteSuccess(item.length);
-            }
+        // Record all sent pastes in the daily stats accumulator in one atomic write
+        if (AG.recordSmartPasteSuccess) {
+            AG.recordSmartPasteSuccess(sentItems.map(item => item.length));
         }
     }
 
