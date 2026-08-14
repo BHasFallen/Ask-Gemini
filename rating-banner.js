@@ -60,6 +60,7 @@ window.AskGemini.CURRENT_FEATURE = {
 window.AskGemini.showRatingModal = function showRatingModal(options = {}) {
     var AG = window.AskGemini;
     if (document.querySelector('.ag-rating-inline-banner')) return;
+    if (sessionStorage.getItem('ag_banner_shown_this_session')) return;
 
     // Verify rating state to prevent showing to users who have already rated or given feedback
     chrome.storage.local.get(['rating_state'], (res) => {
@@ -68,6 +69,8 @@ window.AskGemini.showRatingModal = function showRatingModal(options = {}) {
             console.log('🏰 [AskGemini] User has already rated or given feedback. Suppressing rating prompt.');
             return;
         }
+
+        sessionStorage.setItem('ag_banner_shown_this_session', 'true');
 
         const title = options.title || 'Enjoying Quote Reply?';
         const subtitle = options.subtitle || 'Your feedback helps me make it even better!';
@@ -374,36 +377,63 @@ window.AskGemini.showFeatureBanner = function showFeatureBanner() {
     };
 };
 
-// ─── maybeShowRandomFeedbackPrompt ─────────────────────────────────────────
-window.AskGemini.maybeShowRandomFeedbackPrompt = function maybeShowRandomFeedbackPrompt() {
+// ─── Rule 1: recordSmartPasteUndoForFeedback (Friction Signal) ──────────────
+window.AskGemini.recordSmartPasteUndoForFeedback = function recordSmartPasteUndoForFeedback() {
     var AG = window.AskGemini;
-    if (document.querySelector('.ag-rating-inline-banner')) return;
-
-    chrome.storage.local.get(['rating_state', 'ag_last_random_feedback_prompt_at'], (res) => {
+    chrome.storage.local.get(['rating_state', 'ag_smart_paste_undo_timestamps'], (res) => {
         const state = res.rating_state || {};
-
-        // 1. Skip if user has already rated or given feedback
         if (state.ratingStatus === 'rated' || state.ratingStatus === 'feedback_given') return;
 
-        // 2. Cooldown check: max once every 5 days for random feature feedback prompt
         const now = Date.now();
-        const lastPrompt = res.ag_last_random_feedback_prompt_at || 0;
-        const FIVE_DAYS_MS = 5 * 24 * 60 * 60 * 1000;
-        if (now - lastPrompt < FIVE_DAYS_MS) return;
+        const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+        const pastTimestamps = (res.ag_smart_paste_undo_timestamps || []).filter(t => now - t < SEVEN_DAYS_MS);
+        pastTimestamps.push(now);
 
-        // 3. 25% random roll when triggered
-        if (Math.random() > 0.25) return;
+        chrome.storage.local.set({ ag_smart_paste_undo_timestamps: pastTimestamps });
 
-        chrome.storage.local.set({ ag_last_random_feedback_prompt_at: now });
+        // If user undos 3+ times in 7 days, offer inline feedback prompt
+        if (pastTimestamps.length >= 3) {
+            setTimeout(() => {
+                if (AG.showRatingModal) {
+                    AG.showRatingModal({
+                        source: 'smart_paste_undo_friction',
+                        title: 'How can Smart Paste work better for you? 💡',
+                        subtitle: 'Your feedback helps me refine the formatting & behavior!',
+                        featureName: 'Smart Paste'
+                    });
+                }
+            }, 1200);
+        }
+    });
+};
 
-        setTimeout(() => {
-            if (document.querySelector('.ag-rating-inline-banner')) return;
-            AG.showRatingModal({
-                source: 'random_prompt',
-                title: 'Got a feature idea for Ask Gemini? 💡',
-                subtitle: 'Your feedback goes directly to the developer!',
-                featureName: 'Ask Gemini'
-            });
-        }, 2000);
+// ─── Rule 4: maybeShowPowerUserFeedbackPrompt (20 Actions Milestone) ─────────
+window.AskGemini.maybeShowPowerUserFeedbackPrompt = function maybeShowPowerUserFeedbackPrompt() {
+    var AG = window.AskGemini;
+    if (document.querySelector('.ag-rating-inline-banner')) return;
+    if (sessionStorage.getItem('ag_banner_shown_this_session')) return;
+
+    chrome.storage.local.get(['rating_state', 'ag_smart_paste_count', 'ag_power_user_feedback_prompt_seen'], (res) => {
+        const state = res.rating_state || {};
+
+        if (state.ratingStatus === 'rated' || state.ratingStatus === 'feedback_given') return;
+        if (res.ag_power_user_feedback_prompt_seen) return;
+
+        const totalActions = (state.replyCount || 0) + (res.ag_smart_paste_count || 0);
+
+        // Trigger after 20 total actions (replies + smart pastes)
+        if (totalActions >= 20) {
+            chrome.storage.local.set({ ag_power_user_feedback_prompt_seen: true });
+            setTimeout(() => {
+                if (AG.showRatingModal) {
+                    AG.showRatingModal({
+                        source: 'power_user_milestone',
+                        title: 'Got a feature idea for Ask Gemini? 💡',
+                        subtitle: 'Tell me what to build next — your feedback goes directly to me!',
+                        featureName: 'Ask Gemini'
+                    });
+                }
+            }, 2000);
+        }
     });
 };

@@ -182,6 +182,9 @@ window.AskGemini.enhanceAttachmentChip = function enhanceAttachmentChip(filename
 
             // 4. Track undo
             AG.trackEvent('smart_paste_undo', { length: pastedText.length, source: 'inline_chip' });
+            if (AG.recordSmartPasteUndoForFeedback) {
+                AG.recordSmartPasteUndoForFeedback();
+            }
 
             // 5. Remove from pending queue
             AG.pendingSmartPastes = (AG.pendingSmartPastes || []).filter(p => p.filename !== filename);

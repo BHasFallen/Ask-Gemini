@@ -354,6 +354,7 @@ document.addEventListener('click', (e) => {
     const sendBtn = e.target.closest('button[aria-label*="Send" i], button.send-button, gem-icon-button.send-button, [data-test-id*="send"], .send-button, [aria-label*="Submit" i], mat-icon[fonticon*="send"], button:has(mat-icon[fonticon*="send"]), .send-button-container');
     if (sendBtn) {
         if (AG.flushPendingSmartPastesOnSend) AG.flushPendingSmartPastesOnSend();
+        if (AG.maybeShowPowerUserFeedbackPrompt) AG.maybeShowPowerUserFeedbackPrompt();
     }
     if (AG.currentContexts.length > 0 && sendBtn) {
         e.preventDefault();
