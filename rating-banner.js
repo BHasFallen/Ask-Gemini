@@ -163,7 +163,7 @@ window.AskGemini.showRatingModal = function showRatingModal(options = {}) {
                         AG.trackEvent('user_direct_feedback', {
                             feedback: text,
                             source: options.source || 'rating_banner',
-                            feature_name: options.featureName || 'Ask Gemini'
+                            feature_name: options.featureName || 'Quote Reply for Gemini'
                         });
                     }
 
@@ -428,9 +428,9 @@ window.AskGemini.maybeShowPowerUserFeedbackPrompt = function maybeShowPowerUserF
                 if (AG.showRatingModal) {
                     AG.showRatingModal({
                         source: 'power_user_milestone',
-                        title: 'Got a feature idea for Ask Gemini? 💡',
+                        title: 'Got a feature idea for Quote Reply for Gemini? 💡',
                         subtitle: 'Tell me what to build next — your feedback goes directly to me!',
-                        featureName: 'Ask Gemini'
+                        featureName: 'Quote Reply for Gemini'
                     });
                 }
             }, 2000);
