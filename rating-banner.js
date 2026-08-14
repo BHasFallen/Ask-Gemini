@@ -147,13 +147,19 @@ window.AskGemini.maybeShowSmartPasteRatingPrompt = function maybeShowSmartPasteR
     chrome.storage.local.get(['rating_state', 'ag_smart_paste_rating_dismissed_at'], (res) => {
         const state = res.rating_state || {};
 
-        // 1. Do NOT show for users who have already rated or given feedback
+        // 1. Do NOT show for users who have already rated or given feedback (Redemption Arc resets feedback_given on major updates)
         if (state.ratingStatus === 'rated' || state.ratingStatus === 'feedback_given') {
             console.log('🏰 [AskGemini] Suppressing Smart Paste rating prompt: user has already rated or provided feedback.');
             return;
         }
 
-        // 2. Cooldown check: if dismissed within the last 3 days, don't show yet
+        // 2. Update Bombardment Buffer check: wait at least 5 uses after extension update
+        if (state.isExistingUser && (state.postUpdateHighlights || 0) < 5) {
+            console.log('🏰 [AskGemini] Suppressing Smart Paste rating prompt: update bombardment buffer active.');
+            return;
+        }
+
+        // 3. Cooldown check: if dismissed within the last 3 days, don't show yet
         const now = Date.now();
         const lastDismissed = res.ag_smart_paste_rating_dismissed_at || 0;
         const THREE_DAYS_MS = 3 * 24 * 60 * 60 * 1000;
@@ -162,7 +168,7 @@ window.AskGemini.maybeShowSmartPasteRatingPrompt = function maybeShowSmartPasteR
             return;
         }
 
-        // 3. Show non-blocking direct-action rating banner after a brief 1.5s delay
+        // 4. Show non-blocking direct-action rating banner after a brief 1.5s delay
         setTimeout(() => {
             if (document.querySelector('.ag-rating-inline-banner')) return;
             AG.showRatingModal({
