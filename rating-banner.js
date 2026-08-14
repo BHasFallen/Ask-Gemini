@@ -414,6 +414,7 @@ window.AskGemini.maybeShowPowerUserFeedbackPrompt = function maybeShowPowerUserF
     var AG = window.AskGemini;
     if (document.querySelector('.ag-rating-inline-banner')) return;
     if (typeof sessionStorage !== 'undefined' && sessionStorage.getItem('ag_banner_shown_this_session')) return;
+    if (typeof chrome === 'undefined' || !chrome.storage || !chrome.storage.local) return;
 
     chrome.storage.local.get(['rating_state', 'ag_smart_paste_count', 'ag_power_user_feedback_prompt_seen'], (res) => {
         const state = res.rating_state || {};
