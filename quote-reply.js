@@ -34,10 +34,10 @@
                     var enabled;
                     if (res.developerLogsEnabled !== undefined) {
                         enabled = !!res.developerLogsEnabled;
-                    } else if (res.developerMode !== undefined) {
-                        enabled = !!res.developerMode;
+                    } else if (isUnpacked) {
+                        enabled = true; // Always ON by default for unpacked dev
                     } else {
-                        enabled = isUnpacked; // Default: ON for unpacked dev, OFF for official CRX
+                        enabled = !!res.developerMode;
                     }
                     applyLoggerState(enabled);
                 });
