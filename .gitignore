@@ -1,0 +1,8 @@
+*.zip
+*.csv
+*.json
+*.html
+!manifest.json
+!popup.html
+!onboarding.html
+!docs/*.html
