@@ -250,24 +250,16 @@ window.AskGemini.syncSmartPasteAttachments = function syncSmartPasteAttachments(
 
 // ─── flushPendingSmartPastesOnSend ────────────────────────────────────────────
 /**
- * Called when the user sends a message. Verifies which smart paste attachments
- * are actually present in the prompt, fires a single smart_paste_success event
+ * Called when the user sends a message. Emits a single smart_paste_success event
  * with a `pastes` array, and records them in the daily flush accumulator.
  */
 window.AskGemini.flushPendingSmartPastesOnSend = function flushPendingSmartPastesOnSend() {
     var AG = window.AskGemini;
     if (!AG.pendingSmartPastes || AG.pendingSmartPastes.length === 0) return;
 
-    const domText = document.body.innerText || '';
-    const hasAttachments = !!document.querySelector('uploader-file-preview, gem-attachment, mat-basic-chip');
-
-    const sentItems = [];
-    for (const item of AG.pendingSmartPastes) {
-        const cleanName = item.filename.replace(/\.txt$/, '');
-        if (hasAttachments && (domText.includes(cleanName) || domText.includes('pasted-text'))) {
-            sentItems.push(item);
-        }
-    }
+    const sentItems = [...AG.pendingSmartPastes];
+    // Reset pending queue immediately to avoid duplicate events
+    AG.pendingSmartPastes = [];
 
     if (sentItems.length > 0) {
         // Emit ONE single smart_paste_success event with the `pastes` property
@@ -288,10 +280,8 @@ window.AskGemini.flushPendingSmartPastesOnSend = function flushPendingSmartPaste
         }
     }
 
-    // Reset pending queue & clean up pills
-    AG.pendingSmartPastes = [];
-    const pill = document.querySelector('.ag-gem-paste-as-text-pill-container');
-    if (pill) pill.remove();
+    // Clean up pills from DOM
+    document.querySelectorAll('.ag-gem-paste-as-text-pill-container').forEach(el => el.remove());
 };
 
 // ─── processSmartPaste ────────────────────────────────────────────────────────

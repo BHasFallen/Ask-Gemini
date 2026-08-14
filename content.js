@@ -324,11 +324,8 @@ document.addEventListener('paste', (e) => {
 
 document.addEventListener('keydown', (e) => {
     var AG = window.AskGemini;
-    if (e.key === 'Enter' && !e.shiftKey) {
-        const input = AG.findInputArea();
-        if (input && (input.contains(e.target) || e.target === input)) {
-            if (AG.flushPendingSmartPastesOnSend) AG.flushPendingSmartPastesOnSend();
-        }
+    if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) {
+        if (AG.flushPendingSmartPastesOnSend) AG.flushPendingSmartPastesOnSend();
         if (AG.currentContexts.length > 0) {
             e.preventDefault();
             e.stopImmediatePropagation();
@@ -339,7 +336,7 @@ document.addEventListener('keydown', (e) => {
 
 document.addEventListener('click', (e) => {
     var AG = window.AskGemini;
-    const sendBtn = e.target.closest('button[aria-label="Send message"], button.send-button, button[data-test-id*="send"]');
+    const sendBtn = e.target.closest('button[aria-label*="Send" i], button.send-button, gem-icon-button.send-button, [data-test-id*="send"]');
     if (sendBtn) {
         if (AG.flushPendingSmartPastesOnSend) AG.flushPendingSmartPastesOnSend();
     }
@@ -366,6 +363,12 @@ const observer = new MutationObserver(() => {
         _transformDebounceTimer = null;
         window.AskGemini.transformMessages();
         window.AskGemini.syncSmartPasteAttachments?.();
+
+        // Safety fallback: if Gemini started generating and there were pending smart pastes, flush them
+        const isGenerating = !!document.querySelector('.stop-generating-button, button[aria-label*="Stop" i], mat-progress-bar');
+        if (isGenerating && window.AskGemini.pendingSmartPastes && window.AskGemini.pendingSmartPastes.length > 0) {
+            window.AskGemini.flushPendingSmartPastesOnSend();
+        }
     }, 150);
 });
 observer.observe(document.body, { childList: true, subtree: true });
