@@ -228,6 +228,14 @@ window.AskGemini.syncSmartPasteAttachments = function syncSmartPasteAttachments(
     var AG = window.AskGemini;
     if (!AG.pendingSmartPastes || AG.pendingSmartPastes.length === 0) return;
 
+    // If Gemini is currently submitting / generating, do not wipe pending queue
+    const isGenerating = !!document.querySelector('button[aria-label*="Stop"]')
+        || !!document.querySelector('button[class*="stop"]')
+        || !!document.querySelector('mat-progress-bar')
+        || !!document.querySelector('.is-generating')
+        || !!document.querySelector('div[class*="generating"]');
+    if (isGenerating) return;
+
     const domText = document.body.innerText || '';
     const stillPresent = AG.pendingSmartPastes.filter(item => {
         const cleanName = item.filename.replace(/\.txt$/, '');

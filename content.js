@@ -380,8 +380,12 @@ const observer = new MutationObserver(() => {
         window.AskGemini.transformMessages();
         window.AskGemini.syncSmartPasteAttachments?.();
 
-        // Safety fallback: if Gemini started generating and there were pending smart pastes, flush them
-        const isGenerating = !!document.querySelector('.stop-generating-button, button[aria-label*="Stop" i], mat-progress-bar');
+        // Safety fallback: if Gemini is generating and there are pending smart pastes, flush them
+        const isGenerating = !!document.querySelector('button[aria-label*="Stop"]')
+            || !!document.querySelector('button[class*="stop"]')
+            || !!document.querySelector('mat-progress-bar')
+            || !!document.querySelector('.is-generating')
+            || !!document.querySelector('div[class*="generating"]');
         if (isGenerating && window.AskGemini.pendingSmartPastes && window.AskGemini.pendingSmartPastes.length > 0) {
             window.AskGemini.flushPendingSmartPastesOnSend();
         }
