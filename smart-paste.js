@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Ask Gemini: Smart Paste Module
  * Intercepts large text pastes and offers to convert them to .txt file uploads.
  */
@@ -29,6 +29,11 @@ window.AskGemini.processSmartPaste = async function processSmartPaste(pastedText
         const filename = `pasted-text-${Date.now().toString().slice(-4)}.txt`;
         const file = new File([pastedText], filename, { type: 'text/plain' });
         await AG.uploadFileToGemini(file, pastedText);
+
+        chrome.storage.local.get(['smart_paste_use_count'], (res) => {
+            const current = res.smart_paste_use_count || 0;
+            chrome.storage.local.set({ smart_paste_use_count: current + 1 });
+        });
 
         AG.trackEvent('smart_paste_success', { length: pastedText.length });
     } catch (err) {

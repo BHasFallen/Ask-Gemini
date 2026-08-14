@@ -39,8 +39,21 @@ class AmplitudeWizard {
         const deviceId = await this.getDeviceId();
         const version = chrome.runtime.getManifest().version;
         
-        // Retrieve raw email, name and tier from local storage
-        const storageResult = await chrome.storage.local.get(['user_email', 'user_name', 'quota_limits']);
+        // Retrieve raw email, name, tier, and feature settings/usage from local storage
+        const storageResult = await chrome.storage.local.get([
+            'user_email',
+            'user_name',
+            'quota_limits',
+            'smart_paste_behavior',
+            'smart_paste_trigger_count',
+            'smart_paste_use_count',
+            'toc_enabled',
+            'toc_click_count',
+            'multi_quote_enabled',
+            'multi_quote_display',
+            'usage_limits_enabled',
+            'reply_count_lifetime'
+        ]);
         const userId = storageResult.user_email || null;
         const userName = storageResult.user_name || null;
         const quotaLimits = storageResult.quota_limits || null;
@@ -60,7 +73,18 @@ class AmplitudeWizard {
                     version: version,
                     name: userName,
                     is_pro_user: quotaLimits?.isProUser ?? null,
-                    gemini_tier: quotaLimits?.userTier ?? null
+                    gemini_tier: quotaLimits?.userTier ?? null,
+                    // Feature Settings & Usage Properties
+                    smart_paste_behavior: storageResult.smart_paste_behavior || 'auto',
+                    smart_paste_enabled: (storageResult.smart_paste_behavior || 'auto') !== 'off',
+                    smart_paste_trigger_count: storageResult.smart_paste_trigger_count || 0,
+                    smart_paste_use_count: storageResult.smart_paste_use_count || 0,
+                    toc_enabled: storageResult.toc_enabled !== false,
+                    toc_click_count: storageResult.toc_click_count || 0,
+                    multi_quote_enabled: storageResult.multi_quote_enabled !== false,
+                    multi_quote_display: storageResult.multi_quote_display || 'compact',
+                    usage_limits_enabled: storageResult.usage_limits_enabled !== false,
+                    reply_count_lifetime: storageResult.reply_count_lifetime || 0
                 }
             }
         };
@@ -420,8 +444,34 @@ class BackgroundLogManager {
     constructor() {
         this.logs = [];
         this.maxLogs = 200;
+        // Defaults used synchronously until storage resolves
         this.sessionId = this.generateSessionId();
         this.startTime = Date.now();
+        // Restore persisted session (30-min window — Amplitude's standard timeout)
+        this._restoreSession();
+    }
+
+    async _restoreSession() {
+        try {
+            const SESSION_TTL = 30 * 60 * 1000; // 30 minutes
+            const res = await chrome.storage.local.get(['ag_session_id', 'ag_session_start']);
+            const storedId = res.ag_session_id;
+            const storedStart = res.ag_session_start;
+            const now = Date.now();
+            if (storedId && storedStart && (now - storedStart) < SESSION_TTL) {
+                // Resume the existing session
+                this.sessionId = storedId;
+                this.startTime = storedStart;
+            } else {
+                // Persist the newly generated session
+                await chrome.storage.local.set({
+                    ag_session_id: this.sessionId,
+                    ag_session_start: this.startTime
+                });
+            }
+        } catch (e) {
+            // Storage unavailable — keep in-memory defaults
+        }
     }
 
     generateSessionId() {
