@@ -60,7 +60,7 @@ window.AskGemini.CURRENT_FEATURE = {
 window.AskGemini.showRatingModal = function showRatingModal(options = {}) {
     var AG = window.AskGemini;
     if (document.querySelector('.ag-rating-inline-banner')) return;
-    if (sessionStorage.getItem('ag_banner_shown_this_session')) return;
+    if (typeof sessionStorage !== 'undefined' && sessionStorage.getItem('ag_banner_shown_this_session')) return;
 
     // Verify rating state to prevent showing to users who have already rated or given feedback
     chrome.storage.local.get(['rating_state'], (res) => {
@@ -70,7 +70,9 @@ window.AskGemini.showRatingModal = function showRatingModal(options = {}) {
             return;
         }
 
-        sessionStorage.setItem('ag_banner_shown_this_session', 'true');
+        if (typeof sessionStorage !== 'undefined') {
+            sessionStorage.setItem('ag_banner_shown_this_session', 'true');
+        }
 
         const title = options.title || 'Enjoying Quote Reply?';
         const subtitle = options.subtitle || 'Your feedback helps me make it even better!';
@@ -411,7 +413,7 @@ window.AskGemini.recordSmartPasteUndoForFeedback = function recordSmartPasteUndo
 window.AskGemini.maybeShowPowerUserFeedbackPrompt = function maybeShowPowerUserFeedbackPrompt() {
     var AG = window.AskGemini;
     if (document.querySelector('.ag-rating-inline-banner')) return;
-    if (sessionStorage.getItem('ag_banner_shown_this_session')) return;
+    if (typeof sessionStorage !== 'undefined' && sessionStorage.getItem('ag_banner_shown_this_session')) return;
 
     chrome.storage.local.get(['rating_state', 'ag_smart_paste_count', 'ag_power_user_feedback_prompt_seen'], (res) => {
         const state = res.rating_state || {};
