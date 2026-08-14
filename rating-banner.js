@@ -70,8 +70,7 @@ window.AskGemini.showRatingModal = function showRatingModal(options = {}) {
         }
 
         const title = options.title || 'Enjoying Quote Reply?';
-        const subtitle = options.subtitle || 'Tap stars to rate your experience';
-        const featureName = options.featureName || (options.source === 'smart_paste' ? 'Smart Paste' : 'Ask Gemini');
+        const subtitle = options.subtitle || 'Your feedback helps me make it even better!';
 
         const input = AG.findInputArea();
         const container = input ? (input.closest('.input-area-container') || input.closest('.chat-input-area') || input.closest('form') || input.parentElement) : document.body;
@@ -93,13 +92,12 @@ window.AskGemini.showRatingModal = function showRatingModal(options = {}) {
             </div>
 
             <div class="ag-rating-inline-actions">
-                <div class="ag-rating-stars-row">
-                    <button class="ag-star-btn ag-star-item-btn" data-value="1" aria-label="1 star">${AG.ICONS.star}</button>
-                    <button class="ag-star-btn ag-star-item-btn" data-value="2" aria-label="2 stars">${AG.ICONS.star}</button>
-                    <button class="ag-star-btn ag-star-item-btn" data-value="3" aria-label="3 stars">${AG.ICONS.star}</button>
-                    <button class="ag-star-btn ag-star-item-btn" data-value="4" aria-label="4 stars">${AG.ICONS.star}</button>
-                    <button class="ag-star-btn ag-star-item-btn" data-value="5" aria-label="5 stars">${AG.ICONS.star}</button>
-                </div>
+                <button class="ag-sp-btn-primary" id="ag-rate-direct" style="padding: 6px 14px; font-size: 12.5px; display: inline-flex; align-items: center; gap: 4px;">
+                    🌟 Rate 5 Stars
+                </button>
+                <button class="ag-sp-btn-secondary" id="ag-feedback-direct" style="padding: 6px 14px; font-size: 12.5px; display: inline-flex; align-items: center; gap: 4px;">
+                    💬 Share Feedback
+                </button>
                 <button class="ag-rating-inline-close" aria-label="Close">${AG.ICONS.close}</button>
             </div>
         `;
@@ -110,93 +108,34 @@ window.AskGemini.showRatingModal = function showRatingModal(options = {}) {
             document.body.appendChild(banner);
         }
 
-        const stars = banner.querySelectorAll('.ag-star-item-btn');
+        // 1-Click Action Listeners
+        const rateBtn = banner.querySelector('#ag-rate-direct');
+        const feedbackBtn = banner.querySelector('#ag-feedback-direct');
+        const closeBtn = banner.querySelector('.ag-rating-inline-close');
 
-        stars.forEach(star => {
-            star.addEventListener('mouseenter', () => {
-                const value = parseInt(star.getAttribute('data-value'));
-                stars.forEach(s => {
-                    const val = parseInt(s.getAttribute('data-value'));
-                    if (val <= value) {
-                        s.classList.add('hovered-star');
-                    } else {
-                        s.classList.remove('hovered-star');
-                    }
-                });
-            });
+        if (rateBtn) {
+            rateBtn.onclick = () => {
+                chrome.runtime.sendMessage({ type: 'SET_RATING_STATUS', status: 'rated' });
+                chrome.runtime.sendMessage({ type: 'OPEN_REVIEW_PAGE' });
+                banner.remove();
+            };
+        }
 
-            star.addEventListener('mouseleave', () => {
-                stars.forEach(s => s.classList.remove('hovered-star'));
-            });
+        if (feedbackBtn) {
+            feedbackBtn.onclick = () => {
+                chrome.runtime.sendMessage({ type: 'SET_RATING_STATUS', status: 'feedback_given' });
+                window.open('https://docs.google.com/forms/d/e/1FAIpQLSfr82mMdRgwSPY9ZsQkdRp_HXKKwmVuWO7GmjeZ3fS9XHpqsA/viewform', '_blank');
+                banner.remove();
+            };
+        }
 
-            star.addEventListener('click', () => {
-                const rating = parseInt(star.getAttribute('data-value'));
-
-                if (rating >= 4) {
-                    banner.innerHTML = `
-                        <div class="ag-rating-inline-left">
-                            <div class="ag-rating-inline-icon" style="background: rgba(168, 199, 250, 0.15); color: #a8c7fa;">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
-                                </svg>
-                            </div>
-                            <div class="ag-rating-inline-text-col">
-                                <span class="ag-rating-inline-title">You're the best! 🌟</span>
-                                <span class="ag-rating-inline-sub">A quick review keeps ${featureName} free for everyone</span>
-                            </div>
-                        </div>
-                        <div class="ag-rating-inline-actions">
-                            <button class="ag-sp-btn-primary" id="ag-go-rate" style="padding: 7px 18px; font-size: 13px;">Leave 5 Stars</button>
-                            <button class="ag-rating-inline-close" aria-label="Close">${AG.ICONS.close}</button>
-                        </div>
-                    `;
-                    banner.querySelector('.ag-rating-inline-close').onclick = () => banner.remove();
-                    banner.querySelector('#ag-go-rate').onclick = () => {
-                        chrome.runtime.sendMessage({ type: 'SET_RATING_STATUS', status: 'rated' });
-                        chrome.runtime.sendMessage({ type: 'OPEN_REVIEW_PAGE' });
-                        banner.remove();
-                    };
-                } else {
-                    banner.innerHTML = `
-                        <div class="ag-rating-inline-left">
-                            <div class="ag-rating-inline-icon" style="background: rgba(168, 199, 250, 0.15); color: #a8c7fa;">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <circle cx="12" cy="12" r="10"></circle>
-                                    <line x1="12" y1="8" x2="12" y2="12"></line>
-                                    <line x1="12" y1="16" x2="12.01" y2="16"></line>
-                                </svg>
-                            </div>
-                            <div class="ag-rating-inline-text-col">
-                                <span class="ag-rating-inline-title">How can we improve ${featureName}?</span>
-                                <span class="ag-rating-inline-sub">We'd love your feedback to make ${featureName} better</span>
-                            </div>
-                        </div>
-                        <div class="ag-rating-inline-actions">
-                            <button class="ag-sp-btn-primary" id="ag-give-feedback" style="padding: 6px 14px; font-size: 12.5px;">Send Feedback</button>
-                            <button class="ag-sp-btn-secondary" id="ag-go-rate-stars" style="padding: 5px 12px; font-size: 12.5px;">Rate ${rating} Stars</button>
-                            <button class="ag-rating-inline-close" aria-label="Close">${AG.ICONS.close}</button>
-                        </div>
-                    `;
-                    banner.querySelector('.ag-rating-inline-close').onclick = () => banner.remove();
-                    banner.querySelector('#ag-give-feedback').onclick = () => {
-                        chrome.runtime.sendMessage({ type: 'SET_RATING_STATUS', status: 'feedback_given' });
-                        window.open('https://docs.google.com/forms/d/e/1FAIpQLSfr82mMdRgwSPY9ZsQkdRp_HXKKwmVuWO7GmjeZ3fS9XHpqsA/viewform', '_blank');
-                        banner.remove();
-                    };
-                    banner.querySelector('#ag-go-rate-stars').onclick = () => {
-                        chrome.runtime.sendMessage({ type: 'SET_RATING_STATUS', status: 'rated' });
-                        chrome.runtime.sendMessage({ type: 'OPEN_REVIEW_PAGE' });
-                        banner.remove();
-                    };
-                }
-            });
-        });
-
-        banner.querySelector('.ag-rating-inline-close').onclick = () => {
-            chrome.storage.local.set({ ag_smart_paste_rating_dismissed_at: Date.now() });
-            chrome.runtime.sendMessage({ type: 'SET_RATING_STATUS', status: 'dismissed' });
-            banner.remove();
-        };
+        if (closeBtn) {
+            closeBtn.onclick = () => {
+                chrome.storage.local.set({ ag_smart_paste_rating_dismissed_at: Date.now() });
+                chrome.runtime.sendMessage({ type: 'SET_RATING_STATUS', status: 'dismissed' });
+                banner.remove();
+            };
+        }
     });
 };
 
@@ -223,13 +162,13 @@ window.AskGemini.maybeShowSmartPasteRatingPrompt = function maybeShowSmartPasteR
             return;
         }
 
-        // 3. Show non-blocking rating banner after a brief 1.5s delay
+        // 3. Show non-blocking direct-action rating banner after a brief 1.5s delay
         setTimeout(() => {
             if (document.querySelector('.ag-rating-inline-banner')) return;
             AG.showRatingModal({
                 source: 'smart_paste',
                 title: 'Enjoying Smart Paste?',
-                subtitle: 'Tap stars to rate your experience or share feedback',
+                subtitle: 'Your feedback helps me make it even better!',
                 featureName: 'Smart Paste'
             });
         }, 1500);
