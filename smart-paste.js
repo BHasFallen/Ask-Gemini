@@ -261,6 +261,8 @@ window.AskGemini.flushPendingSmartPastesOnSend = function flushPendingSmartPaste
     // Reset pending queue immediately to avoid duplicate events
     AG.pendingSmartPastes = [];
 
+    console.log('🏰 [AskGemini] Flushing smart pastes on send:', sentItems);
+
     if (sentItems.length > 0) {
         // Emit ONE single smart_paste_success event with the `pastes` property
         AG.trackEvent('smart_paste_success', {
@@ -307,6 +309,7 @@ window.AskGemini.processSmartPaste = async function processSmartPaste(pastedText
             pastedText,
             length: pastedText.length
         });
+        console.log('🏰 [AskGemini] Smart paste queued:', filename, 'Queue:', AG.pendingSmartPastes);
 
         // Add / move inline "Paste as text" pill to this newest attachment chip
         AG.enhanceAttachmentChip(filename, pastedText);

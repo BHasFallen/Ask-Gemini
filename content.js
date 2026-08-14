@@ -95,7 +95,12 @@ window.AskGemini.animatePlaceholderChange = function animatePlaceholderChange(in
 
 // ─── trackEvent ───────────────────────────────────────────────────────────────
 window.AskGemini.trackEvent = function trackEvent(name, params) {
-    chrome.runtime.sendMessage({ type: 'TRACK_EVENT', name, params });
+    console.log('🏰 [AskGemini] Sending event to background:', name, params);
+    chrome.runtime.sendMessage({ type: 'TRACK_EVENT', name, params }, () => {
+        if (chrome.runtime.lastError) {
+            console.warn('🏰 [AskGemini] Event send error:', chrome.runtime.lastError.message);
+        }
+    });
 };
 
 // ─── evaluateRetentionTip ─────────────────────────────────────────────────────
