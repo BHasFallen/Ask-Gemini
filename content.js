@@ -314,8 +314,7 @@ window.AskGemini.attachInputFocusListener = function attachInputFocusListener() 
 document.addEventListener('paste', (e) => {
     var AG = window.AskGemini;
     const input = AG.findInputArea();
-    if (!input) return;
-    const isInputTarget = input.contains(e.target) || e.target === input;
+    const isInputTarget = !input || input.contains(e.target) || e.target === input || (e.target.closest && e.target.closest('.ql-editor, rich-textarea, .text-input-field, .input-area-container, [contenteditable="true"]'));
     if (!isInputTarget) return;
     const pastedText = (e.clipboardData || window.clipboardData)?.getData('text/plain');
 
@@ -352,7 +351,7 @@ document.addEventListener('keydown', (e) => {
 
 document.addEventListener('click', (e) => {
     var AG = window.AskGemini;
-    const sendBtn = e.target.closest('button[aria-label*="Send" i], button.send-button, gem-icon-button.send-button, [data-test-id*="send"]');
+    const sendBtn = e.target.closest('button[aria-label*="Send" i], button.send-button, gem-icon-button.send-button, [data-test-id*="send"], .send-button, [aria-label*="Submit" i], mat-icon[fonticon*="send"], button:has(mat-icon[fonticon*="send"]), .send-button-container');
     if (sendBtn) {
         if (AG.flushPendingSmartPastesOnSend) AG.flushPendingSmartPastesOnSend();
     }
@@ -363,10 +362,10 @@ document.addEventListener('click', (e) => {
     }
 
     // If user clicked any close button on an attachment, sync smart paste state
-    if (e.target.closest('.gem-attachment-close-button, button[aria-label*="close" i], gem-icon-button')) {
+    if (e.target.closest('.gem-attachment-close-button, button[aria-label*="close" i], button[aria-label*="delete" i], gem-icon-button')) {
         setTimeout(() => {
             if (AG.syncSmartPasteAttachments) AG.syncSmartPasteAttachments();
-        }, 80);
+        }, 120);
     }
 }, true);
 
@@ -378,7 +377,6 @@ const observer = new MutationObserver(() => {
     _transformDebounceTimer = setTimeout(() => {
         _transformDebounceTimer = null;
         window.AskGemini.transformMessages();
-        window.AskGemini.syncSmartPasteAttachments?.();
 
         // Safety fallback: if Gemini is generating and there are pending smart pastes, flush them
         const isGenerating = !!document.querySelector('button[aria-label*="Stop"]')

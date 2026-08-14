@@ -236,10 +236,19 @@ window.AskGemini.syncSmartPasteAttachments = function syncSmartPasteAttachments(
         || !!document.querySelector('div[class*="generating"]');
     if (isGenerating) return;
 
-    const domText = document.body.innerText || '';
+    const previewContainer = document.querySelector('.attachment-preview-wrapper, uploader-file-preview-container');
+    if (!previewContainer) {
+        // If there are no preview containers rendered at all, pills should be removed
+        AG.removePillAnimated();
+        return;
+    }
+
+    const previewChips = previewContainer.querySelectorAll('uploader-file-preview, gem-attachment, mat-basic-chip');
+    const previewText = Array.from(previewChips).map(c => c.textContent || '').join(' ');
+
     const stillPresent = AG.pendingSmartPastes.filter(item => {
         const cleanName = item.filename.replace(/\.txt$/, '');
-        return domText.includes(cleanName);
+        return previewText.includes(cleanName);
     });
 
     if (stillPresent.length !== AG.pendingSmartPastes.length) {
