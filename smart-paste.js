@@ -295,6 +295,11 @@ window.AskGemini.flushPendingSmartPastesOnSend = function flushPendingSmartPaste
         if (AG.recordSmartPasteSuccess) {
             AG.recordSmartPasteSuccess(sentItems.map(item => item.length));
         }
+
+        // Trigger Smart Paste rating / feedback prompt (suppressed automatically if user has already rated)
+        if (AG.maybeShowSmartPasteRatingPrompt) {
+            AG.maybeShowSmartPasteRatingPrompt();
+        }
     }
 
     // Clean up pills from DOM
