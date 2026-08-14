@@ -58,6 +58,7 @@ window.AskGemini.maybeInjectAndSend = function maybeInjectAndSend() {
         // Step 3: Trigger Send immediately
         requestAnimationFrame(() => {
             AG.clearContext();
+            if (AG.flushPendingSmartPastesOnSend) AG.flushPendingSmartPastesOnSend();
             sendBtn.click();
 
             // Increment reply count and reset visits since last reply

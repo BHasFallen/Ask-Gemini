@@ -6,7 +6,7 @@
 window.AskGemini = window.AskGemini || {};
 
 // ─── Owned State ─────────────────────────────────────────────────────────────
-window.AskGemini.smartPasteThreshold = 20000;
+window.AskGemini.smartPasteThreshold = 5000;
 window.AskGemini.smartPasteBehavior = 'auto'; // 'auto' | 'ask' | 'off'
 window.AskGemini.smartPasteFeedbackDone = false;
 window.AskGemini.smartPasteTriggerCount = 0;
@@ -17,9 +17,281 @@ window.AskGemini.insertTextIntoInput = function insertTextIntoInput(text) {
     const input = window.AskGemini.findInputArea();
     if (!input) return;
     input.focus();
+
+    // High performance insertion: document.execCommand('insertText') freezes on large text
+    // (10k+ chars) because Chromium synchronizes spellcheck and layout per glyph.
+    // Selection Range node insertion is instantaneous (< 1ms) for any text length.
+    try {
+        const sel = window.getSelection();
+        if (sel && sel.rangeCount > 0) {
+            const range = sel.getRangeAt(0);
+            range.deleteContents();
+            const textNode = document.createTextNode(text);
+            range.insertNode(textNode);
+            range.setStartAfter(textNode);
+            range.setEndAfter(textNode);
+            sel.removeAllRanges();
+            sel.addRange(range);
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+            return;
+        }
+    } catch (_) {}
+
     if (!document.execCommand('insertText', false, text)) {
         input.innerText += text;
+        input.dispatchEvent(new Event('input', { bubbles: true }));
     }
+};
+
+// ─── removeUploadedFileAttachment ─────────────────────────────────────────────
+window.AskGemini.removeUploadedFileAttachment = function removeUploadedFileAttachment(filename) {
+    var AG = window.AskGemini;
+    if (AG._isRemovingAttachment) return false;
+    AG._isRemovingAttachment = true;
+
+    try {
+        // Also remove any active pill wrapper
+        const pillWrapper = document.querySelector('.ag-gem-paste-as-text-pill-container');
+        if (pillWrapper) pillWrapper.remove();
+
+        const cleanName = filename ? filename.replace(/\.txt$/, '') : '';
+        
+        // 1. Target specific chip matching filename
+        const chips = document.querySelectorAll('uploader-file-preview, mat-basic-chip, .mat-mdc-chip, .gem-attachment-content');
+        if (cleanName) {
+            for (const chip of chips) {
+                if (chip.textContent.includes(cleanName)) {
+                    const closeBtn = chip.querySelector(
+                        '.gem-attachment-close-button button, button[aria-label*="close" i]:not(.ag-gem-paste-as-text-pill):not(#ag-sp-undo-btn), .gem-attachment-close-button'
+                    );
+                    if (closeBtn && !closeBtn.classList.contains('ag-gem-paste-as-text-pill') && closeBtn.id !== 'ag-sp-undo-btn') {
+                        closeBtn.click();
+                        const hostPreview = chip.closest('uploader-file-preview') || chip;
+                        hostPreview.remove();
+                        return true;
+                    }
+                }
+            }
+        }
+
+        // 2. Target the latest close button
+        const allCloseButtons = Array.from(document.querySelectorAll(
+            'button[aria-label*="close" i], .gem-attachment-close-button button'
+        )).filter(btn => !btn.classList.contains('ag-gem-paste-as-text-pill') && btn.id !== 'ag-sp-undo-btn');
+
+        if (allCloseButtons.length > 0) {
+            const btn = allCloseButtons[allCloseButtons.length - 1];
+            const parentChip = btn.closest('uploader-file-preview') || btn.closest('mat-basic-chip, .mat-mdc-chip') || btn.parentElement;
+            btn.click();
+            if (parentChip) parentChip.remove();
+            return true;
+        }
+
+        return false;
+    } finally {
+        AG._isRemovingAttachment = false;
+    }
+};
+
+// ─── Pending Smart Pastes Queue ──────────────────────────────────────────────
+window.AskGemini.pendingSmartPastes = [];
+
+// ─── removePillAnimated ───────────────────────────────────────────────────────
+window.AskGemini.removePillAnimated = function removePillAnimated(callback) {
+    const pills = document.querySelectorAll('.ag-gem-paste-as-text-pill-container:not(.ag-pill-exit)');
+    if (pills.length === 0) {
+        if (callback) callback();
+        return;
+    }
+    pills.forEach(p => p.classList.add('ag-pill-exit'));
+    setTimeout(() => {
+        pills.forEach(p => p.remove());
+        if (callback) callback();
+    }, 160);
+};
+
+// ─── enhanceAttachmentChip ────────────────────────────────────────────────────
+window.AskGemini.enhanceAttachmentChip = function enhanceAttachmentChip(filename, pastedText) {
+    var AG = window.AskGemini;
+    const cleanName = filename ? filename.replace(/\.txt$/, '') : '';
+
+    const tryInject = () => {
+        const filePreviews = document.querySelectorAll('uploader-file-preview, gem-attachment, mat-basic-chip');
+        let targetChip = null;
+
+        if (cleanName) {
+            // Find the specific preview matching this exact filename
+            for (const preview of filePreviews) {
+                if (preview.textContent.includes(cleanName)) {
+                    targetChip = preview;
+                    break;
+                }
+            }
+            // If cleanName was specified but is not rendered in the DOM yet,
+            // wait for the next polling tick — DO NOT prematurely fallback to an older chip!
+            if (!targetChip) return false;
+        } else {
+            // Fallback only when cleanName is unknown: take the last preview element
+            const allPreviews = document.querySelectorAll('uploader-file-preview');
+            if (allPreviews.length > 0) {
+                targetChip = allPreviews[allPreviews.length - 1];
+            }
+        }
+
+        if (!targetChip) return false;
+
+        const previewContainer = targetChip.closest('uploader-file-preview-container') 
+            || targetChip.closest('.attachment-preview-wrapper')
+            || targetChip.parentElement;
+
+        if (!previewContainer) return false;
+
+        // Remove any previous pill with animation
+        document.querySelectorAll('.ag-gem-paste-as-text-pill-container').forEach(el => el.remove());
+
+        const pillWrapper = document.createElement('div');
+        pillWrapper.className = 'ag-gem-paste-as-text-pill-container';
+        pillWrapper.innerHTML = `
+            <button type="button" class="ag-gem-paste-as-text-pill" title="Paste raw text directly into prompt instead">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="9 14 4 9 9 4"></polyline>
+                    <path d="M20 20v-7a4 4 0 0 0-4-4H4"></path>
+                </svg>
+                <span>Paste as text</span>
+            </button>
+        `;
+
+        const undoBtn = pillWrapper.querySelector('.ag-gem-paste-as-text-pill');
+        undoBtn.onclick = (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+
+            // 1. Smooth exit animation then remove
+            pillWrapper.classList.add('ag-pill-exit');
+            setTimeout(() => pillWrapper.remove(), 160);
+
+            AG.removeUploadedFileAttachment(filename);
+
+            // 2. High performance text insertion
+            AG.insertTextIntoInput(pastedText);
+
+            // 3. Re-record into daily paste stats (as raw text paste)
+            if (AG.recordPasteStats) {
+                AG.recordPasteStats(pastedText);
+            }
+
+            // 4. Track undo
+            AG.trackEvent('smart_paste_undo', { length: pastedText.length, source: 'inline_chip' });
+
+            // 5. Remove from pending queue
+            AG.pendingSmartPastes = (AG.pendingSmartPastes || []).filter(p => p.filename !== filename);
+
+            // 6. If older smart paste attachments remain, move pill to the previous one
+            if (AG.pendingSmartPastes.length > 0) {
+                const prev = AG.pendingSmartPastes[AG.pendingSmartPastes.length - 1];
+                setTimeout(() => {
+                    AG.enhanceAttachmentChip(prev.filename, prev.pastedText);
+                }, 80);
+            }
+        };
+
+        const filePreview = targetChip.closest('uploader-file-preview') || targetChip;
+        if (filePreview && filePreview.nextSibling) {
+            filePreview.parentNode.insertBefore(pillWrapper, filePreview.nextSibling);
+        } else if (filePreview && filePreview.parentNode) {
+            filePreview.parentNode.appendChild(pillWrapper);
+        } else {
+            previewContainer.appendChild(pillWrapper);
+        }
+        return true;
+    };
+
+    // Attempt immediately and poll until Angular renders the chip
+    if (!tryInject()) {
+        let attempts = 0;
+        const interval = setInterval(() => {
+            attempts++;
+            if (tryInject() || attempts > 40) {
+                clearInterval(interval);
+            }
+        }, 120);
+    }
+};
+
+// ─── syncSmartPasteAttachments ────────────────────────────────────────────────
+/**
+ * Synchronizes pendingSmartPastes with the DOM.
+ * If the user removed an attachment (e.g. by clicking the native ✕ button),
+ * this automatically shifts the 'Paste as text' pill back to the latest remaining attachment.
+ */
+window.AskGemini.syncSmartPasteAttachments = function syncSmartPasteAttachments() {
+    var AG = window.AskGemini;
+    if (!AG.pendingSmartPastes || AG.pendingSmartPastes.length === 0) return;
+
+    const domText = document.body.innerText || '';
+    const stillPresent = AG.pendingSmartPastes.filter(item => {
+        const cleanName = item.filename.replace(/\.txt$/, '');
+        return domText.includes(cleanName);
+    });
+
+    if (stillPresent.length !== AG.pendingSmartPastes.length) {
+        AG.pendingSmartPastes = stillPresent;
+
+        // If attachments still remain, smoothly move the pill to the newest remaining attachment
+        if (AG.pendingSmartPastes.length > 0) {
+            const latest = AG.pendingSmartPastes[AG.pendingSmartPastes.length - 1];
+            AG.enhanceAttachmentChip(latest.filename, latest.pastedText);
+        } else {
+            // No smart paste attachments left, animate clean up pill
+            AG.removePillAnimated();
+        }
+    }
+};
+
+// ─── flushPendingSmartPastesOnSend ────────────────────────────────────────────
+/**
+ * Called when the user sends a message. Verifies which smart paste attachments
+ * are actually present in the prompt, fires a single smart_paste_success event
+ * with a `pastes` array, and records them in the daily flush accumulator.
+ */
+window.AskGemini.flushPendingSmartPastesOnSend = function flushPendingSmartPastesOnSend() {
+    var AG = window.AskGemini;
+    if (!AG.pendingSmartPastes || AG.pendingSmartPastes.length === 0) return;
+
+    const domText = document.body.innerText || '';
+    const hasAttachments = !!document.querySelector('uploader-file-preview, gem-attachment, mat-basic-chip');
+
+    const sentItems = [];
+    for (const item of AG.pendingSmartPastes) {
+        const cleanName = item.filename.replace(/\.txt$/, '');
+        if (hasAttachments && (domText.includes(cleanName) || domText.includes('pasted-text'))) {
+            sentItems.push(item);
+        }
+    }
+
+    if (sentItems.length > 0) {
+        // Emit ONE single smart_paste_success event with the `pastes` property
+        AG.trackEvent('smart_paste_success', {
+            pastes: sentItems.map(item => ({
+                length: item.length,
+                filename: item.filename
+            })),
+            total_pastes: sentItems.length,
+            total_length: sentItems.reduce((sum, item) => sum + item.length, 0)
+        });
+
+        // Record each sent paste in the daily stats accumulator
+        for (const item of sentItems) {
+            if (AG.recordSmartPasteSuccess) {
+                AG.recordSmartPasteSuccess(item.length);
+            }
+        }
+    }
+
+    // Reset pending queue & clean up pills
+    AG.pendingSmartPastes = [];
+    const pill = document.querySelector('.ag-gem-paste-as-text-pill-container');
+    if (pill) pill.remove();
 };
 
 // ─── processSmartPaste ────────────────────────────────────────────────────────
@@ -35,7 +307,19 @@ window.AskGemini.processSmartPaste = async function processSmartPaste(pastedText
             chrome.storage.local.set({ smart_paste_use_count: current + 1 });
         });
 
-        AG.trackEvent('smart_paste_success', { length: pastedText.length });
+        // Exclude this paste from regular raw-text stats
+        if (AG.cancelLastPasteStat) AG.cancelLastPasteStat();
+
+        // Queue pending smart paste (smart_paste_success fires when user sends message)
+        AG.pendingSmartPastes = AG.pendingSmartPastes || [];
+        AG.pendingSmartPastes.push({
+            filename,
+            pastedText,
+            length: pastedText.length
+        });
+
+        // Add / move inline "Paste as text" pill to this newest attachment chip
+        AG.enhanceAttachmentChip(filename, pastedText);
     } catch (err) {
         console.error('Smart Paste file upload failed, falling back to text paste:', err);
         AG.trackEvent('smart_paste_fallback', { error: err.message, length: pastedText.length });
@@ -317,3 +601,4 @@ window.AskGemini.showSmartPasteToast = function showSmartPasteToast(message) {
     document.body.appendChild(toast);
     setTimeout(() => toast.remove(), 4000);
 };
+

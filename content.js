@@ -297,12 +297,22 @@ window.AskGemini.attachInputFocusListener = function attachInputFocusListener() 
 // ─── Event Listeners ──────────────────────────────────────────────────────────
 document.addEventListener('paste', (e) => {
     var AG = window.AskGemini;
-    if (AG.smartPasteBehavior === 'off') return;
     const input = AG.findInputArea();
     if (!input) return;
     const isInputTarget = input.contains(e.target) || e.target === input;
     if (!isInputTarget) return;
     const pastedText = (e.clipboardData || window.clipboardData)?.getData('text/plain');
+
+    // ── Paste Analytics ───────────────────────────────────────────────────────
+    // Record every paste targeting the Gemini input. If smart paste later
+    // converts this to a .txt upload (smart_paste_success), cancelLastPasteStat
+    // will remove this entry so uploads are excluded from the daily summary.
+    if (pastedText && AG.recordPasteStats) {
+        AG.recordPasteStats(pastedText);
+    }
+    // ─────────────────────────────────────────────────────────────────────────
+
+    if (AG.smartPasteBehavior === 'off') return;
     if (!pastedText || pastedText.length < AG.smartPasteThreshold) return;
     e.preventDefault();
     if (AG.smartPasteBehavior === 'ask') {
@@ -314,19 +324,36 @@ document.addEventListener('paste', (e) => {
 
 document.addEventListener('keydown', (e) => {
     var AG = window.AskGemini;
-    if (e.key === 'Enter' && !e.shiftKey && AG.currentContexts.length > 0) {
-        e.preventDefault();
-        e.stopImmediatePropagation();
-        AG.maybeInjectAndSend();
+    if (e.key === 'Enter' && !e.shiftKey) {
+        const input = AG.findInputArea();
+        if (input && (input.contains(e.target) || e.target === input)) {
+            if (AG.flushPendingSmartPastesOnSend) AG.flushPendingSmartPastesOnSend();
+        }
+        if (AG.currentContexts.length > 0) {
+            e.preventDefault();
+            e.stopImmediatePropagation();
+            AG.maybeInjectAndSend();
+        }
     }
 }, true);
 
 document.addEventListener('click', (e) => {
     var AG = window.AskGemini;
-    if (AG.currentContexts.length > 0 && e.target.closest('button[aria-label="Send message"], button.send-button')) {
+    const sendBtn = e.target.closest('button[aria-label="Send message"], button.send-button, button[data-test-id*="send"]');
+    if (sendBtn) {
+        if (AG.flushPendingSmartPastesOnSend) AG.flushPendingSmartPastesOnSend();
+    }
+    if (AG.currentContexts.length > 0 && sendBtn) {
         e.preventDefault();
         e.stopImmediatePropagation();
         AG.maybeInjectAndSend();
+    }
+
+    // If user clicked any close button on an attachment, sync smart paste state
+    if (e.target.closest('.gem-attachment-close-button, button[aria-label*="close" i], gem-icon-button')) {
+        setTimeout(() => {
+            if (AG.syncSmartPasteAttachments) AG.syncSmartPasteAttachments();
+        }, 80);
     }
 }, true);
 
@@ -338,6 +365,7 @@ const observer = new MutationObserver(() => {
     _transformDebounceTimer = setTimeout(() => {
         _transformDebounceTimer = null;
         window.AskGemini.transformMessages();
+        window.AskGemini.syncSmartPasteAttachments?.();
     }, 150);
 });
 observer.observe(document.body, { childList: true, subtree: true });
@@ -362,7 +390,7 @@ chrome.storage.local.get([
     AG.usageLimitsEnabled = res.usage_limits_enabled !== false;
     AG.multiQuoteEnabled = res.multi_quote_enabled !== false;
     AG.smartPasteBehavior = res.smart_paste_behavior || 'auto';
-    AG.smartPasteThreshold = res.smart_paste_threshold || 20000;
+    AG.smartPasteThreshold = res.smart_paste_threshold || 5000;
     AG.smartPasteFeedbackDone = res.smart_paste_feedback_done === true;
     AG.tocEnabled = res.toc_enabled !== false;
     if (!AG.usageLimitsEnabled) {
@@ -395,7 +423,7 @@ chrome.storage.onChanged.addListener((changes, area) => {
         }
     }
     if (changes.smart_paste_behavior) AG.smartPasteBehavior = changes.smart_paste_behavior.newValue || 'auto';
-    if (changes.smart_paste_threshold) AG.smartPasteThreshold = changes.smart_paste_threshold.newValue || 20000;
+    if (changes.smart_paste_threshold) AG.smartPasteThreshold = changes.smart_paste_threshold.newValue || 5000;
     if (changes.smart_paste_feedback_done) AG.smartPasteFeedbackDone = changes.smart_paste_feedback_done.newValue === true;
     if (changes.toc_enabled) {
         AG.tocEnabled = changes.toc_enabled.newValue !== false;

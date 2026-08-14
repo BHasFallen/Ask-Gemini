@@ -448,14 +448,159 @@ body.light-theme .ag-sp-btn-primary {
   background: var(--ag-bg, #1e1e24);
   border: 1px solid var(--ag-border, rgba(168, 199, 250, 0.3));
   border-radius: 20px;
-  padding: 18px 22px;
+  padding: 14px 18px;
   color: var(--ag-text, #e6e0e9);
   font-family: 'Google Sans', 'Roboto', sans-serif;
   font-size: 13.5px;
   box-shadow: 0 8px 32px var(--ag-shadow, rgba(0, 0, 0, 0.5));
-  max-width: 380px;
+  max-width: 440px;
   animation: ag-sp-fade-in 0.25s cubic-bezier(0.16, 1, 0.3, 1);
   box-sizing: border-box;
+}
+
+.ag-sp-toast-interactive {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+.ag-sp-undo-action {
+  background: var(--ag-primary, #a8c7fa) !important;
+  color: #001d35 !important;
+  border: none !important;
+  border-radius: 100px;
+  padding: 6px 14px;
+  font-family: 'Google Sans', sans-serif;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+
+body.light-theme .ag-sp-undo-action {
+  color: #ffffff !important;
+}
+
+.ag-sp-undo-action:hover {
+  background: var(--ag-primary-hover, #c3dcff) !important;
+  transform: scale(1.02);
+}
+
+.ag-sp-toast-close-btn {
+  background: transparent !important;
+  border: none !important;
+  color: var(--ag-text-dim, #9aa0a6);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.ag-sp-toast-close-btn:hover {
+  background: rgba(255, 255, 255, 0.1) !important;
+  color: var(--ag-text, #ffffff);
+}
+
+/* ── Native 'Paste as text' Action Pill (Sibling of Attachment Chip) ────── */
+.ag-gem-paste-as-text-pill-container {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 6px;
+  vertical-align: middle;
+  height: 100%;
+  animation: ag-pill-in 0.24s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  will-change: transform, opacity;
+}
+
+.ag-gem-paste-as-text-pill-container.ag-pill-exit {
+  animation: ag-pill-out 0.18s cubic-bezier(0.4, 0, 0.2, 1) forwards !important;
+  pointer-events: none;
+}
+
+@keyframes ag-pill-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.86) translateX(-8px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateX(0);
+  }
+}
+
+@keyframes ag-pill-out {
+  0% {
+    opacity: 1;
+    transform: scale(1) translateX(0);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.85) translateX(6px);
+  }
+}
+
+.ag-gem-paste-as-text-pill {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  background: rgba(168, 199, 250, 0.12) !important;
+  color: #a8c7fa !important;
+  border: 1px solid rgba(168, 199, 250, 0.28) !important;
+  border-radius: 8px !important;
+  padding: 6px 12px !important;
+  height: 32px !important;
+  font-family: 'Google Sans', 'Google Sans Text', Roboto, sans-serif !important;
+  font-size: 12.5px !important;
+  font-weight: 500 !important;
+  letter-spacing: 0.15px !important;
+  cursor: pointer !important;
+  transition: background 0.18s ease, color 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease, transform 0.12s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  white-space: nowrap !important;
+  user-select: none !important;
+  box-sizing: border-box !important;
+}
+
+.ag-gem-paste-as-text-pill svg {
+  width: 13px !important;
+  height: 13px !important;
+  stroke: currentColor !important;
+  flex-shrink: 0 !important;
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.ag-gem-paste-as-text-pill:hover {
+  background: rgba(168, 199, 250, 0.24) !important;
+  color: #ffffff !important;
+  border-color: #a8c7fa !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25) !important;
+  transform: translateY(-1px) !important;
+}
+
+.ag-gem-paste-as-text-pill:hover svg {
+  transform: rotate(-15deg);
+}
+
+.ag-gem-paste-as-text-pill:active {
+  transform: scale(0.96) translateY(0) !important;
+}
+
+body.light-theme .ag-gem-paste-as-text-pill {
+  background: #e8f0fe !important;
+  color: #1a73e8 !important;
+  border-color: #c2e7ff !important;
+}
+
+body.light-theme .ag-gem-paste-as-text-pill:hover {
+  background: #d3e3fd !important;
+  color: #0b57d0 !important;
+  border-color: #7cacf8 !important;
+  box-shadow: 0 2px 8px rgba(60, 64, 67, 0.15) !important;
 }
 
 .ag-sp-tag-btn {
