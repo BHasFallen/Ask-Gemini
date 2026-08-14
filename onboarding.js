@@ -5,7 +5,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.body.className = `mode-${reason}`;
 
     // ── Version badge ────────────────────────────────────────────────────────
-    let version = '2.5.0';
+    let version = '2.6.0';
     try {
         if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.getManifest) {
             const manifest = chrome.runtime.getManifest();
