@@ -273,8 +273,19 @@ window.AskGemini.checkAndTriggerOnGenerationEnd = function checkAndTriggerOnGene
         || !!document.querySelector('mat-progress-bar')
         || !!document.querySelector('.is-generating')
         || !!document.querySelector('div[class*="generating"]');
+
+    // Prompt submitted & generation started: flush queued smart pastes
+    if (!AG.wasGenerating && isCurrentlyGenerating) {
+        if (AG.flushPendingSmartPastesOnSend) {
+            AG.flushPendingSmartPastesOnSend();
+        }
+    }
+
     if (AG.wasGenerating && !isCurrentlyGenerating) {
         console.log('Ask Gemini: Generation finished! Triggering auto-refresh...');
+        if (AG.flushPendingSmartPastesOnSend) {
+            AG.flushPendingSmartPastesOnSend();
+        }
         const refreshBtn = document.getElementById('ag-quota-refresh-btn');
         if (refreshBtn) refreshBtn.click();
     }
