@@ -97,10 +97,7 @@ window.AskGemini.showRatingModal = function showRatingModal(options = {}) {
             </div>
 
             <div class="ag-rating-inline-actions">
-                <button class="ag-sp-btn-primary" id="ag-rate-direct" style="padding: 6px 14px; font-size: 12.5px; display: inline-flex; align-items: center; gap: 4px;">
-                    🌟 Rate 5 Stars
-                </button>
-                <button class="ag-sp-btn-secondary" id="ag-feedback-direct" style="padding: 6px 14px; font-size: 12.5px; display: inline-flex; align-items: center; gap: 4px;">
+                <button class="ag-sp-btn-primary" id="ag-feedback-direct" style="padding: 6px 14px; font-size: 12.5px; display: inline-flex; align-items: center; gap: 4px;">
                     💬 Share Feedback
                 </button>
                 <button class="ag-rating-inline-close" aria-label="Close">${AG.ICONS.close}</button>
@@ -113,18 +110,9 @@ window.AskGemini.showRatingModal = function showRatingModal(options = {}) {
             document.body.appendChild(banner);
         }
 
-        // 1-Click Action Listeners
-        const rateBtn = banner.querySelector('#ag-rate-direct');
+        // Action Listeners
         const feedbackBtn = banner.querySelector('#ag-feedback-direct');
         const closeBtn = banner.querySelector('.ag-rating-inline-close');
-
-        if (rateBtn) {
-            rateBtn.onclick = () => {
-                chrome.runtime.sendMessage({ type: 'SET_RATING_STATUS', status: 'rated' });
-                chrome.runtime.sendMessage({ type: 'OPEN_REVIEW_PAGE' });
-                banner.remove();
-            };
-        }
 
         if (feedbackBtn) {
             feedbackBtn.onclick = () => {
