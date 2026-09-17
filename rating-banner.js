@@ -142,12 +142,12 @@ window.AskGemini.showRatingModal = function showRatingModal(options = {}) {
                     // Expand into an inline feedback form directly inside the banner
                     banner.innerHTML = `
                         <div class="ag-rating-inline-left" style="flex: 1; min-width: 0;">
-                            <div class="ag-rating-inline-icon" style="background: rgba(168, 199, 250, 0.15); color: #a8c7fa;">
+                            <div class="ag-rating-inline-icon">
                                 💡
                             </div>
                             <div class="ag-rating-inline-text-col" style="flex: 1; min-width: 0; margin-right: 8px;">
                                 <span class="ag-rating-inline-title" style="margin-bottom: 4px;">What feature or idea should I build next?</span>
-                                <input type="text" id="ag-inline-feedback-input" placeholder="e.g. Export chat to PDF, dark mode, custom shortcuts..." style="width: 100%; padding: 6px 12px; border-radius: 8px; border: 1px solid var(--ag-border, rgba(255, 255, 255, 0.2)); background: rgba(0, 0, 0, 0.25); color: var(--ag-text, #ffffff); font-size: 12.5px; outline: none; box-sizing: border-box;" />
+                                <input type="text" id="ag-inline-feedback-input" placeholder="e.g. Export chat to PDF, dark mode, custom shortcuts..." />
                             </div>
                         </div>
                         <div class="ag-rating-inline-actions">
