@@ -38,6 +38,16 @@
         "tour.css"
       ],
       "run_at": "document_end"
+    },
+    {
+      "matches": [
+        "https://gemini.google.com/*"
+      ],
+      "js": [
+        "debug-bridge.js"
+      ],
+      "world": "MAIN",
+      "run_at": "document_start"
     }
   ],
   "icons": {

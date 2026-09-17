@@ -464,3 +464,14 @@ window.AskGemini.debugRating = {
         console.log('🔄 [AskGemini] Rating state completely reset to Day 1 fresh install.');
     }
 };
+
+// ─── Bridge to 'top' (Main World) Context ────────────────────────────────────
+document.addEventListener('AG_DEBUG_RATING', function(e) {
+    if (!e || !e.detail) return;
+    const action = e.detail.action;
+    const feature = e.detail.feature;
+    if (window.AskGemini && window.AskGemini.debugRating && typeof window.AskGemini.debugRating[action] === 'function') {
+        window.AskGemini.debugRating[action](feature);
+    }
+});
+
