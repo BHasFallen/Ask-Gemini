@@ -501,6 +501,7 @@ window.AskGemini.promptSmartPasteTurnOffFeedback = function promptSmartPasteTurn
             tags: tags.join(', ')
         });
 
+        const prevBehavior = AG.smartPasteBehavior || 'auto';
         AG.smartPasteBehavior = 'off';
         AG.smartPastePreferenceExplicitlySet = true;
         chrome.storage.local.set({
@@ -509,6 +510,16 @@ window.AskGemini.promptSmartPasteTurnOffFeedback = function promptSmartPasteTurn
             smart_paste_preference_explicitly_set: true,
             smart_paste_off_feedback: { reason, tags, date: new Date().toISOString() }
         });
+
+        if (prevBehavior !== 'off') {
+            AG.trackEvent('settings_changed', {
+                setting_name: 'smart_paste_behavior',
+                feature_name: 'smart_paste',
+                new_value: 'off',
+                previous_value: prevBehavior,
+                value: 'off'
+            });
+        }
 
         modal.remove();
         AG.showSmartPasteToast('Smart Paste disabled.');
@@ -585,6 +596,7 @@ window.AskGemini.promptSmartPasteConfirmation = function promptSmartPasteConfirm
             });
         } else {
             if (selectedPref !== 'ask') {
+                const prevBehavior = AG.smartPasteBehavior || 'auto';
                 AG.smartPasteBehavior = selectedPref;
                 AG.smartPastePreferenceExplicitlySet = true;
                 chrome.storage.local.set({
@@ -592,6 +604,15 @@ window.AskGemini.promptSmartPasteConfirmation = function promptSmartPasteConfirm
                     smart_paste_enabled: selectedPref !== 'off',
                     smart_paste_preference_explicitly_set: true
                 });
+                if (prevBehavior !== selectedPref) {
+                    AG.trackEvent('settings_changed', {
+                        setting_name: 'smart_paste_behavior',
+                        feature_name: 'smart_paste',
+                        new_value: selectedPref,
+                        previous_value: prevBehavior,
+                        value: selectedPref
+                    });
+                }
             }
             if (isUpload) {
                 AG.processSmartPaste(pastedText);

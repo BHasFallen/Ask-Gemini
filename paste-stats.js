@@ -52,88 +52,29 @@ window.AskGemini.detectPasteType = function detectPasteType(text) {
     return 'plaintext';
 };
 
-// ─── recordPasteStats ─────────────────────────────────────────────────────────
+// ─── recordPasteStats (DEPRECATED) ──────────────────────────────────────────
 /**
- * Append one paste to the daily accumulator.
- * Stores { date, types, _pending } in ag_paste_stats_daily.
- * _pending is a LIFO list of {type, length} used by cancelLastPasteStat.
+ * Deprecated: paste_daily_summary event is deprecated.
+ * Preserved as a safe no-op so callers do not error.
  */
-window.AskGemini.recordPasteStats = function recordPasteStats(text) {
-    if (!text || typeof text !== 'string') return;
-    const type   = window.AskGemini.detectPasteType(text);
-    const length = text.length;
-    const today  = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
-
-    chrome.storage.local.get(['ag_paste_stats_daily'], (res) => {
-        let stats = res.ag_paste_stats_daily;
-
-        // Reset if it's a new day
-        if (!stats || stats.date !== today) {
-            stats = { date: today, types: {}, _pending: [] };
-        }
-
-        // Accumulate into types
-        if (!stats.types[type]) {
-            stats.types[type] = { count: 0, lengths: [] };
-        }
-        stats.types[type].count++;
-        stats.types[type].lengths.push(length);
-
-        // Push to _pending for potential cancellation
-        stats._pending = stats._pending || [];
-        stats._pending.push({ type, length });
-
-        chrome.storage.local.set({ ag_paste_stats_daily: stats });
-    });
+window.AskGemini.recordPasteStats = function recordPasteStats(_text) {
+    // No-op: daily summary event is deprecated
 };
 
-// ─── cancelLastPasteStat ──────────────────────────────────────────────────────
+// ─── cancelLastPasteStat (DEPRECATED) ────────────────────────────────────────
 /**
- * Undo the most recently recorded paste stat.
- * Called when smart paste converts a paste to a .txt upload,
- * so that upload-converted pastes are excluded from the raw text daily summary.
+ * Deprecated: paste_daily_summary event is deprecated.
+ * Preserved as a safe no-op so callers do not error.
  */
 window.AskGemini.cancelLastPasteStat = function cancelLastPasteStat() {
-    chrome.storage.local.get(['ag_paste_stats_daily'], (res) => {
-        const stats = res.ag_paste_stats_daily;
-        if (!stats || !stats._pending || stats._pending.length === 0) return;
-
-        const last = stats._pending.pop();
-        const bucket = stats.types[last.type];
-        if (!bucket) return;
-
-        // Remove the last occurrence of this length from the bucket
-        const idx = bucket.lengths.lastIndexOf(last.length);
-        if (idx !== -1) bucket.lengths.splice(idx, 1);
-        bucket.count = Math.max(0, bucket.count - 1);
-
-        // Clean up empty type buckets
-        if (bucket.count === 0) delete stats.types[last.type];
-
-        chrome.storage.local.set({ ag_paste_stats_daily: stats });
-    });
+    // No-op: daily summary event is deprecated
 };
 
-// ─── recordSmartPasteSuccess ──────────────────────────────────────────────────
+// ─── recordSmartPasteSuccess (DEPRECATED) ────────────────────────────────────
 /**
- * Record a smart paste attachment (or batch of attachments) that were actually sent in a message by the user.
- * Stored under stats.smart_pastes = { count, lengths } and flushed at UTC midnight.
+ * Deprecated: paste_daily_summary event is deprecated.
+ * Preserved as a safe no-op so callers do not error.
  */
-window.AskGemini.recordSmartPasteSuccess = function recordSmartPasteSuccess(lengthsOrLength) {
-    const rawList = Array.isArray(lengthsOrLength) ? lengthsOrLength : [lengthsOrLength];
-    const validLengths = rawList.filter(l => typeof l === 'number' && l > 0);
-    if (validLengths.length === 0) return;
-    const today = new Date().toISOString().slice(0, 10);
-
-    chrome.storage.local.get(['ag_paste_stats_daily'], (res) => {
-        let stats = res.ag_paste_stats_daily;
-        if (!stats || stats.date !== today) {
-            stats = { date: today, types: {}, smart_pastes: { count: 0, lengths: [] }, _pending: [] };
-        }
-        stats.smart_pastes = stats.smart_pastes || { count: 0, lengths: [] };
-        stats.smart_pastes.count += validLengths.length;
-        stats.smart_pastes.lengths.push(...validLengths);
-
-        chrome.storage.local.set({ ag_paste_stats_daily: stats });
-    });
+window.AskGemini.recordSmartPasteSuccess = function recordSmartPasteSuccess(_lengthsOrLength) {
+    // No-op: daily summary event is deprecated
 };

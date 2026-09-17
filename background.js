@@ -789,56 +789,11 @@ chrome.alarms.create('logCleanup', { periodInMinutes: 60 });
 // Periodically check usage limits (every 10 minutes)
 chrome.alarms.create('quotaLimitsCheck', { periodInMinutes: 10 });
 
-// ─── Paste Stats: Midnight Flush ─────────────────────────────────────────────
-
-/**
- * Schedule the pasteDailyFlush alarm to fire at the next UTC midnight.
- * Re-called after each flush so it always targets the following midnight.
- */
-function scheduleNextMidnightFlush() {
-    const now = Date.now();
-    const msUntilMidnight = 86400000 - (now % 86400000); // ms remaining in current UTC day
-    chrome.alarms.create('pasteDailyFlush', { delayInMinutes: msUntilMidnight / 60000 });
-    logBackgroundEvent('PASTE_FLUSH_SCHEDULED', { firesInMs: msUntilMidnight });
-}
-
-/**
- * Flush accumulated paste stats for any previous day to Amplitude as a single
- * paste_daily_summary event, then clear the local accumulator.
- */
-async function flushPasteStats() {
-    try {
-        const res = await chrome.storage.local.get(['ag_paste_stats_daily']);
-        const stats = res.ag_paste_stats_daily;
-        if (!stats || !stats.date) return;
-
-        const today = new Date().toISOString().slice(0, 10);
-        if (stats.date >= today) return; // Don't flush today's data early
-
-        const totalPastes = Object.values(stats.types || {})
-            .reduce((sum, t) => sum + (t.count || 0), 0);
-        const smartPastesCount = stats.smart_pastes?.count || 0;
-
-        if (totalPastes > 0 || smartPastesCount > 0) {
-            // Strip internal tracking fields
-            const cleanTypes = stats.types || {};
-            await AmplitudeWizard.trackEvent('paste_daily_summary', {
-                date: stats.date,
-                total_pastes: totalPastes,
-                types: cleanTypes,
-                smart_pastes: stats.smart_pastes || { count: 0, lengths: [] }
-            });
-            logBackgroundEvent('PASTE_DAILY_SUMMARY_SENT', { date: stats.date, total_pastes: totalPastes, smart_pastes: smartPastesCount });
-        }
-
-        await chrome.storage.local.remove('ag_paste_stats_daily');
-    } catch (err) {
-        logBackgroundEvent('PASTE_FLUSH_ERROR', { error: err.message }, 'ERROR');
-    }
-}
-
-// Schedule the first midnight flush when the background worker loads
-scheduleNextMidnightFlush();
+// ─── Paste Stats: Deprecated paste_daily_summary Cleanup ──────────────────────
+// The paste_daily_summary event is deprecated. Clear the alarm and clean up any
+// lingering daily accumulator from local storage.
+chrome.alarms.clear('pasteDailyFlush');
+chrome.storage.local.remove('ag_paste_stats_daily');
 
 chrome.alarms.onAlarm.addListener((alarm) => {
     if (alarm.name === 'logCleanup') {
@@ -853,22 +808,20 @@ chrome.alarms.onAlarm.addListener((alarm) => {
         }
     } else if (alarm.name === 'quotaLimitsCheck') {
         QuotaManager.fetchUsageLimits().catch(console.error);
-    } else if (alarm.name === 'pasteDailyFlush') {
-        flushPasteStats().then(() => scheduleNextMidnightFlush()).catch(console.error);
     }
 });
 
-// Trigger initial quota fetch on startup; also flush any stale paste stats
+// Trigger initial quota fetch on startup
 chrome.runtime.onStartup.addListener(() => {
     logBackgroundEvent('EXTENSION_STARTUP');
     QuotaManager.fetchUsageLimits().catch(console.error);
-    flushPasteStats().catch(console.error);
+    chrome.storage.local.remove('ag_paste_stats_daily');
 });
 
-// Also trigger on install/load — flush stale stats if the worker was inactive
+// Also trigger on install/load
 chrome.runtime.onInstalled.addListener(() => {
     QuotaManager.fetchUsageLimits().catch(console.error);
-    flushPasteStats().catch(console.error);
+    chrome.storage.local.remove('ag_paste_stats_daily');
 });
 
 // Log that background script has initialized

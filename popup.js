@@ -68,13 +68,22 @@ class PopupController {
         this.reportProblemLink = document.getElementById('report-problem');
         this.timeSavedEl = document.getElementById('time-saved');
         this.wordsAnalyzedEl = document.getElementById('words-analyzed');
+
+        this.currentSettings = {
+            multi_quote_display: 'compact',
+            usage_limits_enabled: true,
+            multi_quote_enabled: true,
+            smart_paste_behavior: 'auto',
+            toc_enabled: true
+        };
+
         this.init();
     }
 
     async init() {
         this.loadVersion();
         this.loadStats();
-        this.loadSettings();
+        await this.loadSettings();
         this.setupEventListeners();
 
         // Track Popup View
@@ -136,7 +145,6 @@ class PopupController {
         const display = res.multi_quote_display || 'compact';
         this.applyToggleState(display);
 
-
         const limits = res.usage_limits_enabled !== false;
         this.applyLimitsToggleState(limits);
 
@@ -148,6 +156,14 @@ class PopupController {
 
         const toc = res.toc_enabled !== false;
         this.applyTocToggleState(toc);
+
+        this.currentSettings = {
+            multi_quote_display: display,
+            usage_limits_enabled: limits,
+            multi_quote_enabled: mq,
+            smart_paste_behavior: sp,
+            toc_enabled: toc
+        };
     }
 
     applyToggleState(value) {
@@ -176,58 +192,85 @@ class PopupController {
         document.getElementById('toggle-toc-off').classList.toggle('active', !enabled);
     }
 
+    async saveSetting({ storageKey, settingName, featureName, newValue, extraStorage = {} }) {
+        try {
+            const previousValue = this.currentSettings ? this.currentSettings[storageKey] : undefined;
+            if (previousValue === newValue) return;
+
+            if (this.currentSettings) {
+                this.currentSettings[storageKey] = newValue;
+            }
+
+            await chrome.storage.local.set({ [storageKey]: newValue, ...extraStorage });
+
+            // Streamlined settings_changed Amplitude event
+            chrome.runtime.sendMessage({ 
+                type: 'TRACK_EVENT', 
+                name: 'settings_changed',
+                params: {
+                    setting_name: settingName,
+                    feature_name: featureName,
+                    new_value: newValue,
+                    previous_value: previousValue,
+                    value: newValue
+                }
+            });
+        } catch (e) {
+            console.error('Failed to save setting:', e);
+        }
+    }
+
     async saveMultiQuoteStyle(value) {
-        await chrome.storage.local.set({ multi_quote_display: value });
         this.applyToggleState(value);
+        await this.saveSetting({
+            storageKey: 'multi_quote_display',
+            settingName: 'multi_quote_display',
+            featureName: 'multi_quote_style',
+            newValue: value
+        });
     }
 
     async saveUsageLimitsState(enabled) {
-        await chrome.storage.local.set({ usage_limits_enabled: enabled });
         this.applyLimitsToggleState(enabled);
-
-        // Track setting change event
-        chrome.runtime.sendMessage({ 
-            type: 'TRACK_EVENT', 
-            name: 'setting_usage_limits_changed',
-            params: { enabled }
+        await this.saveSetting({
+            storageKey: 'usage_limits_enabled',
+            settingName: 'usage_limits_enabled',
+            featureName: 'usage_limits',
+            newValue: enabled
         });
     }
 
     async saveMultiQuoteState(enabled) {
-        await chrome.storage.local.set({ multi_quote_enabled: enabled });
         this.applyMqToggleState(enabled);
-
-        // Track setting change event
-        chrome.runtime.sendMessage({ 
-            type: 'TRACK_EVENT', 
-            name: 'setting_multi_quote_changed',
-            params: { enabled }
+        await this.saveSetting({
+            storageKey: 'multi_quote_enabled',
+            settingName: 'multi_quote_enabled',
+            featureName: 'multi_quote',
+            newValue: enabled
         });
     }
 
     async saveSmartPasteBehavior(behavior) {
-        await chrome.storage.local.set({ 
-            smart_paste_behavior: behavior,
-            smart_paste_enabled: behavior !== 'off',
-            smart_paste_preference_explicitly_set: true
-        });
         this.applySpToggleState(behavior);
-
-        chrome.runtime.sendMessage({ 
-            type: 'TRACK_EVENT', 
-            name: 'setting_smart_paste_changed',
-            params: { behavior }
+        await this.saveSetting({
+            storageKey: 'smart_paste_behavior',
+            settingName: 'smart_paste_behavior',
+            featureName: 'smart_paste',
+            newValue: behavior,
+            extraStorage: {
+                smart_paste_enabled: behavior !== 'off',
+                smart_paste_preference_explicitly_set: true
+            }
         });
     }
 
     async saveTocState(enabled) {
-        await chrome.storage.local.set({ toc_enabled: enabled });
         this.applyTocToggleState(enabled);
-
-        chrome.runtime.sendMessage({ 
-            type: 'TRACK_EVENT', 
-            name: 'setting_toc_changed',
-            params: { enabled }
+        await this.saveSetting({
+            storageKey: 'toc_enabled',
+            settingName: 'toc_enabled',
+            featureName: 'toc',
+            newValue: enabled
         });
     }
 

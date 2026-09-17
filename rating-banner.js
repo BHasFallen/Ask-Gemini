@@ -363,7 +363,7 @@ window.AskGemini.showFeatureBanner = function showFeatureBanner() {
     dismissBtn.onclick = () => {
         const bannerKey = `feature_banner_seen_${AG.CURRENT_FEATURE.id}`;
         chrome.storage.local.set({ [bannerKey]: true }, () => {
-            AG.trackEvent('feature_banner_dismissed', { feature_id: AG.CURRENT_FEATURE.id });
+            // Note: feature_banner_ events are deprecated
             closeBanner();
         });
     };
@@ -371,7 +371,7 @@ window.AskGemini.showFeatureBanner = function showFeatureBanner() {
     tryBtn.onclick = () => {
         const bannerKey = `feature_banner_seen_${AG.CURRENT_FEATURE.id}`;
         chrome.storage.local.set({ [bannerKey]: true }, () => {
-            AG.trackEvent('feature_banner_try_clicked', { feature_id: AG.CURRENT_FEATURE.id });
+            // Note: feature_banner_ events are deprecated
             closeBanner(() => {
                 if (AG.CURRENT_FEATURE.onTry) AG.CURRENT_FEATURE.onTry();
             });
