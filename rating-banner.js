@@ -377,34 +377,90 @@ window.AskGemini.recordSmartPasteUndoForFeedback = function recordSmartPasteUndo
     });
 };
 
-// ─── Rule 4: maybeShowPowerUserFeedbackPrompt (20 Actions Milestone) ─────────
-window.AskGemini.maybeShowPowerUserFeedbackPrompt = function maybeShowPowerUserFeedbackPrompt() {
-    var AG = window.AskGemini;
-    if (document.querySelector('.ag-rating-inline-banner')) return;
-    if (typeof sessionStorage !== 'undefined' && sessionStorage.getItem('ag_banner_shown_this_session')) return;
-    if (typeof chrome === 'undefined' || !chrome.storage || !chrome.storage.local) return;
+// ─── Developer / Testing Helpers ─────────────────────────────────────────────
+window.AskGemini.debugRating = {
+    // 1. View current rating state & counters
+    async getState() {
+        const res = await chrome.storage.local.get(['rating_state']);
+        const s = res.rating_state || {};
+        console.table({
+            'Active Days': s.activeDays || 0,
+            'Quote Replies': s.replyCount || 0,
+            'Smart Paste Successes': s.smartPasteSuccessCount || 0,
+            'TOC Clicks': s.tocClickCount || 0,
+            'Total Actions': (s.replyCount || 0) + (s.smartPasteSuccessCount || 0) + (s.tocClickCount || 0),
+            'Rating Status': s.ratingStatus || 'unrated (null)',
+            'Dismiss Count': s.dismissCount || 0,
+            'Session Prompt Shown': (typeof sessionStorage !== 'undefined' && sessionStorage.getItem('ag_rating_banner_shown_this_session')) || 'false'
+        });
+        return s;
+    },
 
-    chrome.storage.local.get(['rating_state', 'ag_smart_paste_count', 'ag_power_user_feedback_prompt_seen'], (res) => {
-        const state = res.rating_state || {};
-
-        if (state.ratingStatus === 'rated' || state.ratingStatus === 'feedback_given') return;
-        if (res.ag_power_user_feedback_prompt_seen) return;
-
-        const totalActions = (state.replyCount || 0) + (res.ag_smart_paste_count || 0);
-
-        // Trigger after 20 total actions (replies + smart pastes)
-        if (totalActions >= 20) {
-            chrome.storage.local.set({ ag_power_user_feedback_prompt_seen: true });
-            setTimeout(() => {
-                if (AG.showRatingModal) {
-                    AG.showRatingModal({
-                        source: 'power_user_milestone',
-                        title: 'Got a feature idea for Quote Reply for Gemini? 💡',
-                        subtitle: 'Tell me what to build next — your feedback goes directly to me!',
-                        featureName: 'Quote Reply for Gemini'
-                    });
-                }
-            }, 2000);
+    // 2. Set state right to the edge of triggering, so your next real action triggers the prompt!
+    async prepTrigger(feature = 'context_reply') {
+        if (typeof sessionStorage !== 'undefined') {
+            sessionStorage.removeItem('ag_rating_banner_shown_this_session');
         }
-    });
+        const old = document.querySelector('.ag-rating-inline-banner');
+        if (old) old.remove();
+
+        const base = {
+            activeDays: 3,
+            replyCount: feature === 'context_reply' ? 2 : 3,
+            smartPasteSuccessCount: feature === 'smart_paste' ? 1 : 1,
+            tocClickCount: feature === 'toc' ? 2 : 1,
+            ratingStatus: null,
+            dismissCount: 0,
+            lastPromptTimestamp: 0,
+            isExistingUser: false,
+            lastDayActive: new Date().toISOString().split('T')[0]
+        };
+        await chrome.storage.local.set({ rating_state: base });
+        console.log(`🎯 [AskGemini] Prepped for ${feature}! Gate 1 is passed. Now perform 1 ${feature} action in Gemini to test the natural trigger.`);
+    },
+
+    // 3. Immediately preview what the banner looks like for any feature
+    preview(feature = 'context_reply') {
+        if (typeof sessionStorage !== 'undefined') {
+            sessionStorage.removeItem('ag_rating_banner_shown_this_session');
+        }
+        const old = document.querySelector('.ag-rating-inline-banner');
+        if (old) old.remove();
+
+        const configs = {
+            context_reply: {
+                source: 'context_reply',
+                featureName: 'Quote Reply',
+                title: 'Enjoying Quote Reply?',
+                subtitle: 'Takes 5 seconds to help an indie developer on the Chrome Web Store!',
+                delay: 0
+            },
+            smart_paste: {
+                source: 'smart_paste',
+                featureName: 'Smart Paste',
+                title: 'Smart Paste saved your chat from clutter!',
+                subtitle: 'If converting large text to file uploads saves you time, drop a quick review!',
+                delay: 0
+            },
+            toc: {
+                source: 'toc',
+                featureName: 'Table of Contents',
+                title: 'Navigating long chats faster with Table of Contents?',
+                subtitle: 'Glad it keeps your long conversations organized! Support future updates with a rating.',
+                delay: 0
+            }
+        };
+        window.AskGemini.showRatingModal(configs[feature] || configs.context_reply);
+    },
+
+    // 4. Reset everything back to a clean Day 1 state
+    async reset() {
+        if (typeof sessionStorage !== 'undefined') {
+            sessionStorage.removeItem('ag_rating_banner_shown_this_session');
+        }
+        const old = document.querySelector('.ag-rating-inline-banner');
+        if (old) old.remove();
+        await chrome.storage.local.remove(['rating_state']);
+        console.log('🔄 [AskGemini] Rating state completely reset to Day 1 fresh install.');
+    }
 };
