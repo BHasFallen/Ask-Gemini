@@ -895,7 +895,48 @@ body.light-theme .ag-toc-dash {
 .ag-rating-inline-actions {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
+}
+
+#ag-rate-direct {
+  background: linear-gradient(135deg, #ffd166 0%, #ffb703 100%) !important;
+  color: #2b1700 !important;
+  font-weight: 600 !important;
+  border: none !important;
+  box-shadow: 0 2px 8px rgba(255, 183, 3, 0.35);
+  transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease;
+}
+
+#ag-rate-direct:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(255, 183, 3, 0.5);
+  filter: brightness(1.05);
+}
+
+#ag-feedback-direct {
+  background: transparent;
+  color: var(--ag-text, #e6e0e9);
+  border: 1px solid var(--ag-border, rgba(255, 255, 255, 0.2));
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+#ag-feedback-direct:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+body.light-theme #ag-feedback-direct,
+html[theme="light"] #ag-feedback-direct,
+body[data-theme="light"] #ag-feedback-direct {
+  color: #3c4043 !important;
+  border-color: rgba(0, 0, 0, 0.15) !important;
+}
+
+body.light-theme #ag-feedback-direct:hover,
+html[theme="light"] #ag-feedback-direct:hover,
+body[data-theme="light"] #ag-feedback-direct:hover {
+  background: rgba(0, 0, 0, 0.05) !important;
+  border-color: rgba(0, 0, 0, 0.3) !important;
 }
 
 .ag-rating-stars-row {

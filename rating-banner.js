@@ -60,7 +60,7 @@ window.AskGemini.CURRENT_FEATURE = {
 window.AskGemini.showRatingModal = function showRatingModal(options = {}) {
     var AG = window.AskGemini;
     if (document.querySelector('.ag-rating-inline-banner')) return;
-    if (typeof sessionStorage !== 'undefined' && sessionStorage.getItem('ag_banner_shown_this_session')) return;
+    if (typeof sessionStorage !== 'undefined' && sessionStorage.getItem('ag_rating_banner_shown_this_session')) return;
 
     // Verify rating state to prevent showing to users who have already rated or given feedback
     chrome.storage.local.get(['rating_state'], (res) => {
@@ -70,220 +70,188 @@ window.AskGemini.showRatingModal = function showRatingModal(options = {}) {
             return;
         }
 
-        if (typeof sessionStorage !== 'undefined') {
-            sessionStorage.setItem('ag_banner_shown_this_session', 'true');
-        }
+        const delay = typeof options.delay === 'number' ? options.delay : 1500;
 
-        const title = options.title || 'Enjoying Quote Reply?';
-        const subtitle = options.subtitle || 'Your feedback helps me make it even better!';
+        setTimeout(() => {
+            if (document.querySelector('.ag-rating-inline-banner')) return;
+            if (typeof sessionStorage !== 'undefined' && sessionStorage.getItem('ag_rating_banner_shown_this_session')) return;
 
-        const input = AG.findInputArea();
-        const container = input ? (input.closest('.input-area-container') || input.closest('.chat-input-area') || input.closest('form') || input.parentElement) : document.body;
+            if (typeof sessionStorage !== 'undefined') {
+                sessionStorage.setItem('ag_rating_banner_shown_this_session', 'true');
+            }
 
-        const banner = document.createElement('div');
-        banner.className = 'ag-rating-inline-banner';
+            const title = options.title || 'Enjoying Quote Reply?';
+            const subtitle = options.subtitle || 'Takes 5 seconds to help an indie developer on the Chrome Web Store!';
 
-        banner.innerHTML = `
-            <div class="ag-rating-inline-left">
-                <div class="ag-rating-inline-icon">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
-                    </svg>
-                </div>
-                <div class="ag-rating-inline-text-col">
-                    <span class="ag-rating-inline-title">${title}</span>
-                    <span class="ag-rating-inline-sub">${subtitle}</span>
-                </div>
-            </div>
+            const input = AG.findInputArea();
+            const container = input ? (input.closest('.input-area-container') || input.closest('.chat-input-area') || input.closest('form') || input.parentElement) : document.body;
 
-            <div class="ag-rating-inline-actions">
-                <button class="ag-sp-btn-primary" id="ag-feedback-direct" style="padding: 6px 14px; font-size: 12.5px; display: inline-flex; align-items: center; gap: 4px;">
-                    💬 Share Feedback
-                </button>
-                <button class="ag-rating-inline-close" aria-label="Close">${AG.ICONS.close}</button>
-            </div>
-        `;
+            const banner = document.createElement('div');
+            banner.className = 'ag-rating-inline-banner';
 
-        if (container && container.parentNode) {
-            container.parentNode.insertBefore(banner, container);
-        } else {
-            document.body.appendChild(banner);
-        }
-
-        // Action Listeners
-        const feedbackBtn = banner.querySelector('#ag-feedback-direct');
-        const closeBtn = banner.querySelector('.ag-rating-inline-close');
-
-        if (feedbackBtn) {
-            feedbackBtn.onclick = () => {
-                // Expand into an inline feedback form directly inside the banner
-                banner.innerHTML = `
-                    <div class="ag-rating-inline-left" style="flex: 1; min-width: 0;">
-                        <div class="ag-rating-inline-icon" style="background: rgba(168, 199, 250, 0.15); color: #a8c7fa;">
-                            💬
-                        </div>
-                        <div class="ag-rating-inline-text-col" style="flex: 1; min-width: 0; margin-right: 8px;">
-                            <span class="ag-rating-inline-title" style="margin-bottom: 4px;">What feature or idea should I build next?</span>
-                            <input type="text" id="ag-inline-feedback-input" placeholder="e.g. Export chat to PDF, dark mode, custom shortcuts..." style="width: 100%; padding: 6px 12px; border-radius: 8px; border: 1px solid var(--ag-border, rgba(255, 255, 255, 0.2)); background: rgba(0, 0, 0, 0.25); color: var(--ag-text, #ffffff); font-size: 12.5px; outline: none; box-sizing: border-box;" />
-                        </div>
+            banner.innerHTML = `
+                <div class="ag-rating-inline-left">
+                    <div class="ag-rating-inline-icon">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+                        </svg>
                     </div>
-                    <div class="ag-rating-inline-actions">
-                        <button class="ag-sp-btn-primary" id="ag-submit-feedback-btn" style="padding: 6px 14px; font-size: 12.5px; display: inline-flex; align-items: center; gap: 4px; white-space: nowrap;">
-                            Send 🚀
-                        </button>
-                        <button class="ag-rating-inline-close" aria-label="Close">${AG.ICONS.close}</button>
+                    <div class="ag-rating-inline-text-col">
+                        <span class="ag-rating-inline-title">${title}</span>
+                        <span class="ag-rating-inline-sub">${subtitle}</span>
                     </div>
-                `;
+                </div>
 
-                const inputEl = banner.querySelector('#ag-inline-feedback-input');
-                const submitBtn = banner.querySelector('#ag-submit-feedback-btn');
-                const closeInlineBtn = banner.querySelector('.ag-rating-inline-close');
+                <div class="ag-rating-inline-actions">
+                    <button class="ag-sp-btn-primary" id="ag-rate-direct" style="padding: 6px 14px; font-size: 12.5px; display: inline-flex; align-items: center; gap: 4px; white-space: nowrap;">
+                        ⭐ Rate 5 Stars
+                    </button>
+                    <button class="ag-sp-btn-secondary" id="ag-feedback-direct" style="padding: 6px 14px; font-size: 12.5px; display: inline-flex; align-items: center; gap: 4px; white-space: nowrap;">
+                        💡 Share Feedback
+                    </button>
+                    <button class="ag-rating-inline-close" aria-label="Close">${AG.ICONS.close}</button>
+                </div>
+            `;
 
-                if (inputEl) inputEl.focus();
+            if (container && container.parentNode) {
+                container.parentNode.insertBefore(banner, container);
+            } else {
+                document.body.appendChild(banner);
+            }
 
-                const handleFeedbackSubmit = () => {
-                    const text = inputEl ? inputEl.value.trim() : '';
-                    if (!text) {
-                        if (inputEl) inputEl.focus();
-                        return;
-                    }
+            // Action Listeners
+            const rateBtn = banner.querySelector('#ag-rate-direct');
+            const feedbackBtn = banner.querySelector('#ag-feedback-direct');
+            const closeBtn = banner.querySelector('.ag-rating-inline-close');
 
-                    // 1. Send direct feedback telemetry to Amplitude
-                    if (AG.trackEvent) {
-                        AG.trackEvent('user_direct_feedback', {
-                            feedback: text,
-                            source: options.source || 'rating_banner',
-                            feature_name: options.featureName || 'Quote Reply for Gemini'
-                        });
-                    }
-
-                    // Save to local feedback inbox in chrome.storage.local
-                    chrome.storage.local.get(['ag_user_feedback_history'], (fRes) => {
-                        const history = fRes.ag_user_feedback_history || [];
-                        history.push({
-                            feedback: text,
-                            source: options.source || 'rating_banner',
-                            feature_name: options.featureName || 'Quote Reply for Gemini',
-                            date: new Date().toISOString()
-                        });
-                        chrome.storage.local.set({ ag_user_feedback_history: history });
+            if (rateBtn) {
+                rateBtn.onclick = () => {
+                    chrome.runtime.sendMessage({ 
+                        type: 'SET_RATING_STATUS', 
+                        status: 'rated', 
+                        source: options.source || 'rating_banner' 
                     });
+                    chrome.runtime.sendMessage({ type: 'OPEN_REVIEW_PAGE' });
+                    banner.classList.add('slide-out');
+                    setTimeout(() => banner.remove(), 250);
+                };
+            }
 
-                    // 2. Mark rating status as feedback_given
-                    chrome.runtime.sendMessage({ type: 'SET_RATING_STATUS', status: 'feedback_given' });
-
-                    // 3. Show inline thank you confirmation
+            if (feedbackBtn) {
+                feedbackBtn.onclick = () => {
+                    // Expand into an inline feedback form directly inside the banner
                     banner.innerHTML = `
-                        <div class="ag-rating-inline-left">
-                            <div class="ag-rating-inline-icon" style="background: rgba(76, 175, 80, 0.15); color: #81c784;">
-                                ✨
+                        <div class="ag-rating-inline-left" style="flex: 1; min-width: 0;">
+                            <div class="ag-rating-inline-icon" style="background: rgba(168, 199, 250, 0.15); color: #a8c7fa;">
+                                💡
                             </div>
-                            <div class="ag-rating-inline-text-col">
-                                <span class="ag-rating-inline-title">Thank you! 🚀</span>
-                                <span class="ag-rating-inline-sub">Your idea was sent directly to the builder.</span>
+                            <div class="ag-rating-inline-text-col" style="flex: 1; min-width: 0; margin-right: 8px;">
+                                <span class="ag-rating-inline-title" style="margin-bottom: 4px;">What feature or idea should I build next?</span>
+                                <input type="text" id="ag-inline-feedback-input" placeholder="e.g. Export chat to PDF, dark mode, custom shortcuts..." style="width: 100%; padding: 6px 12px; border-radius: 8px; border: 1px solid var(--ag-border, rgba(255, 255, 255, 0.2)); background: rgba(0, 0, 0, 0.25); color: var(--ag-text, #ffffff); font-size: 12.5px; outline: none; box-sizing: border-box;" />
                             </div>
                         </div>
                         <div class="ag-rating-inline-actions">
+                            <button class="ag-sp-btn-primary" id="ag-submit-feedback-btn" style="padding: 6px 14px; font-size: 12.5px; display: inline-flex; align-items: center; gap: 4px; white-space: nowrap;">
+                                Send 🚀
+                            </button>
                             <button class="ag-rating-inline-close" aria-label="Close">${AG.ICONS.close}</button>
                         </div>
                     `;
 
-                    banner.querySelector('.ag-rating-inline-close').onclick = () => banner.remove();
-                    setTimeout(() => {
-                        if (banner && banner.parentNode) banner.remove();
-                    }, 3000);
-                };
+                    const inputEl = banner.querySelector('#ag-inline-feedback-input');
+                    const submitBtn = banner.querySelector('#ag-submit-feedback-btn');
+                    const closeInlineBtn = banner.querySelector('.ag-rating-inline-close');
 
-                if (submitBtn) submitBtn.onclick = handleFeedbackSubmit;
-                if (inputEl) {
-                    inputEl.addEventListener('keydown', (e) => {
-                        if (e.key === 'Enter') {
-                            e.preventDefault();
-                            handleFeedbackSubmit();
+                    if (inputEl) inputEl.focus();
+
+                    const handleFeedbackSubmit = () => {
+                        const text = inputEl ? inputEl.value.trim() : '';
+                        if (!text) {
+                            if (inputEl) inputEl.focus();
+                            return;
                         }
-                    });
-                }
-                if (closeInlineBtn) {
-                    closeInlineBtn.onclick = () => banner.remove();
-                }
-            };
-        }
 
-        if (closeBtn) {
-            closeBtn.onclick = () => {
-                chrome.storage.local.get(['ag_smart_paste_count'], (cRes) => {
-                    chrome.storage.local.set({
-                        ag_smart_paste_rating_dismissed_at: Date.now(),
-                        ag_smart_paste_dismissed_count: cRes.ag_smart_paste_count || 0
-                    });
-                });
-                chrome.runtime.sendMessage({ type: 'SET_RATING_STATUS', status: 'dismissed' });
-                banner.remove();
-            };
-        }
-    });
-};
+                        // 1. Send direct feedback telemetry to Amplitude
+                        if (AG.trackEvent) {
+                            AG.trackEvent('user_direct_feedback', {
+                                feedback: text,
+                                source: options.source || 'rating_banner',
+                                feature_name: options.featureName || 'Quote Reply for Gemini'
+                            });
+                        }
 
-// ─── maybeShowSmartPasteRatingPrompt ─────────────────────────────────────────
-window.AskGemini.maybeShowSmartPasteRatingPrompt = function maybeShowSmartPasteRatingPrompt() {
-    var AG = window.AskGemini;
-    if (document.querySelector('.ag-rating-inline-banner')) return;
+                        // Save to local feedback inbox in chrome.storage.local
+                        chrome.storage.local.get(['ag_user_feedback_history'], (fRes) => {
+                            const history = fRes.ag_user_feedback_history || [];
+                            history.push({
+                                feedback: text,
+                                source: options.source || 'rating_banner',
+                                feature_name: options.featureName || 'Quote Reply for Gemini',
+                                date: new Date().toISOString()
+                            });
+                            chrome.storage.local.set({ ag_user_feedback_history: history });
+                        });
 
-    chrome.storage.local.get([
-        'rating_state',
-        'ag_smart_paste_count',
-        'ag_smart_paste_dismissed_count',
-        'ag_smart_paste_rating_dismissed_at'
-    ], (res) => {
-        const state = res.rating_state || {};
+                        // 2. Mark rating status as feedback_given
+                        chrome.runtime.sendMessage({ 
+                            type: 'SET_RATING_STATUS', 
+                            status: 'feedback_given', 
+                            source: options.source || 'rating_banner' 
+                        });
 
-        // 1. Do NOT show for users who have already rated or given feedback (Redemption Arc resets feedback_given on major updates)
-        if (state.ratingStatus === 'rated' || state.ratingStatus === 'feedback_given') {
-            console.log('🏰 [AskGemini] Suppressing Smart Paste rating prompt: user has already rated or provided feedback.');
-            return;
-        }
+                        // 3. Show inline thank you confirmation
+                        banner.innerHTML = `
+                            <div class="ag-rating-inline-left">
+                                <div class="ag-rating-inline-icon" style="background: rgba(76, 175, 80, 0.15); color: #81c784;">
+                                    ✨
+                                </div>
+                                <div class="ag-rating-inline-text-col">
+                                    <span class="ag-rating-inline-title">Thank you! 🚀</span>
+                                    <span class="ag-rating-inline-sub">Your idea was sent directly to the builder.</span>
+                                </div>
+                            </div>
+                            <div class="ag-rating-inline-actions">
+                                <button class="ag-rating-inline-close" aria-label="Close">${AG.ICONS.close}</button>
+                            </div>
+                        `;
 
-        // 2. Update Bombardment Buffer check: wait at least 5 uses after extension update
-        if (state.isExistingUser && (state.postUpdateHighlights || 0) < 5) {
-            console.log('🏰 [AskGemini] Suppressing Smart Paste rating prompt: update bombardment buffer active.');
-            return;
-        }
+                        banner.querySelector('.ag-rating-inline-close').onclick = () => banner.remove();
+                        setTimeout(() => {
+                            if (banner && banner.parentNode) banner.remove();
+                        }, 3000);
+                    };
 
-        // 3. Increment & track Smart Paste usage count
-        const currentCount = (res.ag_smart_paste_count || 0) + 1;
-        chrome.storage.local.set({ ag_smart_paste_count: currentCount });
-
-        // 4. Threshold & Cooldown Rules
-        const lastDismissedAt = res.ag_smart_paste_rating_dismissed_at || 0;
-        const dismissedCount = res.ag_smart_paste_dismissed_count || 0;
-
-        if (lastDismissedAt === 0) {
-            // Initial Trigger Rule: Easy to reach (requires at least 2 successful smart pastes)
-            if (currentCount < 2) return;
-        } else {
-            // Cooldown Rule after dismissal: Light 2 calendar days OR 3 smart pastes since dismissal
-            const now = Date.now();
-            const TWO_DAYS_MS = 2 * 24 * 60 * 60 * 1000;
-            const pastesSinceDismissal = currentCount - dismissedCount;
-
-            if (now - lastDismissedAt < TWO_DAYS_MS && pastesSinceDismissal < 3) {
-                console.log('🏰 [AskGemini] Suppressing Smart Paste rating prompt: cooldown active.');
-                return;
+                    if (submitBtn) submitBtn.onclick = handleFeedbackSubmit;
+                    if (inputEl) {
+                        inputEl.addEventListener('keydown', (e) => {
+                            if (e.key === 'Enter') {
+                                e.preventDefault();
+                                handleFeedbackSubmit();
+                            }
+                        });
+                    }
+                    if (closeInlineBtn) {
+                        closeInlineBtn.onclick = () => banner.remove();
+                    }
+                };
             }
-        }
 
-        // 5. Show non-blocking direct-action rating banner after a brief 1.5s delay
-        setTimeout(() => {
-            if (document.querySelector('.ag-rating-inline-banner')) return;
-            AG.showRatingModal({
-                source: 'smart_paste',
-                title: 'Enjoying Smart Paste?',
-                subtitle: 'Your feedback helps me make it even better!',
-                featureName: 'Smart Paste'
-            });
-        }, 1500);
+            if (closeBtn) {
+                closeBtn.onclick = () => {
+                    chrome.runtime.sendMessage({ 
+                        type: 'SET_RATING_STATUS', 
+                        status: 'dismissed', 
+                        source: options.source || 'rating_banner' 
+                    });
+                    banner.remove();
+                };
+            }
+        }, delay);
     });
 };
+
+// Backwards-compatible stub: Smart paste prompts are now coordinated through RatingManager
+window.AskGemini.maybeShowSmartPasteRatingPrompt = function maybeShowSmartPasteRatingPrompt() {};
 
 
 

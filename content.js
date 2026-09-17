@@ -481,7 +481,7 @@ observer.observe(document.body, { childList: true, subtree: true });
 chrome.runtime.onMessage.addListener((message) => {
     console.log('Ask Gemini: Message Received', message);
     if (message.type === 'SHOW_RATING_PROMPT') {
-        window.AskGemini.showRatingModal();
+        window.AskGemini.showRatingModal(message.options || {});
     } else if (message.type === 'USAGE_LIMITS_UPDATED') {
         window.AskGemini.updateQuotaDisplay(message.limits);
     }

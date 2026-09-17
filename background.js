@@ -190,19 +190,23 @@ class AmplitudeWizard {
 
 /**
  * RatingManager - Handles local usage metrics and rating prompt logic
- * Implements the "Smart Rating" business rules
+ * Implements the Two-Gate habit-first rating business rules
  */
 class RatingManager {
     static DEFAULTS = {
         activeDays: 0,
-        highlightCount: 0,
         replyCount: 0,
+        smartPasteSuccessCount: 0,
+        tocClickCount: 0,
         totalWords: 0,
         isExistingUser: false,
         postUpdateHighlights: 0,
         ratingStatus: null, // null, 'rated', 'feedback_given', 'dismissed'
         dismissedAtActiveDay: 0,
-        dismissedAtHighlightCount: 0,
+        dismissedAtTimestamp: 0,
+        dismissedAtTotalActions: 0,
+        dismissCount: 0,
+        lastPromptTimestamp: 0,
         lastPromptVersion: '0.0.0',
         lastDayActive: null
     };
@@ -223,80 +227,145 @@ class RatingManager {
         const state = await this.getState();
         const now = new Date().toISOString().split('T')[0];
 
-        // 1. Track Active Days
+        // 1. Track Active Days across calendar days
         if (state.lastDayActive !== now) {
             state.activeDays = (state.activeDays || 0) + 1;
             state.lastDayActive = now;
         }
 
-        // 2. Increment Lifetime Counters
+        // 2. Increment Lifetime Feature Counters
         if (eventName === 'context_reply_sent') {
             state.replyCount = (state.replyCount || 0) + 1;
             state.totalWords = (state.totalWords || 0) + (params.word_count || 0);
             if (state.isExistingUser) {
-                state.postUpdateHighlights = (state.postUpdateHighlights || 0) + 1; // Increment reply counter after update
+                state.postUpdateHighlights = (state.postUpdateHighlights || 0) + 1;
+            }
+        } else if (eventName === 'smart_paste_success') {
+            state.smartPasteSuccessCount = (state.smartPasteSuccessCount || 0) + 1;
+            if (state.isExistingUser) {
+                state.postUpdateHighlights = (state.postUpdateHighlights || 0) + 1;
+            }
+        } else if (eventName === 'toc_item_clicked') {
+            state.tocClickCount = (state.tocClickCount || 0) + 1;
+            if (state.isExistingUser) {
+                state.postUpdateHighlights = (state.postUpdateHighlights || 0) + 1;
             }
         }
 
         await RatingManager.setState(state);
         
-        // 3. Evaluate Trigger
-        this.evaluateTrigger(state);
+        // 3. Evaluate Two-Gate Trigger
+        this.evaluateTrigger(state, eventName, params);
     }
 
     /**
-     * Core business logic to determine if the prompt should show
+     * Core two-gate logic: Habit Gate (Gate 1) + Aha! Catalyst (Gate 2)
      */
-    static async evaluateTrigger(state) {
+    static async evaluateTrigger(state, eventName, params = {}) {
         // Rule: Never show if already rated
         if (state.ratingStatus === 'rated') return;
 
-        // Rule: Update Bombardment Buffer
-        if (state.isExistingUser && state.postUpdateHighlights < 5) return;
+        // Rule: Max 2 prompt dismissals lifetime (permanently silenced if dismissed twice)
+        if ((state.dismissCount || 0) >= 2) return;
 
-        // Rule: Redemption Arc check is handled in onInstalled, 
-        // here we just check if status is feedback_given (and not reset)
+        // Rule: Cooldown between prompt attempts (do not re-prompt within 24 hours)
+        const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000;
+        if (Date.now() - (state.lastPromptTimestamp || 0) < TWENTY_FOUR_HOURS_MS) return;
+
+        // Rule: Update Bombardment Buffer (wait 5 uses after extension update)
+        if (state.isExistingUser && (state.postUpdateHighlights || 0) < 5) return;
+
+        // Rule: Never show if feedback was already provided
         if (state.ratingStatus === 'feedback_given') return;
 
-        const timeCriteria = state.activeDays >= 3;
-        const valueCriteria = state.replyCount >= 3;
+        const totalActions = (state.replyCount || 0) + (state.smartPasteSuccessCount || 0) + (state.tocClickCount || 0);
 
-        // Rule: Initial Trigger Thresholds
-        if (state.ratingStatus === null) {
-            if (timeCriteria && valueCriteria) {
-                this.triggerUI();
+        // Rule: Cooldown Phase if previously dismissed (at least 5 days AND 8 total actions since dismissal)
+        if (state.ratingStatus === 'dismissed') {
+            const FIVE_DAYS_MS = 5 * 24 * 60 * 60 * 1000;
+            const nowMs = Date.now();
+            const timeSinceDismissal = state.dismissedAtTimestamp ? (nowMs - state.dismissedAtTimestamp >= FIVE_DAYS_MS) : ((state.activeDays || 0) >= ((state.dismissedAtActiveDay || 0) + 5));
+            const actionsSinceDismissal = totalActions >= ((state.dismissedAtTotalActions || 0) + 8);
+            if (!timeSinceDismissal || !actionsSinceDismissal) {
+                return;
             }
-        } 
-        // Rule: Cooldown Phase (Second and Final Time)
-        else if (state.ratingStatus === 'dismissed') {
-            const daysSinceDismissal = state.activeDays >= (state.dismissedAtActiveDay + 7);
-            const repliesSinceDismissal = state.replyCount >= (state.dismissedAtHighlightCount + 10);
-            
-            if (daysSinceDismissal && repliesSinceDismissal) {
-                this.triggerUI();
+        }
+
+        // ─── GATE 1: Habit Gate ───────────────────────────────────────────────
+        // Strictly requires at least 3 distinct calendar active days AND >= 5 total meaningful actions
+        const isHabitFormed = (state.activeDays || 0) >= 3 && totalActions >= 5;
+        if (!isHabitFormed) return;
+
+        // ─── GATE 2: Aha! Delight Catalyst (Context-Specific Moments) ─────────
+        let promptOptions = null;
+
+        if (eventName === 'context_reply_sent') {
+            const isMultiQuote = (params.quote_count || 1) >= 2;
+            if (state.replyCount >= 3 || isMultiQuote) {
+                promptOptions = {
+                    source: 'context_reply',
+                    featureName: 'Quote Reply',
+                    title: 'Enjoying Quote Reply?',
+                    subtitle: 'Takes 5 seconds to help an indie developer on the Chrome Web Store!',
+                    delay: 2000
+                };
             }
+        } else if (eventName === 'smart_paste_success') {
+            if ((state.smartPasteSuccessCount || 0) >= 2) {
+                promptOptions = {
+                    source: 'smart_paste',
+                    featureName: 'Smart Paste',
+                    title: 'Smart Paste saved your chat from clutter!',
+                    subtitle: 'If converting large text to file uploads saves you time, drop a quick review!',
+                    delay: 2500
+                };
+            }
+        } else if (eventName === 'toc_item_clicked') {
+            const inLongConversation = (params.totalPrompts || 0) >= 4;
+            if ((state.tocClickCount || 0) >= 3 && inLongConversation) {
+                promptOptions = {
+                    source: 'toc',
+                    featureName: 'Table of Contents',
+                    title: 'Navigating long chats faster with Table of Contents?',
+                    subtitle: 'Glad it keeps your long conversations organized! Support future updates with a rating.',
+                    delay: 1500
+                };
+            }
+        }
+
+        if (promptOptions) {
+            this.triggerUI(promptOptions);
         }
     }
 
-    static async triggerUI() {
+    static async triggerUI(options = {}) {
         try {
             const tabs = await chrome.tabs.query({ url: 'https://gemini.google.com/*' });
-            console.log(`🎯 RatingManager: Found ${tabs.length} Gemini tabs`);
+            console.log(`🎯 RatingManager: Found ${tabs.length} Gemini tabs for ${options.source}`);
             
             tabs.forEach(tab => {
-                chrome.tabs.sendMessage(tab.id, { type: 'SHOW_RATING_PROMPT' }, (response) => {
+                chrome.tabs.sendMessage(tab.id, { 
+                    type: 'SHOW_RATING_PROMPT',
+                    options: options
+                }, () => {
                     if (chrome.runtime.lastError) {
-                        console.warn(`❌ Message failed for tab ${tab.id}:`, chrome.runtime.lastError.message);
-                    } else {
-                        console.log(`✅ Message sent successfully to tab ${tab.id}`);
+                        // Tab may not be active or content script not ready
                     }
                 });
             });
 
             // Track in Amplitude once per trigger attempt
             AmplitudeWizard.trackEvent('rating_prompt_shown', { 
-                version: chrome.runtime.getManifest().version 
+                version: chrome.runtime.getManifest().version,
+                source: options.source || 'unknown',
+                feature: options.featureName || 'Quote Reply'
             });
+
+            // Update last prompt timestamp and lifetime prompt counter
+            const state = await this.getState();
+            state.lastPromptTimestamp = Date.now();
+            state.promptCount = (state.promptCount || 0) + 1;
+            await this.setState(state);
         } catch (error) {
             console.error('Trigger UI Error:', error);
         }
@@ -305,24 +374,31 @@ class RatingManager {
     /**
      * Handle user interaction with the prompt
      */
-    static async setStatus(status) {
+    static async setStatus(status, source = 'rating_banner') {
         const state = await this.getState();
         state.ratingStatus = status;
         state.lastPromptVersion = chrome.runtime.getManifest().version;
 
+        const totalActions = (state.replyCount || 0) + (state.smartPasteSuccessCount || 0) + (state.tocClickCount || 0);
+
         if (status === 'dismissed') {
+            state.dismissCount = (state.dismissCount || 0) + 1;
             state.dismissedAtActiveDay = state.activeDays;
-            state.dismissedAtHighlightCount = state.replyCount; // Save replyCount here
+            state.dismissedAtTimestamp = Date.now();
+            state.dismissedAtTotalActions = totalActions;
         }
 
         await this.setState(state);
-        logBackgroundEvent('RATING_STATUS_UPDATED', { status });
+        logBackgroundEvent('RATING_STATUS_UPDATED', { status, source });
 
         // Track in Amplitude
         AmplitudeWizard.trackEvent('rating_interaction', {
             status: status,
+            source: source,
             activeDays: state.activeDays,
-            replyCount: state.replyCount
+            replyCount: state.replyCount,
+            smartPasteCount: state.smartPasteSuccessCount,
+            tocCount: state.tocClickCount
         });
     }
 }
@@ -672,7 +748,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                 break;
 
             case 'SET_RATING_STATUS':
-                RatingManager.setStatus(message.status);
+                RatingManager.setStatus(message.status, message.source || 'rating_banner');
                 sendResponse({ success: true });
                 break;
 
@@ -712,15 +788,12 @@ chrome.runtime.onInstalled.addListener(async (details) => {
         if (details.reason === chrome.runtime.OnInstalledReason.INSTALL) {
             state.isExistingUser = false;
         } else if (details.reason === chrome.runtime.OnInstalledReason.UPDATE) {
-            const oldVersion = state.lastPromptVersion || '0.0.0';
-            const oldMajor = parseInt(oldVersion.split('.')[0]);
-            const newMajor = parseInt(chrome.runtime.getManifest().version.split('.')[0]);
-            
             state.isExistingUser = true;
             state.postUpdateHighlights = 0;
 
-            // Redemption Arc: Reset feedback_given if major version increases
-            if (newMajor > oldMajor && state.ratingStatus === 'feedback_given') {
+            // Redemption Arc: Unblock users previously locked in feedback_given or stale dismissals
+            if (state.ratingStatus === 'feedback_given' || state.ratingStatus === 'dismissed') {
+                logBackgroundEvent('RATING_STATUS_UNBLOCKED_ON_UPDATE', { previousStatus: state.ratingStatus });
                 state.ratingStatus = null;
             }
         }
