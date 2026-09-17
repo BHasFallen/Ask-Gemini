@@ -490,13 +490,15 @@ chrome.runtime.onMessage.addListener((message) => {
 // ─── Boot: Read Preferences ───────────────────────────────────────────────────
 chrome.storage.local.get([
     'multi_quote_display', 'usage_limits_enabled', 'multi_quote_enabled',
-    'smart_paste_behavior', 'smart_paste_threshold', 'smart_paste_feedback_done', 'toc_enabled'
+    'smart_paste_behavior', 'smart_paste_threshold', 'smart_paste_feedback_done', 'toc_enabled',
+    'quote_reply_enabled'
 ], (res) => {
     var AG = window.AskGemini;
     AG.multiQuoteDisplay = res.multi_quote_display || 'compact';
 
     AG.usageLimitsEnabled = res.usage_limits_enabled !== false;
     AG.multiQuoteEnabled = res.multi_quote_enabled !== false;
+    AG.quoteReplyEnabled = res.quote_reply_enabled !== false;
     AG.smartPasteBehavior = res.smart_paste_behavior || 'auto';
     AG.smartPasteThreshold = res.smart_paste_threshold || 5000;
     AG.smartPasteFeedbackDone = res.smart_paste_feedback_done === true;
@@ -530,6 +532,15 @@ chrome.storage.onChanged.addListener((changes, area) => {
             AG.renderContextBox();
         }
     }
+    if (changes.quote_reply_enabled) {
+        AG.quoteReplyEnabled = changes.quote_reply_enabled.newValue !== false;
+        if (!AG.quoteReplyEnabled) {
+            // Immediately clean up any visible UI
+            AG.hideFloatButton && AG.hideFloatButton();
+            AG.currentContexts = [];
+            if (AG.contextBox) AG.contextBox.style.display = 'none';
+        }
+    }
     if (changes.smart_paste_behavior) AG.smartPasteBehavior = changes.smart_paste_behavior.newValue || 'auto';
     if (changes.smart_paste_threshold) AG.smartPasteThreshold = changes.smart_paste_threshold.newValue || 5000;
     if (changes.smart_paste_feedback_done) AG.smartPasteFeedbackDone = changes.smart_paste_feedback_done.newValue === true;
@@ -548,5 +559,61 @@ window.AskGemini.buildTableOfContents();
 window.AskGemini.setupTOCObserver();
 
 setInterval(window.AskGemini.requestUsageLimits, 60000);
+
+// ─── Debug Report Handler ──────────────────────────────────────────────────────
+document.addEventListener('AG_DEBUG_REPORT_REQUEST', function() {
+    var AG = window.AskGemini;
+    var manifest = chrome.runtime.getManifest();
+
+    var storageKeys = [
+        'quote_reply_enabled', 'multi_quote_enabled', 'multi_quote_display',
+        'smart_paste_behavior', 'smart_paste_enabled', 'smart_paste_threshold',
+        'smart_paste_preference_explicitly_set', 'usage_limits_enabled',
+        'toc_enabled', 'quota_limits', 'rating_state', 'amplitude_device_id',
+        'last_quota_check', 'developerMode', 'developerLogsEnabled'
+    ];
+
+    chrome.storage.local.get(storageKeys, function(res) {
+        var report = {
+            meta: {
+                extension_version: manifest.version,
+                generated_at: new Date().toISOString(),
+                url: window.location.href,
+                user_agent: navigator.userAgent
+            },
+            settings: {
+                quote_reply_enabled: res.quote_reply_enabled !== false,
+                multi_quote_enabled: res.multi_quote_enabled !== false,
+                multi_quote_display: res.multi_quote_display || 'compact',
+                smart_paste_behavior: res.smart_paste_behavior || 'auto',
+                smart_paste_enabled: res.smart_paste_enabled !== false,
+                smart_paste_threshold: res.smart_paste_threshold || 5000,
+                smart_paste_preference_explicitly_set: !!res.smart_paste_preference_explicitly_set,
+                usage_limits_enabled: res.usage_limits_enabled !== false,
+                toc_enabled: res.toc_enabled !== false,
+                developer_mode: !!res.developerMode,
+                developer_logs: !!res.developerLogsEnabled
+            },
+            live_runtime: {
+                quote_reply_enabled: AG.quoteReplyEnabled,
+                multi_quote_enabled: AG.multiQuoteEnabled,
+                multi_quote_display: AG.multiQuoteDisplay,
+                smart_paste_behavior: AG.smartPasteBehavior,
+                usage_limits_enabled: AG.usageLimitsEnabled,
+                toc_enabled: AG.tocEnabled,
+                active_contexts: (AG.currentContexts || []).length,
+                is_injecting: AG.isInjecting
+            },
+            quota: res.quota_limits || null,
+            rating_state: res.rating_state || null,
+            device_id: res.amplitude_device_id || null,
+            last_quota_check: res.last_quota_check
+                ? new Date(res.last_quota_check).toISOString()
+                : null
+        };
+
+        document.dispatchEvent(new CustomEvent('AG_DEBUG_REPORT_RESPONSE', { detail: report }));
+    });
+});
 
 console.log('Ask Gemini: Core Engine Active');

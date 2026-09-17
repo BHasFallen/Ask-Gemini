@@ -90,6 +90,7 @@ window.AskGemini.currentContexts = [];
 window.AskGemini.multiQuoteDisplay = 'compact'; // overwritten by boot prefs
 
 window.AskGemini.multiQuoteEnabled = true;       // overwritten by boot prefs
+window.AskGemini.quoteReplyEnabled = true;        // overwritten by boot prefs
 window.AskGemini.floatButton = null;
 window.AskGemini.contextBox = null;
 window.AskGemini.isInjecting = false;
@@ -264,6 +265,7 @@ window.AskGemini.maybeInjectAndSend = function maybeInjectAndSend() {
 // ─── handleSelection ──────────────────────────────────────────────────────────
 window.AskGemini.handleSelection = function handleSelection() {
     var AG = window.AskGemini;
+    if (!AG.quoteReplyEnabled) return; // master toggle off
     const selection = window.getSelection();
     const text = selection.toString().trim();
 

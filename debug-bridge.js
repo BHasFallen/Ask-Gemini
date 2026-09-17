@@ -5,6 +5,8 @@
  */
 (function() {
     window.AskGemini = window.AskGemini || {};
+
+    // ── Rating Debug Helpers ─────────────────────────────────────────────────────
     window.AskGemini.debugRating = {
         preview: function(feature) {
             document.dispatchEvent(new CustomEvent('AG_DEBUG_RATING', { 
@@ -27,4 +29,44 @@
             }));
         }
     };
+
+    // ── Debug Report ─────────────────────────────────────────────────────────────
+    window.AskGemini.debug = {
+        /**
+         * Collects full storage state + live runtime state from the content script
+         * and copies a formatted report to the clipboard.
+         *
+         * Usage (Gemini tab, top frame):
+         *   AskGemini.debug.report();
+         */
+        report: function() {
+            console.log('[Ask Gemini] Collecting debug report...');
+
+            function handleResponse(e) {
+                document.removeEventListener('AG_DEBUG_REPORT_RESPONSE', handleResponse);
+                const report = e.detail;
+                const formatted = JSON.stringify(report, null, 2);
+
+                navigator.clipboard.writeText(formatted).then(function() {
+                    console.log('[Ask Gemini] \u2705 Debug report copied to clipboard! Paste it in your message to us.');
+                }).catch(function() {
+                    console.log('[Ask Gemini] Could not auto-copy \u2014 here is the full report to copy manually:');
+                    console.log(formatted);
+                });
+
+                console.group('[Ask Gemini] Debug Report');
+                console.log(report);
+                console.groupEnd();
+            }
+
+            document.addEventListener('AG_DEBUG_REPORT_RESPONSE', handleResponse);
+            document.dispatchEvent(new CustomEvent('AG_DEBUG_REPORT_REQUEST'));
+
+            setTimeout(function() {
+                document.removeEventListener('AG_DEBUG_REPORT_RESPONSE', handleResponse);
+                console.warn('[Ask Gemini] Debug report timed out \u2014 content script may not be active on this page.');
+            }, 3000);
+        }
+    };
 })();
+

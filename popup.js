@@ -70,10 +70,14 @@ class PopupController {
         this.wordsAnalyzedEl = document.getElementById('words-analyzed');
 
         // Form & switch controls
-        this.switchMq = document.getElementById('switch-mq');
-        this.subRowMqStyle = document.getElementById('sub-row-mq-style');
+        this.switchQr = document.getElementById('switch-qr');         // Master: Quote Reply
+        this.switchMq = document.getElementById('switch-mq');         // Sub: Multi Quote
+        this.subRowMq = document.getElementById('sub-row-mq');        // Sub-row for Multi Quote
+        this.subRowMqStyle = document.getElementById('sub-row-mq-style'); // Sub-sub-row for Format
         this.switchToc = document.getElementById('switch-toc');
         this.switchLimits = document.getElementById('switch-limits');
+        // Parent row for the quota limits toggle (hidden for free-plan users)
+        this.limitsSettingRow = this.switchLimits ? this.switchLimits.closest('.setting-item') : null;
 
         // Segmented options
         this.btnToggleCompact = document.getElementById('toggle-compact');
@@ -87,10 +91,13 @@ class PopupController {
         this.guideBody = document.getElementById('guide-body');
         this.rateBtn = document.getElementById('rate-extension-btn');
         this.openGeminiLink = document.getElementById('open-gemini-link');
+        this.copyDebugLink = document.getElementById('copy-debug-info');
+        this.copyDebugLabel = document.getElementById('copy-debug-label');
 
         this.currentSettings = {
             multi_quote_display: 'compact',
             usage_limits_enabled: true,
+            quote_reply_enabled: true,
             multi_quote_enabled: true,
             smart_paste_behavior: 'auto',
             toc_enabled: true
@@ -161,26 +168,32 @@ class PopupController {
             const res = await chrome.storage.local.get([
                 'multi_quote_display',
                 'usage_limits_enabled',
+                'quote_reply_enabled',
                 'multi_quote_enabled',
                 'smart_paste_behavior',
-                'toc_enabled'
+                'toc_enabled',
+                'quota_limits'
             ]);
 
             const display = res.multi_quote_display || 'compact';
             const limits = res.usage_limits_enabled !== false;
+            const qr = res.quote_reply_enabled !== false;
             const mq = res.multi_quote_enabled !== false;
             const sp = res.smart_paste_behavior || 'auto';
             const toc = res.toc_enabled !== false;
 
+            this.applyQrToggleState(qr);
             this.applyMqToggleState(mq);
             this.applyToggleState(display);
             this.applySpToggleState(sp);
             this.applyTocToggleState(toc);
             this.applyLimitsToggleState(limits);
+            this.applyProVisibility(res.quota_limits);
 
             this.currentSettings = {
                 multi_quote_display: display,
                 usage_limits_enabled: limits,
+                quote_reply_enabled: qr,
                 multi_quote_enabled: mq,
                 smart_paste_behavior: sp,
                 toc_enabled: toc
@@ -190,10 +203,38 @@ class PopupController {
         }
     }
 
+    /**
+     * Hide the Quota Limits toggle row when the user is on a free Gemini plan.
+     * quota_limits is set by the background QuotaManager after its first successful
+     * fetch. We only hide if isProUser is *explicitly* false — if it's undefined
+     * (never fetched yet) we leave the row visible so it doesn't vanish on new installs.
+     */
+    applyProVisibility(quotaLimits) {
+        if (!this.limitsSettingRow) return;
+        // Only hide when we have a confirmed non-pro signal
+        const isConfirmedFree = quotaLimits && quotaLimits.isProUser === false;
+        this.limitsSettingRow.style.display = isConfirmedFree ? 'none' : '';
+    }
+
+    /**
+     * Quote Reply master toggle — controls sub-row visibility for Multi Quote and Format.
+     * When QR is off, both sub-rows collapse/disappear entirely.
+     */
+    applyQrToggleState(enabled) {
+        if (this.switchQr) this.switchQr.checked = enabled;
+        const mqEnabled = enabled ? (this.switchMq ? this.switchMq.checked : true) : false;
+        // Show/hide Multi Quote sub-row
+        if (this.subRowMq) this.subRowMq.style.display = enabled ? '' : 'none';
+        // Format row visibility cascades: only show if QR on AND MQ on
+        if (this.subRowMqStyle) this.subRowMqStyle.style.display = (enabled && mqEnabled) ? '' : 'none';
+    }
+
     applyMqToggleState(enabled) {
         if (this.switchMq) this.switchMq.checked = enabled;
+        // Format row visible only when Multi Quote itself is on (and QR is on)
+        const qrOn = this.switchQr ? this.switchQr.checked : true;
         if (this.subRowMqStyle) {
-            this.subRowMqStyle.classList.toggle('disabled', !enabled);
+            this.subRowMqStyle.style.display = (qrOn && enabled) ? '' : 'none';
         }
     }
 
@@ -244,6 +285,16 @@ class PopupController {
         } catch (e) {
             console.error('Failed to save setting:', e);
         }
+    }
+
+    async saveQuoteReplyState(enabled) {
+        this.applyQrToggleState(enabled);
+        await this.saveSetting({
+            storageKey: 'quote_reply_enabled',
+            settingName: 'quote_reply_enabled',
+            featureName: 'quote_reply',
+            newValue: enabled
+        });
     }
 
     async saveMultiQuoteState(enabled) {
@@ -301,6 +352,14 @@ class PopupController {
     }
 
     setupEventListeners() {
+        // Copy Debug Info
+        if (this.copyDebugLink) {
+            this.copyDebugLink.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.copyDebugReport();
+            });
+        }
+
         // Report Problem Link
         if (this.reportProblemLink) {
             this.reportProblemLink.addEventListener('click', (e) => {
@@ -318,6 +377,10 @@ class PopupController {
         }
 
         // Feature Switches
+        if (this.switchQr) {
+            this.switchQr.addEventListener('change', () => this.saveQuoteReplyState(this.switchQr.checked));
+        }
+
         if (this.switchMq) {
             this.switchMq.addEventListener('change', () => this.saveMultiQuoteState(this.switchMq.checked));
         }
@@ -367,6 +430,61 @@ class PopupController {
                 });
                 chrome.runtime.sendMessage({ type: 'OPEN_REVIEW_PAGE' });
             });
+        }
+    }
+
+    async copyDebugReport() {
+        try {
+            const manifest = chrome.runtime.getManifest();
+            const res = await chrome.storage.local.get([
+                'quote_reply_enabled', 'multi_quote_enabled', 'multi_quote_display',
+                'smart_paste_behavior', 'smart_paste_enabled', 'smart_paste_threshold',
+                'smart_paste_preference_explicitly_set', 'usage_limits_enabled',
+                'toc_enabled', 'quota_limits', 'rating_state', 'amplitude_device_id',
+                'last_quota_check', 'developerMode', 'developerLogsEnabled'
+            ]);
+
+            const report = {
+                meta: {
+                    extension_version: manifest.version,
+                    generated_at: new Date().toISOString(),
+                    user_agent: navigator.userAgent,
+                    source: 'popup'
+                },
+                settings: {
+                    quote_reply_enabled: res.quote_reply_enabled !== false,
+                    multi_quote_enabled: res.multi_quote_enabled !== false,
+                    multi_quote_display: res.multi_quote_display || 'compact',
+                    smart_paste_behavior: res.smart_paste_behavior || 'auto',
+                    smart_paste_enabled: res.smart_paste_enabled !== false,
+                    smart_paste_threshold: res.smart_paste_threshold || 5000,
+                    smart_paste_preference_explicitly_set: !!res.smart_paste_preference_explicitly_set,
+                    usage_limits_enabled: res.usage_limits_enabled !== false,
+                    toc_enabled: res.toc_enabled !== false,
+                    developer_mode: !!res.developerMode,
+                    developer_logs: !!res.developerLogsEnabled
+                },
+                quota: res.quota_limits || null,
+                rating_state: res.rating_state || null,
+                device_id: res.amplitude_device_id || null,
+                last_quota_check: res.last_quota_check
+                    ? new Date(res.last_quota_check).toISOString()
+                    : null
+            };
+
+            const formatted = JSON.stringify(report, null, 2);
+            await navigator.clipboard.writeText(formatted);
+
+            // Show confirmation
+            if (this.copyDebugLabel) {
+                this.copyDebugLabel.textContent = '✓ Copied!';
+                setTimeout(() => {
+                    if (this.copyDebugLabel) this.copyDebugLabel.textContent = 'Copy Debug Info';
+                }, 2000);
+            }
+        } catch (e) {
+            console.error('Failed to copy debug report:', e);
+            if (this.copyDebugLabel) this.copyDebugLabel.textContent = 'Failed — try console';
         }
     }
 
