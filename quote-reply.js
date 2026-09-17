@@ -100,65 +100,162 @@ window.AskGemini.lastRepliesCount = 0;
 // ─── maybeInjectAndSend ───────────────────────────────────────────────────────
 window.AskGemini.maybeInjectAndSend = function maybeInjectAndSend() {
     var AG = window.AskGemini;
-    if (AG.isInjecting || !AG.currentContexts.length) return false;
+
+    // Auto-recover if isInjecting was stuck from an earlier unexpected exception
+    if (AG.isInjecting) {
+        if (Date.now() - (AG._injectStartTime || 0) < 2500) {
+            return false;
+        }
+        AG.isInjecting = false;
+    }
+
+    if (!AG.currentContexts || !AG.currentContexts.length) return false;
 
     const input = AG.findInputArea();
-    const sendBtn = AG.findSendButton();
-
-    if (!input || !sendBtn) return false;
+    if (!input) return false;
 
     AG.isInjecting = true;
+    AG._injectStartTime = Date.now();
+
+    // Preserve original context before clearing
+    const contextsToInject = [...AG.currentContexts];
+    const totalWords = contextsToInject.reduce((a, c) => a + (c || '').trim().split(/\s+/).length, 0);
+    const totalLength = contextsToInject.reduce((a, c) => a + (c || '').length, 0);
+
+    const originalColor = input.style.color;
 
     try {
-        const originalText = input.innerText || "";
-        const contextBlock = AG.currentContexts.length === 1
-            ? `I'm replying to this:\n"${AG.currentContexts[0].trim()}"\n\n`
-            : `I'm replying to these excerpts:\n${AG.currentContexts.map((q, i) => `${i + 1}. "${q.trim()}"`).join('\n')}\n\n`;
+        const rawInputText = input.innerText || "";
+        // Clean out blank paragraph artifact newlines Quill creates when empty (<p><br></p>)
+        const originalText = rawInputText.replace(/^[\r\n\s]+|[\r\n\s]+$/g, '');
+
+        const contextBlock = contextsToInject.length === 1
+            ? `I'm replying to this:\n"${contextsToInject[0].trim()}"\n\n`
+            : `I'm replying to these excerpts:\n${contextsToInject.map((q, i) => `${i + 1}. "${q.trim()}"`).join('\n')}\n\n`;
         const composed = contextBlock + originalText;
 
-        // Step 1: Hide the technical string from user
-        const originalColor = input.style.color;
+        // Step 1: Hide the technical string temporarily from user
         input.style.color = 'transparent';
 
         // Step 2: Inject directly into DOM
         input.focus();
-        document.execCommand('selectAll', false, null);
-        document.execCommand('insertText', false, composed);
+        let inserted = false;
+        try {
+            document.execCommand('selectAll', false, null);
+            inserted = document.execCommand('insertText', false, composed);
+        } catch (_) {
+            inserted = false;
+        }
 
-        // Step 3: Trigger Send immediately
-        requestAnimationFrame(() => {
-            AG.clearContext();
-            if (AG.flushPendingSmartPastesOnSend) AG.flushPendingSmartPastesOnSend();
-            sendBtn.click();
+        // Selection Range / textNode fallback if execCommand was blocked
+        if (!inserted || !input.textContent.includes("I'm replying to")) {
+            try {
+                const sel = window.getSelection();
+                if (sel && sel.rangeCount > 0) {
+                    const range = sel.getRangeAt(0);
+                    range.selectNodeContents(input);
+                    range.deleteContents();
+                    const textNode = document.createTextNode(composed);
+                    range.insertNode(textNode);
+                    range.setStartAfter(textNode);
+                    range.setEndAfter(textNode);
+                    sel.removeAllRanges();
+                    sel.addRange(range);
+                    inserted = true;
+                }
+            } catch (_) {}
 
-            // Increment reply count and reset visits since last reply
-            chrome.storage.local.get(['reply_count_lifetime'], (res) => {
-                const count = (res.reply_count_lifetime || 0) + 1;
-                chrome.storage.local.set({
-                    reply_count_lifetime: count,
-                    last_reply_time: Date.now(),
-                    gemini_visits_since_last_reply: 0
-                }, () => {
-                    AG.evaluateRetentionTip().catch(console.error);
-                });
-            });
+            if (!inserted) {
+                input.innerText = composed;
+            }
+        }
 
-            // Step 4: Restore visibility after send triggers
+        // CRITICAL: Notify Angular and Quill that the model value changed!
+        input.dispatchEvent(new Event('input', { bubbles: true, cancelable: true }));
+        input.dispatchEvent(new Event('change', { bubbles: true, cancelable: true }));
+
+        // Clear draft chips and state
+        AG.clearContext();
+        if (AG.flushPendingSmartPastesOnSend) AG.flushPendingSmartPastesOnSend();
+
+        // Step 3: Trigger send with polling retry so Angular has time to render/enable the send button
+        function cleanupAndRestore() {
             setTimeout(() => {
                 input.style.color = originalColor || '';
                 AG.isInjecting = false;
             }, 50);
+        }
+
+        function triggerSendWithRetry(attempt) {
+            try {
+                const sendBtn = AG.findSendButton();
+                const isBtnDisabled = sendBtn && (
+                    sendBtn.hasAttribute('disabled') ||
+                    sendBtn.getAttribute('aria-disabled') === 'true' ||
+                    sendBtn.classList.contains('disabled') ||
+                    sendBtn.classList.contains('waiting')
+                );
+
+                if (sendBtn && !isBtnDisabled) {
+                    const nativeBtn = (sendBtn.tagName === 'BUTTON')
+                        ? sendBtn
+                        : (sendBtn.querySelector('button') || sendBtn);
+
+                    nativeBtn.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
+                    nativeBtn.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, cancelable: true }));
+                    nativeBtn.click();
+                    if (sendBtn !== nativeBtn) {
+                        sendBtn.click();
+                    }
+                    cleanupAndRestore();
+                    return;
+                }
+
+                if (attempt < 6) {
+                    setTimeout(() => triggerSendWithRetry(attempt + 1), 25);
+                    return;
+                }
+
+                // Ultimate fallback: Dispatch Enter keydown directly to Quill input
+                input.dispatchEvent(new KeyboardEvent('keydown', {
+                    key: 'Enter',
+                    code: 'Enter',
+                    keyCode: 13,
+                    which: 13,
+                    bubbles: true,
+                    cancelable: true
+                }));
+            } catch (innerErr) {
+                console.warn('🏰 [AskGemini] Send trigger fallback error:', innerErr);
+            } finally {
+                cleanupAndRestore();
+            }
+        }
+
+        requestAnimationFrame(() => triggerSendWithRetry(0));
+
+        // Increment reply count and reset visits since last reply
+        chrome.storage.local.get(['reply_count_lifetime'], (res) => {
+            const count = (res.reply_count_lifetime || 0) + 1;
+            chrome.storage.local.set({
+                reply_count_lifetime: count,
+                last_reply_time: Date.now(),
+                gemini_visits_since_last_reply: 0
+            }, () => {
+                if (AG.evaluateRetentionTip) AG.evaluateRetentionTip().catch(console.error);
+            });
         });
 
-        const totalWords = AG.currentContexts.reduce((a, c) => a + c.trim().split(/\s+/).length, 0);
         AG.trackEvent('context_reply_sent', {
-            length: AG.currentContexts.reduce((a, c) => a + c.length, 0),
-            quote_count: AG.currentContexts.length,
+            length: totalLength,
+            quote_count: contextsToInject.length,
             word_count: totalWords
         });
+
         return true;
     } catch (err) {
-        input.style.color = '';
+        console.error('🏰 [AskGemini] Error during quote reply injection:', err);
+        input.style.color = originalColor || '';
         AG.isInjecting = false;
         return false;
     }
@@ -259,7 +356,16 @@ window.AskGemini.renderContextBox = function renderContextBox() {
             </button>
             <button type="button" class="ask-gemini-draft-close" aria-label="Remove">${AG.ICONS.close}</button>
         `;
-        AG.contextBox.querySelector('.ask-gemini-draft-close').onclick = AG.clearContext;
+        AG.contextBox.querySelector('.ask-gemini-draft-close').onclick = (e) => {
+            e.stopPropagation();
+            AG.clearContext();
+        };
+        AG.contextBox.querySelector('.ask-gemini-draft-content').onclick = (e) => {
+            e.preventDefault();
+            if (AG.currentContexts && AG.currentContexts.length > 0) {
+                AG.scrollToAndHighlightText(AG.currentContexts[AG.currentContexts.length - 1]);
+            }
+        };
     }
 
     if (AG.contextBox.parentElement !== container) {

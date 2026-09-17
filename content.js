@@ -43,10 +43,64 @@ window.AskGemini.findInputArea = function findInputArea() {
 
 // ─── findSendButton ───────────────────────────────────────────────────────────
 window.AskGemini.findSendButton = function findSendButton() {
-    return document.querySelector('button[aria-label="Send message"]')
-        || document.querySelector('button[aria-label*="Send"]')
-        || document.querySelector('button.send-button')
-        || document.querySelector('button[data-test-id*="send"]');
+    // 1. Container-based search (Language-independent, works with Gemini Luminous & Classic)
+    const container = document.querySelector('.send-button-container, .input-buttons-wrapper-bottom');
+    if (container) {
+        const btn = container.querySelector(
+            'button:not(.speech_dictation_mic_button):not([aria-label*="dictat" i]):not([aria-label*="mic" i]), ' +
+            'gem-icon-button.send-button button, ' +
+            'gem-icon-button.send-button, ' +
+            'button.send-button, ' +
+            '.send-button'
+        );
+        if (btn) return (btn.querySelector ? btn.querySelector('button') : null) || btn;
+    }
+
+    // 2. Class & Component-based search (Language-independent)
+    const sendHost = document.querySelector(
+        'gem-icon-button.send-button:not(.stop), ' +
+        'button[mat-icon-button].send-button:not(.stop), ' +
+        'button.send-button:not(.stop), ' +
+        '.send-button.submit, ' +
+        '.send-button:not(.stop)'
+    );
+    if (sendHost) return (sendHost.querySelector ? sendHost.querySelector('button') : null) || sendHost;
+
+    // 3. Icon-based search (Language-independent)
+    const iconBtn = document.querySelector(
+        'button:has(.send-button-icon), ' +
+        'button:has(mat-icon[data-mat-icon-name="send"]), ' +
+        'button:has(mat-icon[fonticon="send"]), ' +
+        'button:has(mat-icon[fonticon*="send"]), ' +
+        'button:has(svg[data-icon="send"])'
+    );
+    if (iconBtn) return iconBtn;
+
+    // 4. Multilingual aria-label search (15+ languages)
+    const ariaBtn = document.querySelector(
+        'button[aria-label*="Send" i], ' +
+        'button[aria-label*="Submit" i], ' +
+        'button[aria-label*="Enviar" i], ' +
+        'button[aria-label*="Envoyer" i], ' +
+        'button[aria-label*="Senden" i], ' +
+        'button[aria-label*="Invia" i], ' +
+        'button[aria-label*="送信" i], ' +
+        'button[aria-label*="发送" i], ' +
+        'button[aria-label*="傳送" i], ' +
+        'button[aria-label*="보내기" i], ' +
+        'button[aria-label*="Отправить" i], ' +
+        'button[aria-label*="إرسال" i], ' +
+        'button[aria-label*="gönder" i], ' +
+        'button[aria-label*="Wyślij" i], ' +
+        'button[aria-label*="Verzenden" i], ' +
+        'button[aria-label*="Skicka" i], ' +
+        'gem-icon-button[arialabel*="Send" i] button, ' +
+        'gem-icon-button[arialabel*="Submit" i] button'
+    );
+    if (ariaBtn) return ariaBtn;
+
+    // 5. Test ID fallback
+    return document.querySelector('button[data-test-id*="send"], [data-test-id="send-button"]');
 };
 
 // ─── updateUserProfile ────────────────────────────────────────────────────────
@@ -268,11 +322,7 @@ window.AskGemini.checkAndInjectQuota = function checkAndInjectQuota() {
 // ─── checkAndTriggerOnGenerationEnd ──────────────────────────────────────────
 window.AskGemini.checkAndTriggerOnGenerationEnd = function checkAndTriggerOnGenerationEnd() {
     var AG = window.AskGemini;
-    const isCurrentlyGenerating = !!document.querySelector('button[aria-label*="Stop"]')
-        || !!document.querySelector('button[class*="stop"]')
-        || !!document.querySelector('mat-progress-bar')
-        || !!document.querySelector('.is-generating')
-        || !!document.querySelector('div[class*="generating"]');
+    const isCurrentlyGenerating = !!document.querySelector('.send-button.stop, gem-icon-button.send-button.stop, button[aria-label*="Stop" i], button[class*="stop"], mat-progress-bar, .is-generating, div[class*="generating"]');
 
     // Prompt submitted & generation started: flush queued smart pastes
     if (!AG.wasGenerating && isCurrentlyGenerating) {
@@ -342,24 +392,60 @@ document.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) {
         if (AG.flushPendingSmartPastesOnSend) AG.flushPendingSmartPastesOnSend();
         if (AG.currentContexts.length > 0) {
-            e.preventDefault();
-            e.stopImmediatePropagation();
-            AG.maybeInjectAndSend();
+            const input = AG.findInputArea();
+            const isInsideInput = !e.target || (input && (e.target === input || input.contains(e.target) || (e.target.closest && e.target.closest('.input-area, .text-input-field, rich-textarea, .ql-editor'))));
+            if (isInsideInput) {
+                const handled = AG.maybeInjectAndSend();
+                if (handled) {
+                    e.preventDefault();
+                    e.stopImmediatePropagation();
+                }
+            }
         }
     }
 }, true);
 
 document.addEventListener('click', (e) => {
     var AG = window.AskGemini;
-    const sendBtn = e.target.closest('button[aria-label*="Send" i], button.send-button, gem-icon-button.send-button, [data-test-id*="send"], .send-button, [aria-label*="Submit" i], mat-icon[fonticon*="send"], button:has(mat-icon[fonticon*="send"]), .send-button-container');
-    if (sendBtn) {
+    const sendBtn = e.target.closest(
+        '.send-button-container button, ' +
+        '.send-button-container gem-icon-button, ' +
+        '.send-button-container, ' +
+        'gem-icon-button.send-button, ' +
+        'button.send-button, ' +
+        '.send-button, ' +
+        'button:has(.send-button-icon), ' +
+        'button:has(mat-icon[data-mat-icon-name="send"]), ' +
+        'button:has(mat-icon[fonticon*="send"]), ' +
+        'button[aria-label*="Send" i], ' +
+        'button[aria-label*="Submit" i], ' +
+        'button[aria-label*="Enviar" i], ' +
+        'button[aria-label*="Envoyer" i], ' +
+        'button[aria-label*="Senden" i], ' +
+        'button[aria-label*="Invia" i], ' +
+        'button[aria-label*="送信" i], ' +
+        'button[aria-label*="发送" i], ' +
+        'button[aria-label*="傳送" i], ' +
+        'button[aria-label*="보내기" i], ' +
+        'button[aria-label*="Отправить" i], ' +
+        'button[aria-label*="إرسال" i], ' +
+        'button[aria-label*="gönder" i], ' +
+        'button[aria-label*="Wyślij" i], ' +
+        'button[aria-label*="Verzenden" i], ' +
+        'button[aria-label*="Skicka" i], ' +
+        'button[data-test-id*="send"]'
+    );
+    const isMic = sendBtn && sendBtn.closest('.mic-button-container, speech-dictation-mic-button, [aria-label*="dictat" i], [aria-label*="mic" i]');
+    if (sendBtn && !isMic) {
         if (AG.flushPendingSmartPastesOnSend) AG.flushPendingSmartPastesOnSend();
         if (AG.maybeShowPowerUserFeedbackPrompt) AG.maybeShowPowerUserFeedbackPrompt();
     }
-    if (AG.currentContexts.length > 0 && sendBtn) {
-        e.preventDefault();
-        e.stopImmediatePropagation();
-        AG.maybeInjectAndSend();
+    if (AG.currentContexts.length > 0 && sendBtn && !isMic) {
+        const handled = AG.maybeInjectAndSend();
+        if (handled) {
+            e.preventDefault();
+            e.stopImmediatePropagation();
+        }
     }
 
     // If user clicked any close button on an attachment, sync smart paste state
