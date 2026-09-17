@@ -986,5 +986,20 @@ body[data-theme="light"] .ag-star-item-btn {
   color: rgba(0, 0, 0, 0.2) !important;
 }
 
+@keyframes ag-text-highlight-blink-anim {
+  0% { background-color: transparent; }
+  15% { background-color: rgba(61, 90, 254, 0.35); }
+  85% { background-color: rgba(61, 90, 254, 0.35); }
+  100% { background-color: transparent; }
+}
+
+.ag-text-highlight-blink {
+  animation: ag-text-highlight-blink-anim 2s ease-in-out;
+  border-radius: 2px;
+  padding: 2px 0;
+  display: inline;
+}
+
+
 
 

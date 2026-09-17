@@ -130,7 +130,8 @@ class PopupController {
             'multi_quote_display',
             'usage_limits_enabled',
             'multi_quote_enabled',
-            'smart_paste_behavior'
+            'smart_paste_behavior',
+            'toc_enabled'
         ]);
         const display = res.multi_quote_display || 'compact';
         this.applyToggleState(display);

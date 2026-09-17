@@ -283,134 +283,350 @@ window.AskGemini.clearContext = function clearContext() {
 // ─── scrollToAndHighlightText ─────────────────────────────────────────────────
 window.AskGemini.scrollToAndHighlightText = function scrollToAndHighlightText(textToFind) {
     if (!textToFind) return;
-    const cleanText = textToFind.trim();
+    let cleanText = textToFind.trim();
     if (cleanText.length === 0) return;
 
-    // Gather all text elements in the chat log (excluding transformed proxy components)
-    const candidates = document.querySelectorAll(
-        '.model-response, .message-content, .markdown-main-panel, message-content, .query-text, .user-query-bubble-with-background'
+    // Safety cleanup: If textToFind contains a prefix (e.g. from previously corrupted chips),
+    // extract everything after the last prefix instance:
+    const prefixPattern = /(?:I['\u2019]m replying to this:|I['\u2019]m replying to these excerpts:)\s*/gi;
+    let lastIndex = -1;
+    let match;
+    while ((match = prefixPattern.exec(cleanText)) !== null) {
+        lastIndex = match.index + match[0].length;
+    }
+    if (lastIndex !== -1) {
+        cleanText = cleanText.substring(lastIndex).trim();
+    }
+    // Strip leading/trailing quotation marks if left over
+    cleanText = cleanText.replace(/^["'\u201c\u201d]+|["'\u201c\u201d]+$/g, '').trim();
+    if (!cleanText) return;
+
+    const normalize = (str) => (str || '').replace(/\s+/g, ' ').trim();
+    const normalizedTarget = normalize(cleanText);
+
+    // Collect response candidates (model responses and message containers)
+    const responseCandidates = document.querySelectorAll(
+        '.model-response, model-response, .message-content, message-content, .markdown-main-panel, [data-test-id="model-response"], .response-container, model-response-content, structured-content-container'
     );
 
-    let targetElement = null;
+    let bestElement = null;
 
-    for (const el of candidates) {
-        if (el.closest('.ask-gemini-transformed-proxy')) continue;
-
-        const contentText = el.textContent || "";
-        if (contentText.includes(cleanText)) {
-            targetElement = el;
-            // Drill down to more specific child elements if available
-            const subElements = el.querySelectorAll('p, span, li, h1, h2, h3, code');
-            for (const subEl of subElements) {
-                if (subEl.textContent.includes(cleanText)) {
-                    targetElement = subEl;
-                }
+    // Helper to search within a list of elements
+    function searchElements(elements, targetStr) {
+        for (const el of elements) {
+            if (el.closest('.ask-gemini-transformed-proxy')) continue;
+            const text = normalize(el.textContent);
+            if (text.includes(targetStr)) {
+                return el;
             }
-            break;
+        }
+        return null;
+    }
+
+    // 1. First search: Exact normalized match across assistant message blocks
+    let matchedBlock = searchElements(responseCandidates, normalizedTarget);
+
+    // If not found in assistant responses, try all conversation containers (in case quoting earlier user prompt)
+    if (!matchedBlock) {
+        const allCandidates = document.querySelectorAll('.query-text, .user-query-container, .conversation-container, user-query');
+        matchedBlock = searchElements(allCandidates, normalizedTarget);
+    }
+
+    // 2. If exact normalized string not found (e.g. cross-element quote or formatting differences),
+    // try anchoring on the first 6-8 words or first 40 characters:
+    if (!matchedBlock && normalizedTarget.length > 25) {
+        const words = normalizedTarget.split(/\s+/);
+        if (words.length >= 4) {
+            const anchorWords = words.slice(0, Math.min(8, words.length)).join(' ');
+            matchedBlock = searchElements(responseCandidates, anchorWords);
         }
     }
 
-    if (targetElement) {
-        // Traverse targetElement to find the exact text node containing the textToHighlight
-        const walk = document.createTreeWalker(targetElement, NodeFilter.SHOW_TEXT, null, false);
-        let node;
-        let foundTextNode = false;
-
-        while (node = walk.nextNode()) {
-            const index = node.nodeValue.indexOf(cleanText);
-            if (index !== -1) {
-                foundTextNode = true;
-                const parent = node.parentNode;
-
-                // Create a span representing the selection highlight
-                const highlightSpan = document.createElement('span');
-                highlightSpan.className = 'ag-text-highlight-blink';
-                highlightSpan.textContent = cleanText;
-
-                const beforeText = node.nodeValue.substring(0, index);
-                const afterText = node.nodeValue.substring(index + cleanText.length);
-
-                const beforeNode = document.createTextNode(beforeText);
-                const afterNode = document.createTextNode(afterText);
-
-                parent.insertBefore(beforeNode, node);
-                parent.insertBefore(highlightSpan, node);
-                parent.insertBefore(afterNode, node);
-                parent.removeChild(node);
-
-                highlightSpan.scrollIntoView({ behavior: 'smooth', block: 'center' });
-
-                // Restore clean DOM after the highlight animation ends
-                setTimeout(() => {
-                    if (highlightSpan.parentNode) {
-                        const mergedText = beforeText + cleanText + afterText;
-                        const restoredNode = document.createTextNode(mergedText);
-                        const pNode = highlightSpan.parentNode;
-                        pNode.insertBefore(restoredNode, beforeNode);
-                        pNode.removeChild(beforeNode);
-                        pNode.removeChild(highlightSpan);
-                        pNode.removeChild(afterNode);
-                        pNode.normalize();
-                    }
-                }, 2000);
-
+    // 3. Drill down to the most specific child element inside matchedBlock (p, li, blockquote, etc.)
+    if (matchedBlock) {
+        bestElement = matchedBlock;
+        const subElements = matchedBlock.querySelectorAll('p, li, blockquote, pre, h1, h2, h3, h4, span');
+        for (const subEl of subElements) {
+            if (normalize(subEl.textContent).includes(normalizedTarget)) {
+                bestElement = subEl;
                 break;
             }
         }
+        // If whole text didn't fit in a single subEl, check if the anchor words match a subEl
+        if (bestElement === matchedBlock && normalizedTarget.length > 25) {
+            const anchorWords = normalizedTarget.split(/\s+/).slice(0, 6).join(' ');
+            for (const subEl of subElements) {
+                if (normalize(subEl.textContent).includes(anchorWords)) {
+                    bestElement = subEl;
+                    break;
+                }
+            }
+        }
+    }
 
-        // Fallback to highlighting the parent if specific text node mapping fails
-        if (!foundTextNode) {
-            targetElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            targetElement.classList.add('ag-text-highlight-blink');
-            setTimeout(() => {
-                targetElement.classList.remove('ag-text-highlight-blink');
-            }, 2000);
+    // 4. Scroll to and highlight ONLY the specific quoted text (normal highlight, no block styling)
+    if (bestElement) {
+        let highlighted = false;
+        try {
+            // First check: Exact match within a single text node
+            const walk = document.createTreeWalker(bestElement, NodeFilter.SHOW_TEXT, null, false);
+            let node;
+            while ((node = walk.nextNode())) {
+                const nodeText = node.nodeValue || '';
+                const idx = nodeText.indexOf(cleanText);
+                if (idx !== -1 && node.parentNode && !node.parentNode.classList.contains('ag-text-highlight-blink')) {
+                    highlighted = true;
+                    const span = document.createElement('span');
+                    span.className = 'ag-text-highlight-blink';
+                    span.textContent = cleanText;
+
+                    const beforeText = nodeText.substring(0, idx);
+                    const afterText = nodeText.substring(idx + cleanText.length);
+
+                    const beforeNode = document.createTextNode(beforeText);
+                    const afterNode = document.createTextNode(afterText);
+
+                    const pNode = node.parentNode;
+                    pNode.insertBefore(beforeNode, node);
+                    pNode.insertBefore(span, node);
+                    pNode.insertBefore(afterNode, node);
+                    pNode.removeChild(node);
+
+                    span.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+                    setTimeout(() => {
+                        if (span.parentNode) {
+                            const merged = beforeText + cleanText + afterText;
+                            const restored = document.createTextNode(merged);
+                            pNode.insertBefore(restored, beforeNode);
+                            pNode.removeChild(beforeNode);
+                            pNode.removeChild(span);
+                            pNode.removeChild(afterNode);
+                            pNode.normalize();
+                        }
+                    }, 2000);
+                    break;
+                }
+            }
+
+            // Second check: Multi-node match across inline tags (<b>, <i>, <code>, etc.)
+            if (!highlighted) {
+                const textNodes = [];
+                const fullWalk = document.createTreeWalker(bestElement, NodeFilter.SHOW_TEXT, null, false);
+                let cumulative = '';
+                let n;
+                while ((n = fullWalk.nextNode())) {
+                    if (!n.parentNode || n.parentNode.classList.contains('ag-text-highlight-blink')) continue;
+                    const start = cumulative.length;
+                    cumulative += n.nodeValue;
+                    const end = cumulative.length;
+                    textNodes.push({ node: n, start, end, text: n.nodeValue });
+                }
+
+                let matchIdx = cumulative.indexOf(cleanText);
+                let matchLen = cleanText.length;
+                if (matchIdx === -1 && cleanText.length > 25) {
+                    const anchor = cleanText.slice(0, 30);
+                    matchIdx = cumulative.indexOf(anchor);
+                    if (matchIdx !== -1) matchLen = anchor.length;
+                }
+
+                if (matchIdx !== -1) {
+                    const matchStart = matchIdx;
+                    const matchEnd = matchIdx + matchLen;
+                    const createdSpans = [];
+
+                    for (const item of textNodes) {
+                        if (item.end <= matchStart || item.start >= matchEnd) continue;
+
+                        const nodeRelStart = Math.max(0, matchStart - item.start);
+                        const nodeRelEnd = Math.min(item.text.length, matchEnd - item.start);
+
+                        const before = item.text.substring(0, nodeRelStart);
+                        const matchPart = item.text.substring(nodeRelStart, nodeRelEnd);
+                        const after = item.text.substring(nodeRelEnd);
+
+                        if (!matchPart) continue;
+
+                        const span = document.createElement('span');
+                        span.className = 'ag-text-highlight-blink';
+                        span.textContent = matchPart;
+
+                        const pNode = item.node.parentNode;
+                        if (!pNode) continue;
+
+                        if (before) pNode.insertBefore(document.createTextNode(before), item.node);
+                        pNode.insertBefore(span, item.node);
+                        if (after) pNode.insertBefore(document.createTextNode(after), item.node);
+                        pNode.removeChild(item.node);
+
+                        createdSpans.push({ span, pNode });
+                    }
+
+                    if (createdSpans.length > 0) {
+                        highlighted = true;
+                        createdSpans[0].span.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        setTimeout(() => {
+                            for (const item of createdSpans) {
+                                if (item.span.parentNode) {
+                                    const txt = document.createTextNode(item.span.textContent);
+                                    item.span.parentNode.insertBefore(txt, item.span);
+                                    item.span.parentNode.removeChild(item.span);
+                                    item.pNode.normalize();
+                                }
+                            }
+                        }, 2000);
+                    }
+                }
+            }
+        } catch (e) {
+            // Slicing text nodes failed
+        }
+
+        // Fallback: If inline text highlight couldn't be wrapped, just scroll to the element without any block highlight
+        if (!highlighted) {
+            bestElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
     }
 };
 
+// ─── Prompt Text Extraction Helper ───────────────────────────────────────────
+function extractPromptText(bubble) {
+    // 1. Screen-reader label often contains the clean, full un-collapsed text
+    const srLabel = bubble.querySelector('.screen-reader-user-query-label, h5.cdk-visually-hidden, h5');
+    let srText = '';
+    if (srLabel) {
+        const srClone = srLabel.cloneNode(true);
+        srClone.querySelectorAll('span').forEach(s => {
+            if (/you said/i.test(s.textContent)) s.remove();
+        });
+        srText = srClone.textContent.replace(/^(you said|you:)\s*/i, '').trim();
+    }
+
+    // 2. Visible text by cloning and stripping visually hidden elements and buttons
+    const clone = bubble.cloneNode(true);
+    clone.querySelectorAll(
+        '.screen-reader-user-query-label, h5, .cdk-visually-hidden, button, svg, mat-icon, [data-test-id="prompt-copy-button"], [data-test-id="prompt-edit-button"]'
+    ).forEach(n => n.remove());
+
+    const lines = clone.querySelectorAll('.query-text-line');
+    let visibleText = '';
+    if (lines.length > 0) {
+        visibleText = Array.from(lines).map(l => l.textContent).join('\n').trim();
+    } else {
+        visibleText = (clone.textContent || '').trim();
+    }
+
+    const hasPrefix = (t) => t.includes("I'm replying to this:") || t.includes("I\u2019m replying to this:") ||
+                             t.includes("I'm replying to these excerpts:") || t.includes("I\u2019m replying to these excerpts:");
+
+    // If srText has prefix and is not truncated with ellipsis, prefer it
+    if (srText && hasPrefix(srText) && !srText.includes('\u2026')) {
+        return srText;
+    }
+    if (visibleText && hasPrefix(visibleText) && !visibleText.includes('\u2026')) {
+        return visibleText;
+    }
+    if (srText && hasPrefix(srText)) {
+        return srText;
+    }
+    if (visibleText && hasPrefix(visibleText)) {
+        return visibleText;
+    }
+    return srText || visibleText || bubble.textContent || '';
+}
+
+// ─── Single-Quote Parsing Helper ──────────────────────────────────────────────
+function parseSingleQuote(text) {
+    const prefixPattern = /I['\u2019]m replying to this:/gi;
+    let lastIndex = -1;
+    let match;
+    while ((match = prefixPattern.exec(text)) !== null) {
+        lastIndex = match.index;
+    }
+    if (lastIndex === -1) return null;
+
+    const after = text.substring(lastIndex).replace(/^I['\u2019]m replying to this:\s*/i, '').trim();
+    if (!after.startsWith('"')) return null;
+
+    // Standard pattern: "<quote>"\n\n<message>
+    const separatorMatch = after.match(/^"([\s\S]*?)"\s*(?:[\r\n]+([\s\S]*))?$/);
+    if (separatorMatch) {
+        let context = separatorMatch[1].trim();
+        let message = (separatorMatch[2] || '').trim();
+        message = message.replace(/^\u27e6\u25c8\u27e7\s*/, '').trim();
+        if (context) return { context, message };
+    }
+
+    // Fallback: first quote to last quote in the after-prefix block
+    const firstQuote = after.indexOf('"');
+    const lastQuote = after.lastIndexOf('"');
+    if (firstQuote !== -1 && lastQuote > firstQuote) {
+        let context = after.substring(firstQuote + 1, lastQuote).trim();
+        let message = after.substring(lastQuote + 1).trim();
+        message = message.replace(/^\u27e6\u25c8\u27e7\s*/, '').trim();
+        if (context) return { context, message };
+    }
+    return null;
+}
+
+// ─── Multi-Quote Parsing Helper ───────────────────────────────────────────────
+function parseMultiQuote(text) {
+    const prefixPattern = /I['\u2019]m replying to these excerpts:/gi;
+    let lastIndex = -1;
+    let match;
+    while ((match = prefixPattern.exec(text)) !== null) {
+        lastIndex = match.index;
+    }
+    if (lastIndex === -1) return null;
+
+    const after = text.substring(lastIndex).replace(/^I['\u2019]m replying to these excerpts:\s*/i, '').trim();
+
+    const quoteMatches = [...after.matchAll(/(\d+)\.\s*"([\s\S]*?)"(?=\s*(?:\d+\.|\n\n|$))/g)];
+    if (quoteMatches.length === 0) return null;
+
+    const quotes = quoteMatches.map(m => m[2].trim());
+    const lastMatch = quoteMatches[quoteMatches.length - 1];
+    let actualMessage = after.substring(lastMatch.index + lastMatch[0].length).trim();
+    actualMessage = actualMessage.replace(/^\u27e6\u25c8\u27e7\s*/, '').trim();
+
+    return { quotes, message: actualMessage };
+}
+
 // ─── transformMessages ────────────────────────────────────────────────────────
 window.AskGemini.transformMessages = function transformMessages() {
     var AG = window.AskGemini;
-    const PREFIX = "I'm replying to this:";
-    const PREFIX_CURLY = "I\u2019m replying to this:";
-    const PREFIX_MULTI = "I'm replying to these excerpts:";
-    const PREFIX_MULTI_CURLY = "I\u2019m replying to these excerpts:";
 
-    const replies = document.querySelectorAll('.model-response, .message-content, .markdown-main-panel, message-content');
+    const replies = document.querySelectorAll('.model-response, model-response, .message-content, message-content, .markdown-main-panel');
     const currentCount = replies.length;
     if (currentCount > AG.lastRepliesCount) {
         AG.lastRepliesCount = currentCount;
         AG.isTipTemporarilyDismissed = false;
     }
 
-    const candidates = document.querySelectorAll('.query-text, .user-query-bubble-with-background, p.query-text-line, [data-test-id="user-query"]');
+    // Query top-level user prompt bubbles, avoiding child duplicates
+    const allBubbles = document.querySelectorAll(
+        '.user-query-bubble-with-background, [data-test-id="luminous-collapsed-bubble"], .query-text'
+    );
 
-    candidates.forEach(el => {
+    const rootBubbles = [];
+    allBubbles.forEach(b => {
+        if (b.closest('[data-ag-processed="true"]')) return;
+        if (rootBubbles.some(p => p.contains(b))) return;
+        rootBubbles.push(b);
+    });
+
+    rootBubbles.forEach(el => {
         if (el.hasAttribute('data-ag-processed')) return;
 
-        const text = el.textContent || "";
-        const hasPrefix = text.includes(PREFIX) || text.includes(PREFIX_CURLY);
-        const hasMultiPrefix = text.includes(PREFIX_MULTI) || text.includes(PREFIX_MULTI_CURLY);
+        const text = extractPromptText(el);
+        const hasSingle = /I['\u2019]m replying to this:/i.test(text);
+        const hasMulti = /I['\u2019]m replying to these excerpts:/i.test(text);
 
-        if (hasPrefix && text.includes('"')) {
-            // Extract everything after the prefix
-            const prefixUsed = text.includes(PREFIX) ? PREFIX : PREFIX_CURLY;
-            const afterPrefix = text.substring(text.indexOf(prefixUsed) + prefixUsed.length);
-
-            // Find context between the first and last quotes
-            const firstQuote = afterPrefix.indexOf('"');
-            const lastQuote = afterPrefix.lastIndexOf('"');
-
-            if (firstQuote === -1 || lastQuote === -1 || firstQuote === lastQuote) return;
-
-            const context = afterPrefix.substring(firstQuote + 1, lastQuote).trim();
-            let actualMessage = afterPrefix.substring(lastQuote + 1).trim();
-
-            // Robustly strip any leftover technical separators from previous versions
-            actualMessage = actualMessage.replace(/^\u27e6\u25c8\u27e7\s*/, '').trim();
-
-            if (!context || !actualMessage) return;
+        if (hasSingle) {
+            const parsed = parseSingleQuote(text);
+            if (!parsed || !parsed.context) return;
+            const { context, message: actualMessage } = parsed;
 
             const chipHtml = `
                 <div class="ask-gemini-proxy-content">
@@ -421,7 +637,7 @@ window.AskGemini.transformMessages = function transformMessages() {
                         </div>
                     </button>
                     <div class="ask-gemini-message-bubble">
-                        <div class="ask-gemini-bubble-text"><p>${AG.escapeHtml(actualMessage)}</p></div>
+                        <div class="ask-gemini-bubble-text"><p>${AG.escapeHtml(actualMessage || '')}</p></div>
                     </div>
                 </div>
             `;
@@ -438,24 +654,12 @@ window.AskGemini.transformMessages = function transformMessages() {
             }
 
             wrapper.appendChild(proxy);
-
             wrapper.setAttribute('data-ag-processed', 'true');
             wrapper.querySelectorAll('*').forEach(child => child.setAttribute('data-ag-processed', 'true'));
-        } else if (hasMultiPrefix) {
-            // Multi-quote transform: parse numbered quoted items
-            const prefixUsed = text.includes(PREFIX_MULTI) ? PREFIX_MULTI : PREFIX_MULTI_CURLY;
-            const afterPrefix = text.substring(text.indexOf(prefixUsed) + prefixUsed.length).trim();
-
-            const quoteMatches = [...afterPrefix.matchAll(/(\d+)\.\s*"([^"]+)"/g)];
-            if (quoteMatches.length === 0) return;
-
-            const lastMatch = quoteMatches[quoteMatches.length - 1];
-            let actualMessage = afterPrefix.substring(lastMatch.index + lastMatch[0].length).trim();
-            actualMessage = actualMessage.replace(/^\u27e6\u25c8\u27e7\s*/, '').trim();
-
-            if (!actualMessage) return;
-
-            const quotes = quoteMatches.map(m => m[2].trim());
+        } else if (hasMulti) {
+            const parsed = parseMultiQuote(text);
+            if (!parsed || !parsed.quotes || parsed.quotes.length === 0) return;
+            const { quotes, message: actualMessage } = parsed;
 
             const chipsHtml = quotes.map(q => `
                 <button class="ask-gemini-reply-preview" type="button">
@@ -478,7 +682,7 @@ window.AskGemini.transformMessages = function transformMessages() {
                             </div>
                         </button>
                         <div class="ask-gemini-message-bubble">
-                            <div class="ask-gemini-bubble-text"><p>${AG.escapeHtml(actualMessage)}</p></div>
+                            <div class="ask-gemini-bubble-text"><p>${AG.escapeHtml(actualMessage || '')}</p></div>
                         </div>
                     </div>
                 `;
@@ -487,7 +691,7 @@ window.AskGemini.transformMessages = function transformMessages() {
                     <div class="ask-gemini-proxy-content">
                         ${chipsHtml}
                         <div class="ask-gemini-message-bubble">
-                            <div class="ask-gemini-bubble-text"><p>${AG.escapeHtml(actualMessage)}</p></div>
+                            <div class="ask-gemini-bubble-text"><p>${AG.escapeHtml(actualMessage || '')}</p></div>
                         </div>
                     </div>
                 `;
