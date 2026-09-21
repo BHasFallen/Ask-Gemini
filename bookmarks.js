@@ -22,6 +22,8 @@ window.AskGemini = window.AskGemini || {};
     // ─── State ──────────────────────────────────────────────────────────────────
     AG.bookmarksEnabled = true;
     AG.bookmarksList = [];
+    AG.bookmarksSeen = true;
+    AG.firstBookmarkBannerShown = false;
     AG.isBookmarksOverlayOpen = false;
     AG.isBookmarkReaderOpen = false;
     AG.activeReaderBookmark = null;
@@ -29,6 +31,26 @@ window.AskGemini = window.AskGemini || {};
     let _bookmarksInitialized = false;
 
     // ─── Helpers ────────────────────────────────────────────────────────────────
+    function getSidebarBadgeInfo() {
+        const count = AG.bookmarksList.length;
+        if (count > 0) {
+            return {
+                hasTrailing: true,
+                html: `<span class="ag-bookmarks-nav-badge">${count}</span>`
+            };
+        }
+        if (!AG.bookmarksSeen) {
+            return {
+                hasTrailing: true,
+                html: `<span class="ag-bookmarks-nav-new-badge">New</span>`
+            };
+        }
+        return {
+            hasTrailing: false,
+            html: ''
+        };
+    }
+
     function generateId() {
         return 'ag_bm_' + Date.now() + '_' + Math.random().toString(36).substring(2, 9);
     }
@@ -126,6 +148,78 @@ window.AskGemini = window.AskGemini || {};
                 setTimeout(() => toast.remove(), 300);
             }
         }, 3600);
+    };
+
+    // ─── First-Time Bookmark Educational Banner ─────────────────────────────────
+    AG.showFirstBookmarkBanner = function () {
+        const existing = document.querySelector('.ag-bookmark-first-banner');
+        if (existing) existing.remove();
+
+        const input = (typeof AG.findInputArea === 'function') ? AG.findInputArea() : document.querySelector('rich-textarea, textarea, [contenteditable="true"]');
+        const container = input ? (input.closest('.input-area-container') || input.closest('.chat-input-area') || input.closest('form') || input.parentElement) : document.body;
+
+        const isMac = typeof navigator !== 'undefined' && /Mac|iPod|iPhone|iPad/.test(navigator.platform);
+        const shortcutText = isMac ? '⌘⇧B' : 'Ctrl+Shift+B';
+
+        const banner = document.createElement('div');
+        banner.className = 'ag-bookmark-first-banner';
+
+        banner.innerHTML = `
+            <div class="ag-bookmark-first-left">
+                <div class="ag-bookmark-first-icon">
+                    ${MATERIAL_BOOKMARK_FILLED}
+                </div>
+                <div class="ag-bookmark-first-text-col">
+                    <span class="ag-bookmark-first-title">You just bookmarked a reply!</span>
+                    <span class="ag-bookmark-first-sub">Access your saved responses anytime from the sidebar or press ${shortcutText}.</span>
+                </div>
+            </div>
+            <div class="ag-bookmark-first-actions">
+                <button type="button" class="ag-bookmark-first-btn" id="ag-first-bm-view-btn">
+                    View in Bookmarks
+                </button>
+                <button type="button" class="ag-bookmark-first-close" aria-label="Close">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+                    </svg>
+                </button>
+            </div>
+        `;
+
+        if (container && container.parentNode) {
+            container.parentNode.insertBefore(banner, container);
+        } else {
+            document.body.appendChild(banner);
+        }
+
+        const dismiss = () => {
+            if (banner.dataset.dismissed) return;
+            banner.dataset.dismissed = 'true';
+            banner.classList.add('slide-out');
+            setTimeout(() => {
+                if (banner.parentNode) banner.remove();
+            }, 250);
+        };
+
+        const viewBtn = banner.querySelector('#ag-first-bm-view-btn');
+        if (viewBtn) {
+            viewBtn.onclick = () => {
+                dismiss();
+                AG.openBookmarksOverlay();
+            };
+        }
+
+        const closeBtn = banner.querySelector('.ag-bookmark-first-close');
+        if (closeBtn) {
+            closeBtn.onclick = dismiss;
+        }
+
+        // Auto dismiss after 12 seconds
+        setTimeout(() => {
+            if (document.body.contains(banner)) {
+                dismiss();
+            }
+        }, 12000);
     };
 
     // ─── Text Cleaning & Deduplication Helpers ─────────────────────────────────
@@ -513,17 +607,33 @@ window.AskGemini = window.AskGemini || {};
             _bookmarksInitialized = true;
 
             try {
-                const res = await chrome.storage.local.get(['ag_bookmarks', 'bookmarks_enabled']);
+                const res = await chrome.storage.local.get([
+                    'ag_bookmarks',
+                    'bookmarks_enabled',
+                    'ag_bookmarks_seen',
+                    'ag_first_bookmark_banner_shown'
+                ]);
                 AG.bookmarksEnabled = res.bookmarks_enabled !== false;
                 AG.bookmarksList = Array.isArray(res.ag_bookmarks) ? res.ag_bookmarks : [];
+                AG.bookmarksSeen = res.ag_bookmarks_seen === true || AG.bookmarksList.length > 0;
+                AG.firstBookmarkBannerShown = res.ag_first_bookmark_banner_shown === true || AG.bookmarksList.length > 0;
             } catch (e) {
                 console.error('Ask Gemini: Failed to load bookmarks', e);
                 AG.bookmarksList = [];
+                AG.bookmarksSeen = true;
+                AG.firstBookmarkBannerShown = true;
             }
 
             // Listen for cross-tab or background changes
             chrome.storage.onChanged.addListener((changes, area) => {
                 if (area !== 'local') return;
+                if (changes.ag_bookmarks_seen) {
+                    AG.bookmarksSeen = !!changes.ag_bookmarks_seen.newValue;
+                    AG.updateSidebarBadge();
+                }
+                if (changes.ag_first_bookmark_banner_shown) {
+                    AG.firstBookmarkBannerShown = !!changes.ag_first_bookmark_banner_shown.newValue;
+                }
                 if (changes.ag_bookmarks) {
                     AG.bookmarksList = Array.isArray(changes.ag_bookmarks.newValue) ? changes.ag_bookmarks.newValue : [];
                     AG.updateAllBookmarkButtonStates();
@@ -622,9 +732,17 @@ window.AskGemini = window.AskGemini || {};
                 });
             }
 
-            AG.showBookmarkToast('Bookmarked!', 'View', () => {
-                AG.openBookmarksOverlay();
-            });
+            if (!AG.firstBookmarkBannerShown) {
+                AG.firstBookmarkBannerShown = true;
+                try {
+                    chrome.storage.local.set({ ag_first_bookmark_banner_shown: true });
+                } catch (e) {}
+                AG.showFirstBookmarkBanner();
+            } else {
+                AG.showBookmarkToast('Bookmarked!', 'View', () => {
+                    AG.openBookmarksOverlay();
+                });
+            }
 
             return bookmark;
         },
@@ -1083,9 +1201,9 @@ window.AskGemini = window.AskGemini || {};
                     gemsLink.classList.add('mdc-list-item--with-trailing-meta', 'mat-mdc-list-item-both-leading-and-trailing');
 
                     // Update badge and hover shortcut in trailing meta slot matching native Gemini structure
-                    const count = AG.bookmarksList.length;
                     const isMac = typeof navigator !== 'undefined' && /Mac|iPod|iPhone|iPad/.test(navigator.platform);
                     const shortcutText = isMac ? '⌘⇧B' : 'Ctrl+Shift+B';
+                    const badgeInfo = getSidebarBadgeInfo();
                     let metaContainer = gemsLink.querySelector('[matlistitemmeta], .mat-mdc-list-item-meta, .trailing-content');
                     if (!metaContainer) {
                         metaContainer = document.createElement('div');
@@ -1095,8 +1213,8 @@ window.AskGemini = window.AskGemini || {};
                     }
                     metaContainer.innerHTML = `
                         <span class="trailing-text-container gds-body-s ag-bookmarks-nav-shortcut ng-star-inserted">${shortcutText}</span>
-                        <div class="trailing-slot-content ${count > 0 ? '' : 'no-trailing-content'} ng-star-inserted">
-                            ${count > 0 ? `<span class="ag-bookmarks-nav-badge">${count}</span>` : ''}
+                        <div class="trailing-slot-content ${badgeInfo.hasTrailing ? '' : 'no-trailing-content'} ng-star-inserted">
+                            ${badgeInfo.html}
                         </div>
                     `;
                 }
@@ -1150,10 +1268,9 @@ window.AskGemini = window.AskGemini || {};
         navBtn.setAttribute('tabindex', '0');
         navBtn.setAttribute('aria-label', 'Bookmarks');
 
-        const count = AG.bookmarksList.length;
         const isMac = typeof navigator !== 'undefined' && /Mac|iPod|iPhone|iPad/.test(navigator.platform);
         const shortcutText = isMac ? '⌘⇧B' : 'Ctrl+Shift+B';
-        const countHtml = count > 0 ? `<span class="ag-bookmarks-nav-badge">${count}</span>` : '';
+        const badgeInfo = getSidebarBadgeInfo();
 
         navBtn.innerHTML = `
             <span class="ag-bookmarks-nav-icon">
@@ -1162,8 +1279,8 @@ window.AskGemini = window.AskGemini || {};
             <span class="ag-bookmarks-nav-label">Bookmarks</span>
             <div class="mat-mdc-list-item-meta trailing-content" style="margin-left: auto; display: inline-flex; align-items: center;">
                 <span class="trailing-text-container gds-body-s ag-bookmarks-nav-shortcut ng-star-inserted">${shortcutText}</span>
-                <div class="trailing-slot-content ${count > 0 ? '' : 'no-trailing-content'} ng-star-inserted">
-                    ${countHtml}
+                <div class="trailing-slot-content ${badgeInfo.hasTrailing ? '' : 'no-trailing-content'} ng-star-inserted">
+                    ${badgeInfo.html}
                 </div>
             </div>
         `;
@@ -1185,9 +1302,9 @@ window.AskGemini = window.AskGemini || {};
     };
 
     AG.updateSidebarBadge = function () {
-        const count = AG.bookmarksList.length;
         const isMac = typeof navigator !== 'undefined' && /Mac|iPod|iPhone|iPad/.test(navigator.platform);
         const shortcutText = isMac ? '⌘⇧B' : 'Ctrl+Shift+B';
+        const badgeInfo = getSidebarBadgeInfo();
 
         // Check if Gems was replaced
         const gemsLinks = document.querySelectorAll('a[data-ag-nav="bookmarks"]');
@@ -1207,8 +1324,8 @@ window.AskGemini = window.AskGemini || {};
                 }
                 metaContainer.innerHTML = `
                     <span class="trailing-text-container gds-body-s ag-bookmarks-nav-shortcut ng-star-inserted">${shortcutText}</span>
-                    <div class="trailing-slot-content ${count > 0 ? '' : 'no-trailing-content'} ng-star-inserted">
-                        ${count > 0 ? `<span class="ag-bookmarks-nav-badge">${count}</span>` : ''}
+                    <div class="trailing-slot-content ${badgeInfo.hasTrailing ? '' : 'no-trailing-content'} ng-star-inserted">
+                        ${badgeInfo.html}
                     </div>
                 `;
             });
@@ -1226,8 +1343,8 @@ window.AskGemini = window.AskGemini || {};
             }
             metaContainer.innerHTML = `
                 <span class="trailing-text-container gds-body-s ag-bookmarks-nav-shortcut ng-star-inserted">${shortcutText}</span>
-                <div class="trailing-slot-content ${count > 0 ? '' : 'no-trailing-content'} ng-star-inserted">
-                    ${count > 0 ? `<span class="ag-bookmarks-nav-badge">${count}</span>` : ''}
+                <div class="trailing-slot-content ${badgeInfo.hasTrailing ? '' : 'no-trailing-content'} ng-star-inserted">
+                    ${badgeInfo.html}
                 </div>
             `;
         }
@@ -1270,6 +1387,15 @@ window.AskGemini = window.AskGemini || {};
 
     AG.openBookmarksOverlay = function (updateUrl = true) {
         if (AG.isBookmarksOverlayOpen) return;
+
+        // Dismiss the "New" indicator once user opens bookmarks
+        if (!AG.bookmarksSeen) {
+            AG.bookmarksSeen = true;
+            try {
+                chrome.storage.local.set({ ag_bookmarks_seen: true });
+            } catch (e) {}
+            AG.updateSidebarBadge();
+        }
 
         if (updateUrl && window.location.hash !== '#bookmarks') {
             try {
@@ -2181,21 +2307,41 @@ window.AskGemini = window.AskGemini || {};
         if (clearBtn) clearBtn.style.display = totalCount > 0 ? 'inline-flex' : 'none';
 
         if (totalCount === 0) {
+            const isMac = typeof navigator !== 'undefined' && /Mac|iPod|iPhone|iPad/.test(navigator.platform);
+            const shortcutText = isMac ? '⌘⇧B' : 'Ctrl+Shift+B';
+
             listEl.innerHTML = `
                 <div class="ag-bookmarks-empty">
                     <div class="ag-bookmarks-empty-icon">
-                        <svg viewBox="0 0 24 24" width="48" height="48" fill="currentColor">
+                        <svg viewBox="0 0 24 24" width="44" height="44" fill="currentColor">
                             <path d="M17 3H7c-1.1 0-2 .9-2 2v14.55c0 .91 1.01 1.44 1.77.96L12 17.29l5.23 3.22c.76.47 1.77-.05 1.77-.96V5c0-1.1-.9-2-2-2zm0 13.97-4.46-2.75c-.33-.2-.75-.2-1.08 0L7 16.97V5h10v11.97z"/>
                         </svg>
                     </div>
                     <h3>No bookmarks yet</h3>
-                    <p>Click the bookmark icon under any Gemini response to save it here for quick access.</p>
+                    <p class="ag-bookmarks-empty-instruction">
+                        To start seeing bookmarks and saved responses here, tap the <span class="ag-empty-inline-icon" title="Bookmark icon">${MATERIAL_BOOKMARK_OUTLINE}</span> icon on Gemini's reply.
+                    </p>
+                    <div class="ag-bookmarks-empty-shortcut-hint">
+                        <span class="ag-empty-shortcut-label">Shortcut to return or toggle:</span>
+                        <kbd class="ag-kbd-shortcut">${shortcutText}</kbd>
+                        <span class="ag-empty-shortcut-or">or press</span>
+                        <kbd class="ag-kbd-shortcut">Esc</kbd>
+                    </div>
+                    <button type="button" class="ag-empty-back-btn" id="ag-empty-back-btn">
+                        <span class="google-symbols" style="font-size: 18px;" aria-hidden="true">arrow_back</span>
+                        <span>Back to chat</span>
+                    </button>
                     <div class="ag-empty-brand-note">
                         ${iconUrl ? `<img src="${iconUrl}" class="ag-empty-brand-logo" alt="" />` : ''}
                         <span>Quote Reply for Gemini</span>
                     </div>
                 </div>
             `;
+
+            const backBtn = listEl.querySelector('#ag-empty-back-btn');
+            if (backBtn) {
+                backBtn.onclick = () => AG.closeBookmarksOverlay();
+            }
             return;
         }
 

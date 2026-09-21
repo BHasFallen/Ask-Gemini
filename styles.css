@@ -1143,6 +1143,170 @@ body[data-theme="light"] .ag-rating-inline-close:hover,
   color: #1f1f1f !important;
 }
 
+/* ── First-Time Bookmark Educational Inline Banner ─────────────────── */
+.ag-bookmark-first-banner {
+  margin: 0 auto 12px auto;
+  width: 100%;
+  max-width: 680px;
+  background: var(--ag-bg, rgba(30, 30, 36, 0.95));
+  border: 1px solid rgba(124, 77, 255, 0.3);
+  border-radius: 18px;
+  padding: 10px 16px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(124, 77, 255, 0.1) inset;
+  font-family: 'Google Sans', 'Roboto', -apple-system, sans-serif;
+  box-sizing: border-box;
+  color: var(--ag-text, #e6e0e9);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  animation: ag-banner-slide-down 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  z-index: 100;
+  position: relative;
+}
+
+.ag-bookmark-first-banner.slide-out {
+  opacity: 0;
+  transform: translateY(-8px);
+  pointer-events: none;
+}
+
+.ag-bookmark-first-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.ag-bookmark-first-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: rgba(124, 77, 255, 0.16);
+  color: #a78bfa;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border: 1px solid rgba(124, 77, 255, 0.35);
+  box-shadow: 0 2px 8px rgba(124, 77, 255, 0.2);
+}
+
+.ag-bookmark-first-icon svg {
+  width: 18px;
+  height: 18px;
+  fill: currentColor;
+}
+
+.ag-bookmark-first-text-col {
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+  min-width: 0;
+}
+
+.ag-bookmark-first-title {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--ag-text, #ffffff);
+  margin: 0;
+  line-height: 1.3;
+}
+
+.ag-bookmark-first-sub {
+  font-size: 12px;
+  color: var(--ag-text-dim, #c4c6d0);
+  margin: 2px 0 0 0;
+  line-height: 1.35;
+}
+
+.ag-bookmark-first-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.ag-bookmark-first-btn {
+  background: linear-gradient(135deg, #7c4dff 0%, #6366f1 100%) !important;
+  color: #ffffff !important;
+  font-weight: 600 !important;
+  border: none !important;
+  border-radius: 99px !important;
+  padding: 6px 14px !important;
+  font-size: 12px !important;
+  cursor: pointer !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 5px !important;
+  white-space: nowrap !important;
+  box-shadow: 0 2px 10px rgba(124, 77, 255, 0.35) !important;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease !important;
+  font-family: inherit !important;
+}
+
+.ag-bookmark-first-btn:hover {
+  transform: translateY(-1px) !important;
+  box-shadow: 0 4px 16px rgba(124, 77, 255, 0.55) !important;
+  filter: brightness(1.08) !important;
+}
+
+.ag-bookmark-first-close {
+  background: transparent !important;
+  border: none !important;
+  color: var(--ag-text-dim, #c4c6d0) !important;
+  width: 26px !important;
+  height: 26px !important;
+  border-radius: 50% !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  cursor: pointer !important;
+  padding: 0 !important;
+  transition: all 0.15s ease !important;
+}
+
+.ag-bookmark-first-close:hover {
+  background: rgba(255, 255, 255, 0.1) !important;
+  color: #ffffff !important;
+}
+
+/* Light theme for banner */
+body.light-theme .ag-bookmark-first-banner,
+html[theme="light"] .ag-bookmark-first-banner,
+body[data-theme="light"] .ag-bookmark-first-banner,
+[data-theme="light"] .ag-bookmark-first-banner {
+  background: rgba(255, 255, 255, 0.97) !important;
+  border: 1px solid rgba(124, 77, 255, 0.25) !important;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08), 0 0 0 1px rgba(124, 77, 255, 0.08) inset !important;
+  color: #1f1f1f !important;
+}
+
+body.light-theme .ag-bookmark-first-title,
+html[theme="light"] .ag-bookmark-first-title,
+body[data-theme="light"] .ag-bookmark-first-title,
+[data-theme="light"] .ag-bookmark-first-title {
+  color: #1f1f1f !important;
+}
+
+body.light-theme .ag-bookmark-first-sub,
+html[theme="light"] .ag-bookmark-first-sub,
+body[data-theme="light"] .ag-bookmark-first-sub,
+[data-theme="light"] .ag-bookmark-first-sub {
+  color: #444746 !important;
+}
+
+body.light-theme .ag-bookmark-first-close:hover,
+html[theme="light"] .ag-bookmark-first-close:hover,
+body[data-theme="light"] .ag-bookmark-first-close:hover,
+[data-theme="light"] .ag-bookmark-first-close:hover {
+  background: rgba(0, 0, 0, 0.06) !important;
+  color: #1f1f1f !important;
+}
+
 body.light-theme .ag-star-item-btn,
 html[theme="light"] .ag-star-item-btn,
 body[data-theme="light"] .ag-star-item-btn,
@@ -1482,6 +1646,26 @@ a.gem-nav-list-item[data-ag-nav="bookmarks"]:not(.mdc-icon-button) .leading-icon
   flex-shrink: 0 !important;
 }
 
+.gem-nav-list-item .trailing-slot-content .ag-bookmarks-nav-new-badge,
+.ag-bookmarks-nav-item .trailing-slot-content .ag-bookmarks-nav-new-badge,
+.ag-bookmarks-nav-new-badge {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  background: #7c4dff !important;
+  color: #ffffff !important;
+  border-radius: 99px !important;
+  padding: 1px 7px !important;
+  font-size: 10px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.3px !important;
+  line-height: 14px !important;
+  margin-left: auto !important;
+  flex-shrink: 0 !important;
+  text-transform: uppercase !important;
+  box-shadow: 0 1px 4px rgba(124, 77, 255, 0.45) !important;
+}
+
 /* Trailing meta container alignment */
 a[data-ag-nav="bookmarks"] .mat-mdc-list-item-meta,
 .gem-nav-list-item[data-ag-nav="bookmarks"] .mat-mdc-list-item-meta,
@@ -1526,7 +1710,8 @@ gem-nav-list-item:hover .trailing-slot-content,
 gem-nav-list-item[data-test-id="gems-side-nav-entry-button"]:hover .trailing-slot-content,
 #ag-bookmarks-sidebar-btn:hover .trailing-slot-content,
 .ag-bookmarks-nav-item:hover .trailing-slot-content,
-.ag-bookmarks-nav-item:hover .ag-bookmarks-nav-badge {
+.ag-bookmarks-nav-item:hover .ag-bookmarks-nav-badge,
+.ag-bookmarks-nav-item:hover .ag-bookmarks-nav-new-badge {
   display: none !important;
 }
 
@@ -2128,6 +2313,83 @@ a.mdc-icon-button[data-ag-nav="bookmarks"] gem-icon svg,
   color: #c4c7c5;
 }
 
+.ag-bookmarks-empty-instruction {
+  font-size: 15px !important;
+  line-height: 1.6 !important;
+  max-width: 480px !important;
+  color: #c4c7c5 !important;
+  margin: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  flex-wrap: wrap !important;
+  gap: 4px !important;
+}
+
+.ag-empty-inline-icon {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  background: rgba(124, 77, 255, 0.15) !important;
+  border: 1px solid rgba(124, 77, 255, 0.35) !important;
+  border-radius: 6px !important;
+  padding: 2px 5px !important;
+  color: #a78bfa !important;
+  vertical-align: middle !important;
+}
+
+.ag-empty-inline-icon svg {
+  width: 16px !important;
+  height: 16px !important;
+  display: block !important;
+  fill: currentColor !important;
+}
+
+.ag-bookmarks-empty-shortcut-hint {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  font-size: 13px !important;
+  color: #8e918f !important;
+  margin-top: 6px !important;
+}
+
+.ag-kbd-shortcut {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border: 1px solid rgba(255, 255, 255, 0.18) !important;
+  border-radius: 6px !important;
+  padding: 2px 7px !important;
+  font-size: 12px !important;
+  font-family: inherit !important;
+  font-weight: 500 !important;
+  color: #e3e3e3 !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2) !important;
+}
+
+.ag-empty-back-btn {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  background: rgba(255, 255, 255, 0.06) !important;
+  border: 1px solid rgba(255, 255, 255, 0.14) !important;
+  border-radius: 99px !important;
+  padding: 7px 18px !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  color: #e3e3e3 !important;
+  cursor: pointer !important;
+  margin-top: 8px !important;
+  transition: all 0.15s ease !important;
+  font-family: inherit !important;
+}
+
+.ag-empty-back-btn:hover {
+  background: rgba(255, 255, 255, 0.12) !important;
+  border-color: rgba(255, 255, 255, 0.26) !important;
+  color: #ffffff !important;
+  transform: translateY(-1px) !important;
+}
+
 /* Light Theme Overrides */
 body.light-theme .ag-bookmark-btn,
 html[theme="light"] .ag-bookmark-btn,
@@ -2427,6 +2689,50 @@ body.light-theme .ag-bookmarks-empty p,
 html[theme="light"] .ag-bookmarks-empty p,
 body[data-theme="light"] .ag-bookmarks-empty p {
   color: #444746;
+}
+
+body.light-theme .ag-bookmarks-empty-instruction,
+html[theme="light"] .ag-bookmarks-empty-instruction,
+body[data-theme="light"] .ag-bookmarks-empty-instruction,
+[data-theme="light"] .ag-bookmarks-empty-instruction {
+  color: #444746 !important;
+}
+
+body.light-theme .ag-empty-inline-icon,
+html[theme="light"] .ag-empty-inline-icon,
+body[data-theme="light"] .ag-empty-inline-icon,
+[data-theme="light"] .ag-empty-inline-icon {
+  background: rgba(124, 77, 255, 0.1) !important;
+  border-color: rgba(124, 77, 255, 0.25) !important;
+  color: #7c4dff !important;
+}
+
+body.light-theme .ag-kbd-shortcut,
+html[theme="light"] .ag-kbd-shortcut,
+body[data-theme="light"] .ag-kbd-shortcut,
+[data-theme="light"] .ag-kbd-shortcut {
+  background: rgba(0, 0, 0, 0.05) !important;
+  border-color: rgba(0, 0, 0, 0.12) !important;
+  color: #1f1f1f !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05) !important;
+}
+
+body.light-theme .ag-empty-back-btn,
+html[theme="light"] .ag-empty-back-btn,
+body[data-theme="light"] .ag-empty-back-btn,
+[data-theme="light"] .ag-empty-back-btn {
+  background: rgba(0, 0, 0, 0.04) !important;
+  border-color: rgba(0, 0, 0, 0.12) !important;
+  color: #1f1f1f !important;
+}
+
+body.light-theme .ag-empty-back-btn:hover,
+html[theme="light"] .ag-empty-back-btn:hover,
+body[data-theme="light"] .ag-empty-back-btn:hover,
+[data-theme="light"] .ag-empty-back-btn:hover {
+  background: rgba(0, 0, 0, 0.08) !important;
+  border-color: rgba(0, 0, 0, 0.2) !important;
+  color: #000000 !important;
 }
 
 body.light-theme .ag-bookmarks-nav-item,
