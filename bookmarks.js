@@ -232,23 +232,121 @@ window.AskGemini = window.AskGemini || {};
         return '';
     }
 
-    function extractResponseText(responseEl) {
-        if (!responseEl) return '';
-        // Look for markdown or text container
+    function extractResponseData(responseEl) {
+        if (!responseEl) return { text: '', html: '' };
+
         const textContainer = responseEl.querySelector(
             '.markdown-main-panel, .model-response-text, .response-container, [data-test-id="model-response"], .message-content, message-content'
         ) || responseEl;
 
-        const clone = textContainer.cloneNode(true);
-        // Strip out actions, buttons, tooltips, badges, hidden screenreader text, and avatars
-        const toRemove = clone.querySelectorAll(
-            '.buttons-container-v2, .message-actions, button, mat-icon, svg, .mat-mdc-tooltip-trigger, .ag-bookmark-btn, .visually-hidden, [aria-hidden="true"], .avatar-container, .model-avatar'
-        );
-        toRemove.forEach(n => n.remove());
+        // 1. Prepare HTML clone preserving Gemini's formatting
+        const htmlClone = textContainer.cloneNode(true);
 
-        let text = (clone.innerText || clone.textContent || '').trim();
-        text = text.replace(/\n{3,}/g, '\n\n');
-        return cleanResponsePreview(text);
+        // Strip non-content UI elements
+        htmlClone.querySelectorAll(
+            '.buttons-container-v2, .message-actions, .response-actions, button, mat-icon, svg, .mat-mdc-tooltip-trigger, .ag-bookmark-btn, .visually-hidden, [aria-hidden="true"], .avatar-container, .model-avatar'
+        ).forEach(n => n.remove());
+
+        // Normalize Gemini code-block custom elements into standard pre/code with language header
+        htmlClone.querySelectorAll('code-block').forEach(cb => {
+            const lang = cb.getAttribute('language') || cb.querySelector('.code-block-decoration span, .language')?.textContent?.trim() || '';
+            const codeEl = cb.querySelector('code') || cb.querySelector('pre') || cb;
+            const codeText = codeEl ? (codeEl.textContent || '') : '';
+
+            const wrapper = document.createElement('div');
+            wrapper.className = 'ag-modal-code-wrapper';
+            if (lang) {
+                const header = document.createElement('div');
+                header.className = 'ag-modal-code-header';
+                header.innerHTML = `<span>${escapeHtml(lang)}</span>`;
+                wrapper.appendChild(header);
+            }
+            const pre = document.createElement('pre');
+            pre.className = 'ag-modal-pre';
+            const code = document.createElement('code');
+            if (lang) code.className = 'language-' + lang;
+            code.textContent = codeText;
+            pre.appendChild(code);
+            wrapper.appendChild(pre);
+
+            cb.replaceWith(wrapper);
+        });
+
+        // Normalize standard pre elements
+        htmlClone.querySelectorAll('pre:not(.ag-modal-pre)').forEach(pre => {
+            pre.className = 'ag-modal-pre';
+            if (!pre.closest('.ag-modal-code-wrapper')) {
+                const wrapper = document.createElement('div');
+                wrapper.className = 'ag-modal-code-wrapper';
+                pre.parentNode?.insertBefore(wrapper, pre);
+                wrapper.appendChild(pre);
+            }
+        });
+
+        // Remove leftover code block headers/decorations
+        htmlClone.querySelectorAll('.code-block-decoration').forEach(n => n.remove());
+
+        // Clean internal Angular/Gemini framework attributes
+        htmlClone.querySelectorAll('*').forEach(el => {
+            for (let i = el.attributes.length - 1; i >= 0; i--) {
+                const attrName = el.attributes[i].name;
+                if (
+                    attrName.startsWith('_ng') ||
+                    attrName.startsWith('js') ||
+                    attrName.startsWith('on') ||
+                    attrName === 'style' ||
+                    attrName.startsWith('cdk')
+                ) {
+                    el.removeAttribute(attrName);
+                }
+            }
+        });
+
+        let cleanHtml = htmlClone.innerHTML.trim();
+        cleanHtml = cleanHtml.replace(/^(\s*<p[^>]*>)?\s*Gemini\s+said:?\s*/i, '$1');
+
+        // 2. Prepare text representation with markdown fences and markers
+        const textClone = textContainer.cloneNode(true);
+        textClone.querySelectorAll(
+            '.buttons-container-v2, .message-actions, .response-actions, button, mat-icon, svg, .mat-mdc-tooltip-trigger, .ag-bookmark-btn, .visually-hidden, [aria-hidden="true"], .avatar-container, .model-avatar'
+        ).forEach(n => n.remove());
+
+        // Code blocks to markdown ```
+        textClone.querySelectorAll('code-block, pre').forEach(block => {
+            const lang = block.getAttribute('language') || block.querySelector('.code-block-decoration span, .language')?.textContent?.trim() || '';
+            const codeEl = block.querySelector('code') || block;
+            const codeText = (codeEl.textContent || '').trim();
+            const textNode = document.createTextNode('\n```' + lang + '\n' + codeText + '\n```\n');
+            block.replaceWith(textNode);
+        });
+
+        // Inline code to markdown `code`
+        textClone.querySelectorAll('code').forEach(c => {
+            c.replaceWith(document.createTextNode(' `' + c.textContent.trim() + '` '));
+        });
+
+        // Bold tags to **bold**
+        textClone.querySelectorAll('strong, b').forEach(b => {
+            b.replaceWith(document.createTextNode(' **' + b.textContent.trim() + '** '));
+        });
+
+        // List items to bullets
+        textClone.querySelectorAll('li').forEach(li => {
+            li.replaceWith(document.createTextNode('\n• ' + li.textContent.trim()));
+        });
+
+        let rawText = (textClone.innerText || textClone.textContent || '').trim();
+        rawText = rawText.replace(/\n{3,}/g, '\n\n');
+        const cleanText = cleanResponsePreview(rawText);
+
+        return {
+            text: cleanText,
+            html: cleanHtml
+        };
+    }
+
+    function extractResponseText(responseEl) {
+        return extractResponseData(responseEl).text;
     }
 
     function extractModelName() {
@@ -344,18 +442,19 @@ window.AskGemini = window.AskGemini || {};
             if (!responseEl) return null;
 
             const promptText = findPrecedingUserPrompt(responseEl) || 'Saved Gemini response';
-            const fullResponse = extractResponseText(responseEl);
+            const { text: fullResponse, html: responseHtml } = extractResponseData(responseEl);
             // Generous 50,000 character buffer ensures extensive code blocks and long replies are never cut off
             const responseText = fullResponse.slice(0, 50000);
             const currentUrl = window.location.href;
             const conversationId = extractConversationId(currentUrl);
             const modelName = extractModelName();
 
-            // Create new bookmark object
+            // Create new bookmark object with rich HTML and markdown text
             const bookmark = {
                 id: generateId(),
                 promptText: promptText,
                 responseText: responseText,
+                responseHtml: responseHtml || '',
                 conversationUrl: currentUrl,
                 conversationId: conversationId,
                 createdAt: Date.now(),
@@ -1151,27 +1250,207 @@ window.AskGemini = window.AskGemini || {};
         AG.isBookmarksOverlayOpen = false;
     };
 
-    // ─── Format Response HTML (Paragraphs & Code Blocks) ────────────────────────
-    function formatFullResponseHtml(text) {
-        if (!text) return '';
-        const blocks = text.split(/(```[\s\S]*?```)/g);
-        return blocks.map(part => {
-            if (part.startsWith('```') && part.endsWith('```')) {
-                const lines = part.slice(3, -3).trimStart().split('\n');
-                let lang = '';
-                if (lines.length > 1 && /^[a-zA-Z0-9_-]+$/.test(lines[0].trim())) {
-                    lang = lines.shift().trim();
+    // ─── HTML Sanitizer & Markdown Formatter ──────────────────────────────────
+    function sanitizeResponseHtml(rawHtml) {
+        if (!rawHtml || typeof rawHtml !== 'string') return '';
+        try {
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(rawHtml, 'text/html');
+
+            // Remove unsafe tags
+            const unsafe = doc.querySelectorAll('script, iframe, object, embed, applet, style, link, form, input, button, select, textarea');
+            unsafe.forEach(el => el.remove());
+
+            // Remove inline event handlers and unsafe links
+            doc.querySelectorAll('*').forEach(el => {
+                for (let i = el.attributes.length - 1; i >= 0; i--) {
+                    const attr = el.attributes[i];
+                    const name = attr.name.toLowerCase();
+                    const val = attr.value.toLowerCase();
+                    if (name.startsWith('on') || val.includes('javascript:') || val.includes('data:text/html')) {
+                        el.removeAttribute(attr.name);
+                    }
                 }
-                const code = lines.join('\n');
-                return `<div class="ag-modal-code-wrapper">${lang ? `<div class="ag-modal-code-header"><span>${escapeHtml(lang)}</span></div>` : ''}<pre class="ag-modal-pre"><code>${escapeHtml(code)}</code></pre></div>`;
+                if (el.tagName === 'A') {
+                    el.setAttribute('target', '_blank');
+                    el.setAttribute('rel', 'noopener noreferrer');
+                }
+            });
+
+            return doc.body.innerHTML;
+        } catch (_) {
+            return escapeHtml(rawHtml);
+        }
+    }
+
+    function formatFullResponseMarkdown(text) {
+        if (!text) return '';
+
+        // 1. Extract and protect code blocks
+        const codeBlocks = [];
+        let processed = text.replace(/```([a-zA-Z0-9_-]+)?\s*([\s\S]*?)```/g, (match, lang, code) => {
+            const placeholder = `__AG_CODE_BLOCK_${codeBlocks.length}__`;
+            codeBlocks.push({
+                lang: lang ? lang.trim() : '',
+                code: code.trimEnd()
+            });
+            return placeholder;
+        });
+
+        // 2. Headings
+        processed = processed.replace(/^###\s+(.+)$/gm, '<h4 class="ag-modal-h4">$1</h4>');
+        processed = processed.replace(/^##\s+(.+)$/gm, '<h3 class="ag-modal-h3">$1</h3>');
+        processed = processed.replace(/^#\s+(.+)$/gm, '<h2 class="ag-modal-h2">$1</h2>');
+
+        // 3. Blockquotes
+        processed = processed.replace(/^>\s+(.+)$/gm, '<blockquote class="ag-modal-quote">$1</blockquote>');
+
+        // 4. Bullet lists
+        processed = processed.replace(/^[\*•-]\s+(.+)$/gm, '<li class="ag-modal-li">$1</li>');
+        processed = processed.replace(/((?:<li class="ag-modal-li">.*?<\/li>\s*)+)/gs, '<ul class="ag-modal-ul">$1</ul>');
+
+        // 5. Numbered lists
+        processed = processed.replace(/^\d+\.\s+(.+)$/gm, '<li class="ag-modal-oli">$1</li>');
+        processed = processed.replace(/((?:<li class="ag-modal-oli">.*?<\/li>\s*)+)/gs, '<ol class="ag-modal-ol">$1</ol>');
+
+        // 6. Bold & Italic
+        processed = processed.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+        processed = processed.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+
+        // 7. Inline code
+        processed = processed.replace(/`([^`\n]+)`/g, '<code class="ag-inline-code">$1</code>');
+
+        // 8. Paragraphs
+        const parts = processed.split(/\n\n+/).map(block => {
+            block = block.trim();
+            if (!block) return '';
+            if (
+                block.startsWith('__AG_CODE_BLOCK_') ||
+                block.startsWith('<h') ||
+                block.startsWith('<ul') ||
+                block.startsWith('<ol') ||
+                block.startsWith('<blockquote')
+            ) {
+                return block;
             }
-            return part.split(/\n\n+/).filter(Boolean).map(p => {
-                const trimmed = p.trim();
-                if (!trimmed) return '';
-                const withBreaks = escapeHtml(trimmed).replace(/\n/g, '<br>');
-                return `<p class="ag-modal-p">${withBreaks}</p>`;
-            }).join('');
-        }).join('');
+            return `<p class="ag-modal-p">${block.replace(/\n/g, '<br>')}</p>`;
+        }).filter(Boolean);
+
+        let result = parts.join('');
+
+        // 9. Restore code blocks with native-styled wrappers
+        result = result.replace(/__AG_CODE_BLOCK_(\d+)__/g, (match, idx) => {
+            const item = codeBlocks[parseInt(idx, 10)];
+            if (!item) return '';
+            const header = item.lang
+                ? `<div class="ag-modal-code-header"><span>${escapeHtml(item.lang)}</span></div>`
+                : '';
+            return `<div class="ag-modal-code-wrapper">${header}<pre class="ag-modal-pre"><code>${escapeHtml(item.code)}</code></pre></div>`;
+        });
+
+        return result;
+    }
+
+    function renderFullBookmarkContent(bm) {
+        if (!bm) return '<p class="ag-modal-p" style="color: #8e918f; font-style: italic;">No text saved for this bookmark.</p>';
+        if (bm.responseHtml && bm.responseHtml.trim()) {
+            return sanitizeResponseHtml(bm.responseHtml);
+        }
+        return formatFullResponseMarkdown(bm.responseText || '');
+    }
+
+    function formatCardPreviewHtml(bm) {
+        if (!bm) return '';
+
+        // 1. If we have saved rich HTML, extract inline formatted preview snippet
+        if (bm.responseHtml && bm.responseHtml.trim()) {
+            try {
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(bm.responseHtml, 'text/html');
+
+                // Convert code blocks to clean preview pills
+                doc.querySelectorAll('.ag-modal-code-wrapper, pre').forEach(pre => {
+                    if (pre.tagName.toLowerCase() === 'pre' && pre.closest('.ag-modal-code-wrapper')) {
+                        return; // already handled by outer wrapper
+                    }
+                    const code = pre.querySelector('code') || pre;
+                    const lang = pre.querySelector('.ag-modal-code-header span')?.textContent?.trim() || '';
+                    const codeSnippet = (code.textContent || '').trim().replace(/\s+/g, ' ').slice(0, 85);
+                    const replacement = document.createElement('span');
+                    replacement.className = 'ag-preview-code-pill';
+                    replacement.innerHTML = `${lang ? `<span class="ag-preview-code-tag">${escapeHtml(lang)}</span>` : '<span class="ag-preview-code-tag">Code</span>'}<code class="ag-preview-code">${escapeHtml(codeSnippet)}</code>`;
+                    pre.replaceWith(replacement);
+                });
+
+                // Convert li to inline bullets
+                doc.querySelectorAll('li').forEach(li => {
+                    const span = document.createElement('span');
+                    span.className = 'ag-preview-li';
+                    span.innerHTML = `<span class="ag-preview-bullet">•</span> ${li.innerHTML} `;
+                    li.replaceWith(span);
+                });
+
+                // Strip outer block containers while keeping inline tags (strong, em, code, span)
+                let html = doc.body.innerHTML;
+                html = html.replace(/<\/(p|div|h[1-6]|blockquote)>/gi, ' ');
+                html = html.replace(/<(p|div|h[1-6]|blockquote)[^>]*>/gi, '');
+                html = html.replace(/&nbsp;/g, ' ').replace(/\s{2,}/g, ' ').trim();
+                html = html.replace(/^Gemini\s+said:?\s*/i, '');
+
+                if (html.length > 340) {
+                    const temp = document.createElement('div');
+                    temp.innerHTML = html.slice(0, 340);
+                    // Automatic tag closure by browser DOM
+                    return temp.innerHTML + '...';
+                }
+                return html;
+            } catch (_) {}
+        }
+
+        // 2. Fallback: parse markdown from responseText
+        let text = cleanResponsePreview(bm.responseText || '');
+        if (!text) return '';
+
+        // Extract code blocks first to protect them from HTML escaping
+        const codeBlockPills = [];
+        text = text.replace(/```([a-zA-Z0-9_-]+)?\s*([\s\S]*?)```/g, (match, lang, code) => {
+            const snippet = code.trim().replace(/\s+/g, ' ').slice(0, 80);
+            const idx = codeBlockPills.length;
+            codeBlockPills.push(`<span class="ag-preview-code-pill"><span class="ag-preview-code-tag">${escapeHtml(lang || 'Code')}</span><code class="ag-preview-code">${escapeHtml(snippet)}</code></span>`);
+            return ` __AG_PREVIEW_CODE_${idx}__ `;
+        });
+
+        // Extract inline code
+        const inlineCodePills = [];
+        text = text.replace(/`([^`\n]+)`/g, (match, code) => {
+            const idx = inlineCodePills.length;
+            inlineCodePills.push(`<code class="ag-preview-code">${escapeHtml(code)}</code>`);
+            return ` __AG_PREVIEW_INLINE_${idx}__ `;
+        });
+
+        // Safe HTML escape for remainder of text
+        text = escapeHtml(text);
+
+        // Convert bold
+        text = text.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+
+        // Convert bullet lists
+        text = text.replace(/^[•*-]\s+(.+)$/gm, '<span class="ag-preview-bullet">•</span> $1');
+
+        // Newlines to spaces
+        text = text.replace(/\n+/g, ' ');
+
+        // Restore code pills
+        text = text.replace(/__AG_PREVIEW_CODE_(\d+)__/g, (m, i) => codeBlockPills[parseInt(i, 10)] || '');
+        text = text.replace(/__AG_PREVIEW_INLINE_(\d+)__/g, (m, i) => inlineCodePills[parseInt(i, 10)] || '');
+
+        if (text.length > 340) {
+            const temp = document.createElement('div');
+            temp.innerHTML = text.slice(0, 340);
+            return temp.innerHTML + '...';
+        }
+
+        return text;
     }
 
     // ─── Quick View Modal (Direct Read / Offline Viewer) ────────────────────────
@@ -1188,7 +1467,7 @@ window.AskGemini = window.AskGemini || {};
         const rawResponse = bm.responseText || '';
         const charCount = rawResponse.length.toLocaleString();
         const timeStr = formatRelativeTime(bm.createdAt);
-        const formattedHtml = formatFullResponseHtml(rawResponse);
+        const formattedHtml = renderFullBookmarkContent(bm);
         const modelBadge = bm.modelName ? `<span class="ag-bookmark-model-tag">${escapeHtml(bm.modelName)}</span>` : '';
 
         modalOverlay.innerHTML = `
@@ -1431,11 +1710,7 @@ window.AskGemini = window.AskGemini || {};
 
             card.setAttribute('aria-label', `Open bookmark: ${cleanPrompt}`);
 
-            // Clean preview snippet
-            let previewText = cleanResponsePreview(bm.responseText || '');
-            if (previewText.length > 280) {
-                previewText = previewText.slice(0, 280) + '...';
-            }
+            const previewHtml = formatCardPreviewHtml(bm);
 
             card.innerHTML = `
                 <div class="ag-bookmark-icon-container">
@@ -1452,7 +1727,7 @@ window.AskGemini = window.AskGemini || {};
                             <span class="ag-bookmark-time">${escapeHtml(timeStr)}</span>
                         </div>
                     </div>
-                    <p class="ag-bookmark-preview">${escapeHtml(previewText)}</p>
+                    <div class="ag-bookmark-preview">${previewHtml}</div>
                     <div class="ag-bookmark-card-links">
                         <span class="ag-card-read-more-link">Read full response &rarr;</span>
                     </div>
