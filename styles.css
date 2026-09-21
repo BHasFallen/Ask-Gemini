@@ -1192,6 +1192,7 @@ body[data-theme="light"] .ag-star-item-btn,
 .ag-bookmark-btn:hover {
   background: rgba(227, 227, 227, 0.08) !important;
   color: #e3e3e3 !important;
+  z-index: 2147483647 !important;
 }
 
 .ag-bookmark-btn.bookmarked {
@@ -1202,6 +1203,7 @@ body[data-theme="light"] .ag-star-item-btn,
 .ag-bookmark-btn.bookmarked:hover {
   background: rgba(255, 255, 255, 0.2) !important;
   color: #ffffff !important;
+  z-index: 2147483647 !important;
 }
 
 .ag-bookmark-btn .ag-bookmark-icon-wrap {
@@ -1231,19 +1233,20 @@ body[data-theme="light"] .ag-star-item-btn,
   animation: ag-bookmark-pop 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
-/* Custom Native MDC Tooltip for Bookmark Button */
+/* Custom Native MDC Tooltip for Bookmark Button - Positioned ABOVE button to never overlap input box */
 .ag-bookmark-tooltip {
   position: absolute !important;
-  top: calc(100% + 6px) !important;
+  bottom: calc(100% + 8px) !important;
+  top: auto !important;
   left: 50% !important;
   transform: translateX(-50%) scale(0.8) !important;
   pointer-events: none !important;
   opacity: 0 !important;
   visibility: hidden !important;
-  z-index: 99999 !important;
+  z-index: 2147483647 !important;
   white-space: nowrap !important;
   transition: opacity 120ms cubic-bezier(0, 0, 0.2, 1), transform 120ms cubic-bezier(0, 0, 0.2, 1) !important;
-  transform-origin: center top !important;
+  transform-origin: center bottom !important;
 }
 
 .ag-bookmark-btn:hover .ag-bookmark-tooltip {
