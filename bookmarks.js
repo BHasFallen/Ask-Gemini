@@ -601,8 +601,8 @@ window.AskGemini = window.AskGemini || {};
             const btn = document.createElement('button');
             btn.type = 'button';
             btn.className = 'ag-bookmark-btn' + (existingBm ? ' bookmarked' : '');
-            btn.setAttribute('aria-label', existingBm ? 'Remove bookmark' : 'Bookmark response');
-            btn.setAttribute('title', existingBm ? 'Remove bookmark' : 'Bookmark response');
+            btn.setAttribute('aria-label', existingBm ? 'Remove bookmark (Quote Reply)' : 'Bookmark response (Quote Reply)');
+            btn.setAttribute('title', existingBm ? 'Remove bookmark (Quote Reply)' : 'Bookmark response (Quote Reply)');
             btn.setAttribute('data-test-id', 'ag-bookmark-button');
             if (existingBm) {
                 btn.dataset.bookmarkId = existingBm.id;
@@ -757,8 +757,8 @@ window.AskGemini = window.AskGemini || {};
         if (gemsLinks.size > 0) {
             gemsLinks.forEach(gemsLink => {
                 // Set link attributes
-                gemsLink.setAttribute('aria-label', 'Bookmarks');
-                gemsLink.setAttribute('title', 'Bookmarks (Ctrl+Shift+B)');
+                gemsLink.setAttribute('aria-label', 'Bookmarks (Quote Reply)');
+                gemsLink.setAttribute('title', 'Bookmarks (Quote Reply • Ctrl+Shift+B)');
                 gemsLink.setAttribute('href', '#');
                 gemsLink.dataset.agNav = 'bookmarks';
 
@@ -990,6 +990,10 @@ window.AskGemini = window.AskGemini || {};
     AG.openBookmarksOverlay = function () {
         if (AG.isBookmarksOverlayOpen) return;
 
+        const iconUrl = (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.getURL)
+            ? chrome.runtime.getURL('icons/icon16.png')
+            : '';
+
         // Locate Gemini's main content area
         const sidenavContent = document.querySelector('bard-sidenav-content') || document.querySelector('main') || document.body;
         const contentWrapper = sidenavContent.querySelector('.content-wrapper') || sidenavContent;
@@ -1016,6 +1020,10 @@ window.AskGemini = window.AskGemini || {};
                     <div class="ag-bookmarks-header-title">
                         <h2 class="ag-headline-m">Bookmarks</h2>
                         <span class="ag-bookmarks-count-pill" id="ag-overlay-count-pill">0</span>
+                        <div class="ag-bookmarks-brand-tag" title="Feature provided by Quote Reply for Gemini">
+                            ${iconUrl ? `<img src="${iconUrl}" class="ag-brand-mini-logo" alt="" />` : ''}
+                            <span>Quote Reply</span>
+                        </div>
                     </div>
                 </div>
 
@@ -1054,8 +1062,13 @@ window.AskGemini = window.AskGemini || {};
                 <div class="ag-bookmarks-main">
                     <div class="ag-bookmarks-section-header">
                         <span class="ag-section-title">Saved responses</span>
+                        <span class="ag-bookmarks-section-badge">Quote Reply feature</span>
                     </div>
                     <div id="ag-bookmarks-list" class="ag-bookmarks-list"></div>
+                    <div class="ag-bookmarks-footer-branding">
+                        ${iconUrl ? `<img src="${iconUrl}" class="ag-footer-brand-logo" alt="" />` : ''}
+                        <span>Bookmarks provided by <strong>Quote Reply for Gemini</strong></span>
+                    </div>
                 </div>
             </div>
         `;
@@ -1193,6 +1206,10 @@ window.AskGemini = window.AskGemini || {};
     }
 
     AG.renderBookmarksList = function (filterQuery = '') {
+        const iconUrl = (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.getURL)
+            ? chrome.runtime.getURL('icons/icon16.png')
+            : '';
+
         const listEl = document.getElementById('ag-bookmarks-list');
         const countPill = document.getElementById('ag-overlay-count-pill');
         if (!listEl) return;
@@ -1214,6 +1231,10 @@ window.AskGemini = window.AskGemini || {};
                     </div>
                     <h3>No bookmarks yet</h3>
                     <p>Click the bookmark icon under any Gemini response to save it here for quick access.</p>
+                    <div class="ag-empty-brand-note">
+                        ${iconUrl ? `<img src="${iconUrl}" class="ag-empty-brand-logo" alt="" />` : ''}
+                        <span>Quote Reply for Gemini</span>
+                    </div>
                 </div>
             `;
             return;
