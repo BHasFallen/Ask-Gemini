@@ -1450,12 +1450,17 @@ gem-nav-list-item[data-test-id="gems-side-nav-entry-button"] .mat-mdc-list-item-
 .gem-nav-list-item .trailing-text-container.ag-bookmarks-nav-shortcut,
 .ag-bookmarks-nav-shortcut {
   display: none !important;
-  font-family: var(--gds-font-family-text, 'Google Sans Text', Roboto, sans-serif) !important;
-  font-size: 13px !important;
-  line-height: 18px !important;
-  font-weight: 400 !important;
+  --gds-type-scale-default-rond: var(--gem-sys-typography-type-scale--body-s-font-rond);
+  font-family: Google Sans Flex, Google Sans, Helvetica Neue, sans-serif !important;
+  font-size: var(--gem-sys-typography-type-scale--body-s-font-size, 13px) !important;
+  font-weight: var(--gem-sys-typography-type-scale--body-s-font-weight, 400) !important;
+  letter-spacing: var(--gem-sys-typography-type-scale--body-s-font-tracking, 0.1px) !important;
+  line-height: var(--gem-sys-typography-type-scale--body-s-line-height, 18px) !important;
+  --gds-type-scale-default-wdth: var(--gem-sys-typography-type-scale--body-s-font-width);
+  --gds-type-scale-default-wght: var(--gem-sys-typography-type-scale--body-s-font-wght);
+  font-variation-settings: var(--gds-type-scale-default-wdth), var(--gds-type-scale-default-slnt), var(--gds-type-scale-default-rond), var(--gds-type-scale-default-wght) !important;
+  --gds-type-scale-bold-wght: var(--gem-sys-typography-type-scale-emphasized--emphasized-body-s-font-wght, "wght" 540);
   color: var(--mat-sys-on-surface-variant, #c4c7c5) !important;
-  letter-spacing: 0.1px !important;
   margin-left: auto !important;
   flex-shrink: 0 !important;
   user-select: none !important;
