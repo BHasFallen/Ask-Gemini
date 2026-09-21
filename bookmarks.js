@@ -843,16 +843,22 @@ window.AskGemini = window.AskGemini || {};
             const btn = document.createElement('button');
             btn.type = 'button';
             btn.className = 'ag-bookmark-btn' + (existingBm ? ' bookmarked' : '');
-            btn.setAttribute('aria-label', existingBm ? 'Remove bookmark (Quote Reply)' : 'Bookmark response (Quote Reply)');
-            btn.setAttribute('title', existingBm ? 'Remove bookmark (Quote Reply)' : 'Bookmark response (Quote Reply)');
+            btn.setAttribute('aria-label', existingBm ? 'Remove bookmark' : 'Bookmark response');
+            btn.removeAttribute('title');
             btn.setAttribute('data-test-id', 'ag-bookmark-button');
             if (existingBm) {
                 btn.dataset.bookmarkId = existingBm.id;
             }
 
             const iconSvg = existingBm ? MATERIAL_BOOKMARK_FILLED : MATERIAL_BOOKMARK_OUTLINE;
+            const tooltipText = existingBm ? 'Remove bookmark' : 'Bookmark response';
 
-            btn.innerHTML = `<span class="ag-bookmark-icon-wrap">${iconSvg}</span>`;
+            btn.innerHTML = `
+                <span class="ag-bookmark-icon-wrap">${iconSvg}</span>
+                <div class="ag-bookmark-tooltip" role="tooltip" aria-hidden="true">
+                    <div class="mat-mdc-tooltip-surface mdc-tooltip__surface">${tooltipText}</div>
+                </div>
+            `;
 
             btn.addEventListener('click', async (e) => {
                 e.preventDefault();
@@ -862,22 +868,27 @@ window.AskGemini = window.AskGemini || {};
                 setTimeout(() => btn.classList.remove('ag-bookmark-pop'), 350);
 
                 const isCurrentlyBookmarked = btn.classList.contains('bookmarked');
+                const tooltipSurface = btn.querySelector('.mat-mdc-tooltip-surface');
+                const iconWrap = btn.querySelector('.ag-bookmark-icon-wrap');
+
                 if (isCurrentlyBookmarked) {
                     const id = btn.dataset.bookmarkId;
                     await AG.BookmarkManager.removeBookmark(id || responseEl);
                     btn.classList.remove('bookmarked');
                     delete btn.dataset.bookmarkId;
                     btn.setAttribute('aria-label', 'Bookmark response');
-                    btn.setAttribute('title', 'Bookmark response');
-                    btn.querySelector('.ag-bookmark-icon-wrap').innerHTML = MATERIAL_BOOKMARK_OUTLINE;
+                    btn.removeAttribute('title');
+                    if (iconWrap) iconWrap.innerHTML = MATERIAL_BOOKMARK_OUTLINE;
+                    if (tooltipSurface) tooltipSurface.textContent = 'Bookmark response';
                 } else {
                     const newBm = await AG.BookmarkManager.addBookmark(responseEl);
                     if (newBm) {
                         btn.classList.add('bookmarked');
                         btn.dataset.bookmarkId = newBm.id;
                         btn.setAttribute('aria-label', 'Remove bookmark');
-                        btn.setAttribute('title', 'Remove bookmark');
-                        btn.querySelector('.ag-bookmark-icon-wrap').innerHTML = MATERIAL_BOOKMARK_FILLED;
+                        btn.removeAttribute('title');
+                        if (iconWrap) iconWrap.innerHTML = MATERIAL_BOOKMARK_FILLED;
+                        if (tooltipSurface) tooltipSurface.textContent = 'Remove bookmark';
                     }
                 }
             });
@@ -911,18 +922,22 @@ window.AskGemini = window.AskGemini || {};
 
             const existingBm = AG.findBookmarkForResponse(responseEl);
             const iconWrap = btn.querySelector('.ag-bookmark-icon-wrap');
+            const tooltipSurface = btn.querySelector('.mat-mdc-tooltip-surface');
+
+            btn.removeAttribute('title');
+
             if (existingBm) {
                 btn.classList.add('bookmarked');
                 btn.dataset.bookmarkId = existingBm.id;
                 btn.setAttribute('aria-label', 'Remove bookmark');
-                btn.setAttribute('title', 'Remove bookmark');
                 if (iconWrap) iconWrap.innerHTML = MATERIAL_BOOKMARK_FILLED;
+                if (tooltipSurface) tooltipSurface.textContent = 'Remove bookmark';
             } else {
                 btn.classList.remove('bookmarked');
                 delete btn.dataset.bookmarkId;
                 btn.setAttribute('aria-label', 'Bookmark response');
-                btn.setAttribute('title', 'Bookmark response');
                 if (iconWrap) iconWrap.innerHTML = MATERIAL_BOOKMARK_OUTLINE;
+                if (tooltipSurface) tooltipSurface.textContent = 'Bookmark response';
             }
         });
     };

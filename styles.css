@@ -1231,6 +1231,50 @@ body[data-theme="light"] .ag-star-item-btn,
   animation: ag-bookmark-pop 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
+/* Custom Native MDC Tooltip for Bookmark Button */
+.ag-bookmark-tooltip {
+  position: absolute !important;
+  top: calc(100% + 6px) !important;
+  left: 50% !important;
+  transform: translateX(-50%) scale(0.8) !important;
+  pointer-events: none !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+  z-index: 99999 !important;
+  white-space: nowrap !important;
+  transition: opacity 120ms cubic-bezier(0, 0, 0.2, 1), transform 120ms cubic-bezier(0, 0, 0.2, 1) !important;
+  transform-origin: center top !important;
+}
+
+.ag-bookmark-btn:hover .ag-bookmark-tooltip {
+  opacity: 1 !important;
+  visibility: visible !important;
+  transform: translateX(-50%) scale(1) !important;
+  transition-delay: 200ms !important;
+}
+
+/* Native MDC Tooltip Surface */
+.ag-bookmark-tooltip .mat-mdc-tooltip-surface {
+  word-break: normal !important;
+  overflow-wrap: anywhere !important;
+  padding: 4px 8px !important;
+  min-width: 40px !important;
+  max-width: 200px !important;
+  min-height: 24px !important;
+  box-sizing: border-box !important;
+  overflow: hidden !important;
+  text-align: center !important;
+  background-color: var(--mat-tooltip-container-color, var(--mat-sys-inverse-surface, #e3e3e3)) !important;
+  color: var(--mat-tooltip-supporting-text-color, var(--mat-sys-inverse-on-surface, #1f1f1f)) !important;
+  border-radius: var(--mat-tooltip-container-shape, var(--mat-sys-corner-extra-small, 4px)) !important;
+  font-family: var(--mat-tooltip-supporting-text-font, var(--mat-sys-body-small-font, 'Google Sans Text', Roboto, sans-serif)) !important;
+  font-size: var(--mat-tooltip-supporting-text-size, var(--mat-sys-body-small-size, 11px)) !important;
+  font-weight: var(--mat-tooltip-supporting-text-weight, var(--mat-sys-body-small-weight, 500)) !important;
+  line-height: var(--mat-tooltip-supporting-text-line-height, var(--mat-sys-body-small-line-height, 16px)) !important;
+  letter-spacing: var(--mat-tooltip-supporting-text-tracking, var(--mat-sys-body-small-tracking, 0.1px)) !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3) !important;
+}
+
 /* Bookmarks Toast */
 .ag-bookmark-toast {
   position: fixed;
@@ -2107,6 +2151,13 @@ html[theme="light"] .ag-bookmark-btn.bookmarked:hover,
 body[data-theme="light"] .ag-bookmark-btn.bookmarked:hover {
   background: rgba(0, 0, 0, 0.12) !important;
   color: #1f1f1f !important;
+}
+
+body.light-theme .ag-bookmark-tooltip .mat-mdc-tooltip-surface,
+html[theme="light"] .ag-bookmark-tooltip .mat-mdc-tooltip-surface,
+body[data-theme="light"] .ag-bookmark-tooltip .mat-mdc-tooltip-surface {
+  background-color: var(--mat-tooltip-container-color, var(--mat-sys-inverse-surface, #1f1f1f)) !important;
+  color: var(--mat-tooltip-supporting-text-color, var(--mat-sys-inverse-on-surface, #e3e3e3)) !important;
 }
 
 body.light-theme .ag-bookmark-toast,
