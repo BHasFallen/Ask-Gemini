@@ -239,98 +239,209 @@ window.AskGemini = window.AskGemini || {};
             '.markdown-main-panel, .model-response-text, .response-container, [data-test-id="model-response"], .message-content, message-content'
         ) || responseEl;
 
-        // 1. Prepare HTML clone preserving Gemini's formatting
-        const htmlClone = textContainer.cloneNode(true);
-
-        // Strip non-content UI elements
-        htmlClone.querySelectorAll(
-            '.buttons-container-v2, .message-actions, .response-actions, button, mat-icon, svg, .mat-mdc-tooltip-trigger, .ag-bookmark-btn, .visually-hidden, [aria-hidden="true"], .avatar-container, .model-avatar'
-        ).forEach(n => n.remove());
-
-        // Normalize Gemini code-block custom elements into standard pre/code with language header
-        htmlClone.querySelectorAll('code-block').forEach(cb => {
-            const lang = cb.getAttribute('language') || cb.querySelector('.code-block-decoration span, .language')?.textContent?.trim() || '';
-            const codeEl = cb.querySelector('code') || cb.querySelector('pre') || cb;
-            const codeText = codeEl ? (codeEl.textContent || '') : '';
-
-            const wrapper = document.createElement('div');
-            wrapper.className = 'ag-modal-code-wrapper';
-            if (lang) {
-                const header = document.createElement('div');
-                header.className = 'ag-modal-code-header';
-                header.innerHTML = `<span>${escapeHtml(lang)}</span>`;
-                wrapper.appendChild(header);
+        // ── Build clean semantic HTML from Gemini's live DOM ──────────────────────
+        function nodeToHtml(node) {
+            if (!node) return '';
+            if (node.nodeType === Node.TEXT_NODE) {
+                const t = node.textContent || '';
+                return escapeHtml(t);
             }
-            const pre = document.createElement('pre');
-            pre.className = 'ag-modal-pre';
-            const code = document.createElement('code');
-            if (lang) code.className = 'language-' + lang;
-            code.textContent = codeText;
-            pre.appendChild(code);
-            wrapper.appendChild(pre);
+            if (node.nodeType !== Node.ELEMENT_NODE) return '';
 
-            cb.replaceWith(wrapper);
-        });
+            const tag = node.tagName.toLowerCase();
 
-        // Normalize standard pre elements
-        htmlClone.querySelectorAll('pre:not(.ag-modal-pre)').forEach(pre => {
-            pre.className = 'ag-modal-pre';
-            if (!pre.closest('.ag-modal-code-wrapper')) {
-                const wrapper = document.createElement('div');
-                wrapper.className = 'ag-modal-code-wrapper';
-                pre.parentNode?.insertBefore(wrapper, pre);
-                wrapper.appendChild(pre);
+            // Skip UI-only elements entirely
+            if ([
+                'button', 'mat-icon', 'svg', 'path', 'gem-icon', 'gem-icon-button',
+                'mat-ripple', 'span[class*="mat-focus"]', 'style', 'script'
+            ].includes(tag)) return '';
+
+            const cls = node.className || '';
+            const skipClasses = [
+                'buttons-container-v2', 'message-actions', 'response-actions',
+                'mat-mdc-tooltip-trigger', 'ag-bookmark-btn', 'mat-focus-indicator',
+                'mat-mdc-button-touch-target', 'mat-mdc-button-persistent-ripple',
+                'mdc-icon-button__ripple', 'code-block-decoration', 'buttons',
+                'only-show-to-message-actions', 'avatar-container', 'model-avatar',
+                'attachment-container'
+            ];
+            if (skipClasses.some(sc => typeof cls === 'string' && cls.includes(sc))) return '';
+
+            // aria-hidden nodes
+            if (node.getAttribute('aria-hidden') === 'true') return '';
+
+            // ── Gemini custom elements ──
+            if (tag === 'code-block') {
+                const lang = node.getAttribute('language') ||
+                    node.querySelector('.code-block-decoration span, .language')?.textContent?.trim() || '';
+                const codeEl = node.querySelector('[data-test-id="code-content"], code, pre') || node;
+                const codeText = codeEl.textContent || '';
+                const headerHtml = lang
+                    ? `<div class="ag-modal-code-header"><span>${escapeHtml(lang)}</span></div>`
+                    : '';
+                return `<div class="ag-modal-code-wrapper">${headerHtml}<pre class="ag-modal-pre"><code>${escapeHtml(codeText)}</code></pre></div>`;
             }
-        });
 
-        // Remove leftover code block headers/decorations
-        htmlClone.querySelectorAll('.code-block-decoration').forEach(n => n.remove());
-
-        // Clean internal Angular/Gemini framework attributes
-        htmlClone.querySelectorAll('*').forEach(el => {
-            for (let i = el.attributes.length - 1; i >= 0; i--) {
-                const attrName = el.attributes[i].name;
-                if (
-                    attrName.startsWith('_ng') ||
-                    attrName.startsWith('js') ||
-                    attrName.startsWith('on') ||
-                    attrName === 'style' ||
-                    attrName.startsWith('cdk')
-                ) {
-                    el.removeAttribute(attrName);
-                }
+            // <sequence> → numbered stepper — convert to ordered list with headers
+            if (tag === 'sequence') {
+                const events = node.querySelectorAll('.sequence-event');
+                if (events.length === 0) return childrenToHtml(node);
+                let html = '<ol class="ag-modal-ol ag-modal-sequence">';
+                events.forEach(ev => {
+                    const title = ev.querySelector('.sequence-event-title')?.textContent?.trim() || '';
+                    const subtitle = ev.querySelector('.sequence-event-subtitle')?.textContent?.trim() || '';
+                    const descEl = ev.querySelector('.sequence-event-description');
+                    const desc = descEl ? innerContentToHtml(descEl) : '';
+                    html += '<li class="ag-modal-oli ag-modal-sequence-step">';
+                    if (title) {
+                        html += `<strong class="ag-modal-step-title">${escapeHtml(title)}</strong>`;
+                        if (subtitle) html += ` <span class="ag-modal-step-sub">${escapeHtml(subtitle)}</span>`;
+                    }
+                    if (desc) html += `<div class="ag-modal-step-body">${desc}</div>`;
+                    html += '</li>';
+                });
+                html += '</ol>';
+                return html;
             }
-        });
 
-        let cleanHtml = htmlClone.innerHTML.trim();
-        cleanHtml = cleanHtml.replace(/^(\s*<p[^>]*>)?\s*Gemini\s+said:?\s*/i, '$1');
+            // <response-element> → recurse into structured children
+            if (tag === 'response-element') return childrenToHtml(node);
 
-        // 2. Prepare text representation with markdown fences and markers
+            // <structured-node-sequence>, <structured-text> → extract inner content
+            if (tag === 'structured-node-sequence' || tag === 'structured-text') {
+                return childrenToHtml(node);
+            }
+
+            // <structured-list> → extract the inner ul/ol
+            if (tag === 'structured-list') {
+                return childrenToHtml(node);
+            }
+
+            // Standard semantic elements – pass through with children
+            const blockTags = ['p', 'div', 'section', 'article', 'main', 'header', 'footer', 'nav', 'aside'];
+            const inlineTags = ['span', 'a', 'abbr', 'cite', 'q', 'time'];
+            const headingTags = ['h1', 'h2', 'h3', 'h4', 'h5', 'h6'];
+            const listTags = ['ul', 'ol', 'li'];
+            const emphTags = ['strong', 'b', 'em', 'i', 'u', 's', 'mark', 'del', 'ins'];
+
+            if (tag === 'code') {
+                const text = node.textContent || '';
+                return `<code class="ag-inline-code">${escapeHtml(text)}</code>`;
+            }
+
+            if (tag === 'pre') {
+                const codeEl = node.querySelector('code');
+                const codeText = codeEl ? (codeEl.textContent || '') : (node.textContent || '');
+                return `<div class="ag-modal-code-wrapper"><pre class="ag-modal-pre"><code>${escapeHtml(codeText)}</code></pre></div>`;
+            }
+
+            if (tag === 'blockquote') return `<blockquote class="ag-modal-quote">${childrenToHtml(node)}</blockquote>`;
+            if (tag === 'table') return `<table>${childrenToHtml(node)}</table>`;
+            if (tag === 'thead') return `<thead>${childrenToHtml(node)}</thead>`;
+            if (tag === 'tbody') return `<tbody>${childrenToHtml(node)}</tbody>`;
+            if (tag === 'tr') return `<tr>${childrenToHtml(node)}</tr>`;
+            if (tag === 'th') return `<th>${childrenToHtml(node)}</th>`;
+            if (tag === 'td') return `<td>${childrenToHtml(node)}</td>`;
+            if (tag === 'br') return '<br>';
+            if (tag === 'hr') return '<hr>';
+
+            if (headingTags.includes(tag)) {
+                const cls2 = `ag-modal-h${tag[1]}`;
+                return `<${tag} class="${cls2}">${childrenToHtml(node)}</${tag}>`;
+            }
+
+            if (emphTags.includes(tag)) {
+                const inner = childrenToHtml(node);
+                if (!inner.trim()) return '';
+                return `<${tag}>${inner}</${tag}>`;
+            }
+
+            if (tag === 'li') {
+                return `<li class="ag-modal-oli">${childrenToHtml(node)}</li>`;
+            }
+
+            if (tag === 'ul') return `<ul class="ag-modal-ul">${childrenToHtml(node)}</ul>`;
+            if (tag === 'ol') return `<ol class="ag-modal-ol">${childrenToHtml(node)}</ol>`;
+
+            if (tag === 'p') {
+                const inner = childrenToHtml(node);
+                if (!inner.trim()) return '';
+                return `<p class="ag-modal-p">${inner}</p>`;
+            }
+
+            if (tag === 'a') {
+                const href = (node.getAttribute('href') || '').trim();
+                const safe = href && !href.toLowerCase().startsWith('javascript:') ? ` href="${escapeHtml(href)}" target="_blank" rel="noopener noreferrer"` : '';
+                return `<a${safe}>${childrenToHtml(node)}</a>`;
+            }
+
+            // div / span / unknown — just recurse children
+            return childrenToHtml(node);
+        }
+
+        function childrenToHtml(node) {
+            let out = '';
+            node.childNodes.forEach(child => { out += nodeToHtml(child); });
+            return out;
+        }
+
+        // Inner content of a description container (skips sequence export headers etc.)
+        function innerContentToHtml(container) {
+            let out = '';
+            container.childNodes.forEach(child => { out += nodeToHtml(child); });
+            return out;
+        }
+
+        // Walk the live DOM and build clean HTML
+        let cleanHtml = childrenToHtml(textContainer);
+
+        // Collapse runs of whitespace-only lines while preserving structure
+        cleanHtml = cleanHtml.replace(/(<\/(?:p|h[1-6]|blockquote|li|div)>)\s+(<(?:p|h[1-6]|blockquote|li|div|ul|ol))/g, '$1$2');
+        cleanHtml = cleanHtml.replace(/^(\s*<p[^>]*>\s*Gemini\s+said:?\s*<\/p>\s*)/i, '');
+        cleanHtml = cleanHtml.trim();
+
+        // ── Build markdown text fallback ───────────────────────────────────────────
         const textClone = textContainer.cloneNode(true);
         textClone.querySelectorAll(
-            '.buttons-container-v2, .message-actions, .response-actions, button, mat-icon, svg, .mat-mdc-tooltip-trigger, .ag-bookmark-btn, .visually-hidden, [aria-hidden="true"], .avatar-container, .model-avatar'
+            '.buttons-container-v2, .message-actions, .response-actions, button, mat-icon, svg, .mat-mdc-tooltip-trigger, .ag-bookmark-btn, .visually-hidden, [aria-hidden="true"], .avatar-container, .model-avatar, .code-block-decoration, .only-show-to-message-actions'
         ).forEach(n => n.remove());
+
+        // Sequence → numbered list text
+        textClone.querySelectorAll('sequence').forEach(seq => {
+            let text = '';
+            const events = seq.querySelectorAll('.sequence-event');
+            events.forEach((ev, i) => {
+                const title = ev.querySelector('.sequence-event-title')?.textContent?.trim() || '';
+                if (title) text += `\n**${i + 1}. ${title}**\n`;
+                const desc = ev.querySelector('.sequence-event-description');
+                if (desc) {
+                    // code blocks inside
+                    desc.querySelectorAll('code-block, pre').forEach(cb => {
+                        const lang = cb.getAttribute?.('language') || cb.querySelector?.('.code-block-decoration span')?.textContent?.trim() || '';
+                        const codeEl = cb.querySelector?.('[data-test-id="code-content"], code') || cb;
+                        text += `\n\`\`\`${lang}\n${(codeEl.textContent || '').trim()}\n\`\`\`\n`;
+                        cb.remove();
+                    });
+                    text += desc.innerText || desc.textContent || '';
+                }
+            });
+            seq.replaceWith(document.createTextNode(text));
+        });
 
         // Code blocks to markdown ```
         textClone.querySelectorAll('code-block, pre').forEach(block => {
-            const lang = block.getAttribute('language') || block.querySelector('.code-block-decoration span, .language')?.textContent?.trim() || '';
-            const codeEl = block.querySelector('code') || block;
+            const lang = block.getAttribute?.('language') || block.querySelector?.('.code-block-decoration span, .language')?.textContent?.trim() || '';
+            const codeEl = block.querySelector?.('[data-test-id="code-content"], code') || block;
             const codeText = (codeEl.textContent || '').trim();
-            const textNode = document.createTextNode('\n```' + lang + '\n' + codeText + '\n```\n');
-            block.replaceWith(textNode);
+            block.replaceWith(document.createTextNode('\n```' + lang + '\n' + codeText + '\n```\n'));
         });
 
-        // Inline code to markdown `code`
         textClone.querySelectorAll('code').forEach(c => {
             c.replaceWith(document.createTextNode(' `' + c.textContent.trim() + '` '));
         });
-
-        // Bold tags to **bold**
         textClone.querySelectorAll('strong, b').forEach(b => {
             b.replaceWith(document.createTextNode(' **' + b.textContent.trim() + '** '));
         });
-
-        // List items to bullets
         textClone.querySelectorAll('li').forEach(li => {
             li.replaceWith(document.createTextNode('\n• ' + li.textContent.trim()));
         });
@@ -339,10 +450,7 @@ window.AskGemini = window.AskGemini || {};
         rawText = rawText.replace(/\n{3,}/g, '\n\n');
         const cleanText = cleanResponsePreview(rawText);
 
-        return {
-            text: cleanText,
-            html: cleanHtml
-        };
+        return { text: cleanText, html: cleanHtml };
     }
 
     function extractResponseText(responseEl) {
@@ -1251,6 +1359,20 @@ window.AskGemini = window.AskGemini || {};
     };
 
     // ─── HTML Sanitizer & Markdown Formatter ──────────────────────────────────
+    function isOldFlatHtml(html) {
+        // Old bookmarks stored everything in 1–2 <p> tags with all content flattened.
+        // Detect: HTML has very few block elements, all text is in <p> tags, no code wrappers.
+        if (!html) return false;
+        const hasCodeWrapper = html.includes('ag-modal-code-wrapper') || html.includes('ag-modal-pre');
+        const hasStructure = html.includes('<ul') || html.includes('<ol') || html.includes('<h2') || html.includes('<h3');
+        if (hasCodeWrapper || hasStructure) return false;
+        // Count block tags — old format has very few
+        const blockCount = (html.match(/<\/?(p|div|li|h[1-6])\b/g) || []).length;
+        const textLen = html.replace(/<[^>]+>/g, '').length;
+        // If there's a lot of text compressed into very few blocks — it's old format
+        return blockCount < 6 && textLen > 200;
+    }
+
     function sanitizeResponseHtml(rawHtml) {
         if (!rawHtml || typeof rawHtml !== 'string') return '';
         try {
@@ -1258,8 +1380,7 @@ window.AskGemini = window.AskGemini || {};
             const doc = parser.parseFromString(rawHtml, 'text/html');
 
             // Remove unsafe tags
-            const unsafe = doc.querySelectorAll('script, iframe, object, embed, applet, style, link, form, input, button, select, textarea');
-            unsafe.forEach(el => el.remove());
+            doc.querySelectorAll('script, iframe, object, embed, applet, style, link, form, input, button, select, textarea').forEach(el => el.remove());
 
             // Remove inline event handlers and unsafe links
             doc.querySelectorAll('*').forEach(el => {
@@ -1298,6 +1419,7 @@ window.AskGemini = window.AskGemini || {};
         });
 
         // 2. Headings
+        processed = processed.replace(/^####\s+(.+)$/gm, '<h4 class="ag-modal-h4">$1</h4>');
         processed = processed.replace(/^###\s+(.+)$/gm, '<h4 class="ag-modal-h4">$1</h4>');
         processed = processed.replace(/^##\s+(.+)$/gm, '<h3 class="ag-modal-h3">$1</h3>');
         processed = processed.replace(/^#\s+(.+)$/gm, '<h2 class="ag-modal-h2">$1</h2>');
@@ -1320,7 +1442,7 @@ window.AskGemini = window.AskGemini || {};
         // 7. Inline code
         processed = processed.replace(/`([^`\n]+)`/g, '<code class="ag-inline-code">$1</code>');
 
-        // 8. Paragraphs
+        // 8. Paragraphs — split on double newlines
         const parts = processed.split(/\n\n+/).map(block => {
             block = block.trim();
             if (!block) return '';
@@ -1353,10 +1475,23 @@ window.AskGemini = window.AskGemini || {};
 
     function renderFullBookmarkContent(bm) {
         if (!bm) return '<p class="ag-modal-p" style="color: #8e918f; font-style: italic;">No text saved for this bookmark.</p>';
+
+        // If we have rich HTML from the new extraction pipeline, use it (unless it's old flat format)
+        if (bm.responseHtml && bm.responseHtml.trim() && !isOldFlatHtml(bm.responseHtml)) {
+            return sanitizeResponseHtml(bm.responseHtml);
+        }
+
+        // Fall back to markdown-formatted responseText (works for both old and new bookmarks)
+        if (bm.responseText && bm.responseText.trim()) {
+            return formatFullResponseMarkdown(bm.responseText);
+        }
+
+        // Last resort: sanitize whatever HTML we have
         if (bm.responseHtml && bm.responseHtml.trim()) {
             return sanitizeResponseHtml(bm.responseHtml);
         }
-        return formatFullResponseMarkdown(bm.responseText || '');
+
+        return '<p class="ag-modal-p" style="color: #8e918f; font-style: italic;">No content saved for this bookmark.</p>';
     }
 
     function formatCardPreviewHtml(bm) {
