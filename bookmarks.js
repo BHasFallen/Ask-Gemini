@@ -2059,7 +2059,9 @@ window.AskGemini = window.AskGemini || {};
 
             card.innerHTML = `
                 <div class="ag-bookmark-icon-container">
-                    <span class="google-symbols" style="font-size: 22px;" aria-hidden="true">bookmark</span>
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+                        <path d="M17 3H7c-1.1 0-2 .9-2 2v14.55c0 .91 1.01 1.44 1.77.96L12 17.29l5.23 3.22c.76.47 1.77-.05 1.77-.96V5c0-1.1-.9-2-2-2z"/>
+                    </svg>
                 </div>
 
                 <div class="ag-bookmark-content">
@@ -2078,16 +2080,24 @@ window.AskGemini = window.AskGemini || {};
 
                 <div class="ag-bookmark-actions">
                     <button type="button" class="ag-native-icon-btn ag-card-view-btn" title="Quick View" aria-label="Quick View">
-                        <span class="google-symbols" style="font-size: 19px;" aria-hidden="true">chrome_reader_mode</span>
+                        <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+                            <path d="M21 5c-1.11-.35-2.33-.5-3.5-.5-1.95 0-4.05.4-5.5 1.5-1.45-1.1-3.55-1.5-5.5-1.5S2.45 4.9 1 6v14.65c0 .25.25.5.5.5.1 0 .15-.05.25-.05C3.1 20.45 5.05 20 6.5 20c1.95 0 4.05.4 5.5 1.5 1.35-.85 3.8-1.5 5.5-1.5 1.65 0 3.35.3 4.75 1.05.1.05.15.05.25.05.25 0 .5-.25.5-.5V6c-.6-.45-1.25-.75-2-1zm-1 14c-1.15-.35-2.45-.5-3.5-.5-1.65 0-3.35.3-4.75 1.05V7.5c1.45-1.1 3.55-1.5 5.5-1.5 1.15 0 2.35.15 3.5.5v12.5h-.75z"/>
+                        </svg>
                     </button>
                     <button type="button" class="ag-native-icon-btn ag-card-jump-btn" title="Open in chat" aria-label="Open in chat">
-                        <span class="google-symbols" style="font-size: 19px;" aria-hidden="true">open_in_new</span>
+                        <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+                            <path d="M19 19H5V5h7V3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"/>
+                        </svg>
                     </button>
                     <button type="button" class="ag-native-icon-btn ag-card-copy-btn" title="Copy response" aria-label="Copy response">
-                        <span class="google-symbols" style="font-size: 19px;" aria-hidden="true">content_copy</span>
+                        <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+                            <path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/>
+                        </svg>
                     </button>
                     <button type="button" class="ag-native-icon-btn ag-card-delete-btn" title="Remove bookmark" aria-label="Remove bookmark">
-                        <span class="google-symbols" style="font-size: 19px;" aria-hidden="true">delete</span>
+                        <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+                            <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+                        </svg>
                     </button>
                 </div>
             `;
