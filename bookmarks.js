@@ -23,6 +23,9 @@ window.AskGemini = window.AskGemini || {};
     AG.bookmarksEnabled = true;
     AG.bookmarksList = [];
     AG.isBookmarksOverlayOpen = false;
+    AG.isBookmarkReaderOpen = false;
+    AG.activeReaderBookmark = null;
+    AG.readerOpenedFromList = false;
     let _bookmarksInitialized = false;
 
     // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -528,7 +531,11 @@ window.AskGemini = window.AskGemini || {};
                     AG.toggleBookmarksOverlay();
                 } else if (e.key === 'Escape' && AG.isBookmarksOverlayOpen) {
                     e.preventDefault();
-                    AG.closeBookmarksOverlay();
+                    if (AG.isBookmarkReaderOpen) {
+                        AG.closeBookmarkReader();
+                    } else {
+                        AG.closeBookmarksOverlay();
+                    }
                 }
             });
 
@@ -1218,64 +1225,130 @@ window.AskGemini = window.AskGemini || {};
         overlay.className = 'ag-bookmarks-overlay';
 
         overlay.innerHTML = `
-            <div class="ag-bookmarks-header">
-                <div class="ag-bookmarks-header-left">
-                    <button type="button" class="ag-native-icon-btn ag-bookmarks-back-btn" id="ag-bookmarks-back-btn" title="Back to chat (Esc)" aria-label="Back to chat">
-                        <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
-                            <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/>
-                        </svg>
-                    </button>
-                    <div class="ag-bookmarks-header-title">
-                        <h2 class="ag-headline-m">Bookmarks</h2>
-                        <span class="ag-bookmarks-count-pill" id="ag-overlay-count-pill">0</span>
-                        <div class="ag-bookmarks-brand-tag" title="Feature provided by Quote Reply for Gemini">
-                            ${iconUrl ? `<img src="${iconUrl}" class="ag-brand-mini-logo" alt="" />` : ''}
-                            <span>Quote Reply</span>
+            <div id="ag-bookmarks-list-view" class="ag-bookmarks-view-panel">
+                <div class="ag-bookmarks-header">
+                    <div class="ag-bookmarks-header-left">
+                        <button type="button" class="ag-native-icon-btn ag-bookmarks-back-btn" id="ag-bookmarks-back-btn" title="Back to chat (Esc)" aria-label="Back to chat">
+                            <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
+                                <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/>
+                            </svg>
+                        </button>
+                        <div class="ag-bookmarks-header-title">
+                            <h2 class="ag-headline-m">Bookmarks</h2>
+                            <span class="ag-bookmarks-count-pill" id="ag-overlay-count-pill">0</span>
+                            <div class="ag-bookmarks-brand-tag" title="Feature provided by Quote Reply for Gemini">
+                                ${iconUrl ? `<img src="${iconUrl}" class="ag-brand-mini-logo" alt="" />` : ''}
+                                <span>Quote Reply</span>
+                            </div>
                         </div>
                     </div>
-                </div>
 
-                <div class="ag-bookmarks-header-right">
-                    <div class="ag-bookmarks-search-box">
-                        <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" class="ag-search-icon">
-                            <path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
-                        </svg>
-                        <input type="text" id="ag-bookmarks-search-input" placeholder="Search bookmarks..." autocomplete="off">
-                        <button type="button" id="ag-bookmarks-search-clear" class="ag-search-clear-btn" title="Clear search" style="display: none;" aria-label="Clear search">
-                            <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
-                                <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+                    <div class="ag-bookmarks-header-right">
+                        <div class="ag-bookmarks-search-box">
+                            <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" class="ag-search-icon">
+                                <path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+                            </svg>
+                            <input type="text" id="ag-bookmarks-search-input" placeholder="Search bookmarks..." autocomplete="off">
+                            <button type="button" id="ag-bookmarks-search-clear" class="ag-search-clear-btn" title="Clear search" style="display: none;" aria-label="Clear search">
+                                <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                                    <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+                                </svg>
+                            </button>
+                        </div>
+                        <button type="button" class="ag-native-icon-btn" id="ag-bookmarks-export-btn" title="Export bookmarks (JSON)" aria-label="Export bookmarks">
+                            <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+                                <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/>
+                            </svg>
+                        </button>
+                        <button type="button" class="ag-native-icon-btn" id="ag-bookmarks-import-btn" title="Import bookmarks (JSON)" aria-label="Import bookmarks">
+                            <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+                                <path d="M9 16h6v-6h4l-7-7-7 7h4zm-4 2h14v2H5z"/>
+                            </svg>
+                        </button>
+                        <input type="file" id="ag-bookmarks-file-input" accept=".json" style="display:none;">
+                        <button type="button" class="ag-native-icon-btn ag-btn-danger" id="ag-bookmarks-clear-btn" title="Clear all bookmarks" aria-label="Clear all bookmarks">
+                            <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+                                <path d="M15 16h4v2h-4zm0-8h7v2h-7zm0 4h6v2h-6zM3 18c0 1.1.9 2 2 2h6c1.1 0 2-.9 2-2V8H3v10zm2-8h6v8H5v-8zm5-6H6L5 5H2v2h12V5h-3z"/>
                             </svg>
                         </button>
                     </div>
-                    <button type="button" class="ag-native-icon-btn" id="ag-bookmarks-export-btn" title="Export bookmarks (JSON)" aria-label="Export bookmarks">
-                        <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
-                            <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/>
-                        </svg>
-                    </button>
-                    <button type="button" class="ag-native-icon-btn" id="ag-bookmarks-import-btn" title="Import bookmarks (JSON)" aria-label="Import bookmarks">
-                        <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
-                            <path d="M9 16h6v-6h4l-7-7-7 7h4zm-4 2h14v2H5z"/>
-                        </svg>
-                    </button>
-                    <input type="file" id="ag-bookmarks-file-input" accept=".json" style="display:none;">
-                    <button type="button" class="ag-native-icon-btn ag-btn-danger" id="ag-bookmarks-clear-btn" title="Clear all bookmarks" aria-label="Clear all bookmarks">
-                        <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
-                            <path d="M15 16h4v2h-4zm0-8h7v2h-7zm0 4h6v2h-6zM3 18c0 1.1.9 2 2 2h6c1.1 0 2-.9 2-2V8H3v10zm2-8h6v8H5v-8zm5-6H6L5 5H2v2h12V5h-3z"/>
-                        </svg>
-                    </button>
+                </div>
+
+                <div class="ag-bookmarks-scroll-container" id="ag-bookmarks-list-scroll">
+                    <div class="ag-bookmarks-main">
+                        <div class="ag-bookmarks-section-header">
+                            <span class="ag-section-title">Saved responses</span>
+                            <span class="ag-bookmarks-section-badge">Quote Reply feature</span>
+                        </div>
+                        <div id="ag-bookmarks-list" class="ag-bookmarks-list"></div>
+                        <div class="ag-bookmarks-footer-branding">
+                            ${iconUrl ? `<img src="${iconUrl}" class="ag-footer-brand-logo" alt="" />` : ''}
+                            <span>Bookmarks provided by <strong>Quote Reply for Gemini</strong></span>
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            <div class="ag-bookmarks-scroll-container">
-                <div class="ag-bookmarks-main">
-                    <div class="ag-bookmarks-section-header">
-                        <span class="ag-section-title">Saved responses</span>
-                        <span class="ag-bookmarks-section-badge">Quote Reply feature</span>
+            <div id="ag-bookmarks-reader-view" class="ag-bookmarks-view-panel" style="display: none;">
+                <div class="ag-bookmarks-header ag-bookmarks-reader-header">
+                    <div class="ag-bookmarks-header-left ag-reader-header-left">
+                        <button type="button" class="ag-native-icon-btn ag-bookmarks-reader-back-btn" id="ag-reader-back-btn" title="Back to bookmarks (Esc)" aria-label="Back to bookmarks">
+                            <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
+                                <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/>
+                            </svg>
+                        </button>
+                        <div class="ag-reader-header-titles">
+                            <div class="ag-reader-prompt-line">
+                                <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" class="ag-reader-header-icon">
+                                    <path d="M17 3H7c-1.1 0-2 .9-2 2v14.55c0 .91 1.01 1.44 1.77.96L12 17.29l5.23 3.22c.76.47 1.77-.05 1.77-.96V5c0-1.1-.9-2-2-2z"/>
+                                </svg>
+                                <h2 id="ag-reader-title" class="ag-reader-title-text" title="">Quick View</h2>
+                                <div class="ag-bookmarks-brand-tag" title="Feature provided by Quote Reply for Gemini">
+                                    ${iconUrl ? `<img src="${iconUrl}" class="ag-brand-mini-logo" alt="" />` : ''}
+                                    <span>Quote Reply</span>
+                                </div>
+                            </div>
+                            <div id="ag-reader-meta" class="ag-reader-header-meta"></div>
+                        </div>
                     </div>
-                    <div id="ag-bookmarks-list" class="ag-bookmarks-list"></div>
-                    <div class="ag-bookmarks-footer-branding">
-                        ${iconUrl ? `<img src="${iconUrl}" class="ag-footer-brand-logo" alt="" />` : ''}
-                        <span>Bookmarks provided by <strong>Quote Reply for Gemini</strong></span>
+
+                    <div class="ag-bookmarks-header-right">
+                        <button type="button" class="ag-modal-btn ag-modal-copy-btn" id="ag-reader-copy-btn" title="Copy full response text">
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                                <path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/>
+                            </svg>
+                            <span>Copy response</span>
+                        </button>
+                        <button type="button" class="ag-modal-btn ag-modal-jump-btn" id="ag-reader-jump-btn" title="Open this conversation in Gemini">
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                                <path d="M19 19H5V5h7V3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"/>
+                            </svg>
+                            <span>Jump to chat</span>
+                        </button>
+                        <button type="button" class="ag-native-icon-btn ag-btn-danger" id="ag-reader-delete-btn" title="Delete bookmark" aria-label="Delete bookmark">
+                            <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+                                <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="ag-bookmarks-reader-scroll" id="ag-reader-scroll-container">
+                    <div class="ag-bookmarks-reader-main">
+                        <div class="ag-reader-prompt-card" id="ag-reader-prompt-card">
+                            <div class="ag-reader-prompt-topline">
+                                <span class="ag-reader-prompt-label">Prompt</span>
+                                <span class="ag-reader-prompt-meta" id="ag-reader-card-meta"></span>
+                            </div>
+                            <div class="ag-reader-prompt-text" id="ag-reader-prompt-body"></div>
+                        </div>
+
+                        <div class="ag-bookmarks-reader-content ag-bookmark-modal-content" id="ag-reader-body"></div>
+
+                        <div class="ag-bookmarks-footer-branding ag-reader-footer-branding">
+                            ${iconUrl ? `<img src="${iconUrl}" class="ag-footer-brand-logo" alt="" />` : ''}
+                            <span>Saved Gemini response &bull; Quote Reply for Gemini</span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1283,6 +1356,8 @@ window.AskGemini = window.AskGemini || {};
 
         contentWrapper.appendChild(overlay);
         AG.isBookmarksOverlayOpen = true;
+        AG.isBookmarkReaderOpen = false;
+        AG.activeReaderBookmark = null;
 
         // Wire up overlay header events
         document.getElementById('ag-bookmarks-back-btn').addEventListener('click', () => {
@@ -1337,6 +1412,19 @@ window.AskGemini = window.AskGemini || {};
         }
     };
 
+    AG.closeBookmarkReader = function () {
+        const listView = document.getElementById('ag-bookmarks-list-view');
+        const readerView = document.getElementById('ag-bookmarks-reader-view');
+        if (readerView) readerView.style.display = 'none';
+        if (listView) listView.style.display = 'flex';
+        AG.isBookmarkReaderOpen = false;
+        AG.activeReaderBookmark = null;
+
+        // Re-render list to ensure fresh state/counts
+        const searchInput = document.getElementById('ag-bookmarks-search-input');
+        AG.renderBookmarksList(searchInput ? searchInput.value.trim() : '');
+    };
+
     AG.closeBookmarksOverlay = function () {
         const overlay = document.getElementById('ag-bookmarks-overlay');
         if (overlay) {
@@ -1356,6 +1444,8 @@ window.AskGemini = window.AskGemini || {};
         }
 
         AG.isBookmarksOverlayOpen = false;
+        AG.isBookmarkReaderOpen = false;
+        AG.activeReaderBookmark = null;
     };
 
     // ─── HTML Sanitizer & Markdown Formatter ──────────────────────────────────
@@ -1725,15 +1815,30 @@ window.AskGemini = window.AskGemini || {};
         return text;
     }
 
-    // ─── Quick View Modal (Direct Read / Offline Viewer) ────────────────────────
+    // ─── Quick View Full-Page Reader ────────────────────────────────────────────
     AG.openBookmarkQuickView = function (bm) {
         if (!bm) return;
-        const existing = document.getElementById('ag-bookmark-modal-overlay');
-        if (existing) existing.remove();
 
-        const modalOverlay = document.createElement('div');
-        modalOverlay.id = 'ag-bookmark-modal-overlay';
-        modalOverlay.className = 'ag-bookmark-modal-overlay';
+        // Clean up any old popup modal if it somehow exists
+        const oldModal = document.getElementById('ag-bookmark-modal-overlay');
+        if (oldModal) oldModal.remove();
+
+        const wasOverlayAlreadyOpen = AG.isBookmarksOverlayOpen && document.getElementById('ag-bookmarks-overlay');
+        if (!wasOverlayAlreadyOpen) {
+            AG.openBookmarksOverlay();
+            AG.readerOpenedFromList = false;
+        } else {
+            AG.readerOpenedFromList = true;
+        }
+
+        const listView = document.getElementById('ag-bookmarks-list-view');
+        const readerView = document.getElementById('ag-bookmarks-reader-view');
+        if (!readerView) return;
+
+        if (listView) listView.style.display = 'none';
+        readerView.style.display = 'flex';
+        AG.isBookmarkReaderOpen = true;
+        AG.activeReaderBookmark = bm;
 
         const cleanPrompt = cleanPromptText(bm.promptText || 'Saved Gemini response');
         const rawResponse = bm.responseText || '';
@@ -1742,104 +1847,98 @@ window.AskGemini = window.AskGemini || {};
         const formattedHtml = renderFullBookmarkContent(bm);
         const modelBadge = bm.modelName ? `<span class="ag-bookmark-model-tag">${escapeHtml(bm.modelName)}</span>` : '';
 
-        modalOverlay.innerHTML = `
-            <div class="ag-bookmark-modal" role="dialog" aria-modal="true" aria-labelledby="ag-modal-title">
-                <div class="ag-bookmark-modal-header">
-                    <div class="ag-bookmark-modal-header-left">
-                        <div class="ag-modal-prompt-row">
-                            <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" class="ag-modal-bookmark-icon">
-                                <path d="M17 3H7c-1.1 0-2 .9-2 2v14.55c0 .91 1.01 1.44 1.77.96L12 17.29l5.23 3.22c.76.47 1.77-.05 1.77-.96V5c0-1.1-.9-2-2-2z"/>
-                            </svg>
-                            <h3 id="ag-modal-title" class="ag-modal-prompt-title" title="${escapeHtml(cleanPrompt)}">${escapeHtml(cleanPrompt)}</h3>
-                        </div>
-                        <div class="ag-modal-header-meta">
-                            ${modelBadge}
-                            <span class="ag-modal-time">${escapeHtml(timeStr)}</span>
-                            <span class="ag-modal-char-count">${charCount} characters</span>
-                        </div>
-                    </div>
-                    <div class="ag-bookmark-modal-header-right">
-                        <button type="button" class="ag-native-icon-btn ag-modal-close-btn" id="ag-modal-close-btn" title="Close (Esc)" aria-label="Close">
-                            <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
-                                <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
-                            </svg>
-                        </button>
-                    </div>
-                </div>
-
-                <div class="ag-bookmark-modal-body">
-                    <div class="ag-bookmark-modal-content">
-                        ${formattedHtml || '<p class="ag-modal-p" style="color: #8e918f; font-style: italic;">No text saved for this bookmark.</p>'}
-                    </div>
-                </div>
-
-                <div class="ag-bookmark-modal-footer">
-                    <div class="ag-modal-footer-brand">
-                        <span>Quote Reply Quick View</span>
-                    </div>
-                    <div class="ag-modal-footer-actions">
-                        <button type="button" class="ag-modal-btn ag-modal-copy-btn" id="ag-modal-copy-btn">
-                            <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
-                                <path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/>
-                            </svg>
-                            <span>Copy response</span>
-                        </button>
-                        <button type="button" class="ag-modal-btn ag-modal-jump-btn" id="ag-modal-jump-btn">
-                            <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
-                                <path d="M19 19H5V5h7V3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"/>
-                            </svg>
-                            <span>Jump to chat</span>
-                        </button>
-                    </div>
-                </div>
-            </div>
-        `;
-
-        document.body.appendChild(modalOverlay);
-
-        function closeModal() {
-            modalOverlay.classList.add('ag-modal-out');
-            setTimeout(() => modalOverlay.remove(), 160);
-            document.removeEventListener('keydown', handleKeyDown);
+        // Update Header
+        const titleEl = document.getElementById('ag-reader-title');
+        if (titleEl) {
+            titleEl.textContent = cleanPrompt;
+            titleEl.setAttribute('title', cleanPrompt);
         }
 
-        function handleKeyDown(e) {
-            if (e.key === 'Escape') {
-                e.stopPropagation();
-                closeModal();
-            }
+        const metaEl = document.getElementById('ag-reader-meta');
+        if (metaEl) {
+            metaEl.innerHTML = `
+                ${modelBadge}
+                <span class="ag-modal-time">${escapeHtml(timeStr)}</span>
+                <span class="ag-modal-char-count">${charCount} characters</span>
+            `;
         }
 
-        document.addEventListener('keydown', handleKeyDown);
+        // Update Prompt Card
+        const promptCardMeta = document.getElementById('ag-reader-card-meta');
+        if (promptCardMeta) promptCardMeta.textContent = timeStr;
+        const promptBody = document.getElementById('ag-reader-prompt-body');
+        if (promptBody) promptBody.textContent = cleanPrompt;
 
-        modalOverlay.addEventListener('click', (e) => {
-            if (e.target === modalOverlay) closeModal();
-        });
+        // Update Response Body
+        const readerBody = document.getElementById('ag-reader-body');
+        if (readerBody) {
+            readerBody.innerHTML = formattedHtml || '<p class="ag-modal-p" style="color: #8e918f; font-style: italic;">No text saved for this bookmark.</p>';
+        }
 
-        document.getElementById('ag-modal-close-btn').addEventListener('click', closeModal);
+        // Scroll reader to top
+        const scrollContainer = document.getElementById('ag-reader-scroll-container');
+        if (scrollContainer) scrollContainer.scrollTop = 0;
 
-        const copyBtn = document.getElementById('ag-modal-copy-btn');
-        copyBtn.addEventListener('click', async () => {
-            try {
-                await navigator.clipboard.writeText(rawResponse);
-                const originalHtml = copyBtn.innerHTML;
-                copyBtn.innerHTML = `
-                    <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" style="color: #81c995;">
-                        <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
-                    </svg>
-                    <span>Copied!</span>
-                `;
-                setTimeout(() => { copyBtn.innerHTML = originalHtml; }, 2000);
-            } catch (err) {
-                console.error('Ask Gemini: Failed to copy modal response', err);
-            }
-        });
+        // Back button navigation
+        const backBtn = document.getElementById('ag-reader-back-btn');
+        if (backBtn) {
+            backBtn.onclick = () => {
+                if (AG.readerOpenedFromList) {
+                    AG.closeBookmarkReader();
+                } else {
+                    AG.closeBookmarksOverlay();
+                }
+            };
+            backBtn.setAttribute('title', AG.readerOpenedFromList ? 'Back to bookmarks (Esc)' : 'Back to chat (Esc)');
+            backBtn.setAttribute('aria-label', AG.readerOpenedFromList ? 'Back to bookmarks' : 'Back to chat');
+        }
 
-        const jumpBtn = document.getElementById('ag-modal-jump-btn');
-        jumpBtn.addEventListener('click', () => {
-            closeModal();
-            jumpToBookmark(bm);
-        });
+        // Copy button
+        const copyBtn = document.getElementById('ag-reader-copy-btn');
+        if (copyBtn) {
+            const originalCopyHtml = `
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                    <path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/>
+                </svg>
+                <span>Copy response</span>
+            `;
+            copyBtn.innerHTML = originalCopyHtml;
+            copyBtn.onclick = async () => {
+                try {
+                    await navigator.clipboard.writeText(rawResponse);
+                    copyBtn.innerHTML = `
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" style="color: #81c995;">
+                            <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
+                        </svg>
+                        <span>Copied!</span>
+                    `;
+                    setTimeout(() => { if (copyBtn) copyBtn.innerHTML = originalCopyHtml; }, 2000);
+                } catch (err) {
+                    console.error('Ask Gemini: Failed to copy response', err);
+                }
+            };
+        }
+
+        // Jump to chat button
+        const jumpBtn = document.getElementById('ag-reader-jump-btn');
+        if (jumpBtn) {
+            jumpBtn.onclick = () => {
+                jumpToBookmark(bm);
+            };
+        }
+
+        // Delete bookmark button
+        const deleteBtn = document.getElementById('ag-reader-delete-btn');
+        if (deleteBtn) {
+            deleteBtn.onclick = () => {
+                AG.BookmarkManager.removeBookmark(bm.id);
+                if (AG.readerOpenedFromList) {
+                    AG.closeBookmarkReader();
+                } else {
+                    AG.closeBookmarksOverlay();
+                }
+            };
+        }
 
         // Track Quick View open
         if (chrome.runtime && chrome.runtime.sendMessage) {
@@ -1980,7 +2079,7 @@ window.AskGemini = window.AskGemini || {};
             const modelBadge = bm.modelName ? `<span class="ag-bookmark-model-tag">${escapeHtml(bm.modelName)}</span>` : '';
             const cleanPrompt = cleanPromptText(bm.promptText || 'Saved response');
 
-            card.setAttribute('aria-label', `Open bookmark: ${cleanPrompt}`);
+            card.setAttribute('aria-label', `Quick View bookmark: ${cleanPrompt}`);
 
             const previewHtml = formatCardPreviewHtml(bm);
 
@@ -2001,12 +2100,12 @@ window.AskGemini = window.AskGemini || {};
                     </div>
                     <div class="ag-bookmark-preview">${previewHtml}</div>
                     <div class="ag-bookmark-card-links">
-                        <span class="ag-card-read-more-link">Read full response &rarr;</span>
+                        <span class="ag-card-read-more-link">Quick View &rarr;</span>
                     </div>
                 </div>
 
                 <div class="ag-bookmark-actions">
-                    <button type="button" class="ag-native-icon-btn ag-card-view-btn" title="Quick View full response" aria-label="Quick View full response">
+                    <button type="button" class="ag-native-icon-btn ag-card-view-btn" title="Quick View" aria-label="Quick View">
                         <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
                             <path d="M21 5c-1.11-.35-2.33-.5-3.5-.5-1.95 0-4.05.4-5.5 1.5-1.45-1.1-3.55-1.5-5.5-1.5S2.45 4.9 1 6v14.65c0 .25.25.5.5.5.1 0 .15-.05.25-.05C3.1 20.45 5.05 20 6.5 20c1.95 0 4.05.4 5.5 1.5 1.35-.85 3.8-1.5 5.5-1.5 1.65 0 3.35.3 4.75 1.05.1.05.15.05.25.05.25 0 .5-.25.5-.5V6c-.6-.45-1.25-.75-2-1zm-1 14c-1.15-.35-2.45-.5-3.5-.5-1.65 0-3.35.3-4.75 1.05V7.5c1.45-1.1 3.55-1.5 5.5-1.5 1.15 0 2.35.15 3.5.5v12.5h-.75z"/>
                         </svg>
@@ -2029,17 +2128,17 @@ window.AskGemini = window.AskGemini || {};
                 </div>
             `;
 
-            // Card click to jump to conversation
+            // Card click opens Quick View (NOT chat/full response)
             card.addEventListener('click', (e) => {
                 if (e.target.closest('.ag-native-icon-btn')) return;
-                jumpToBookmark(bm);
+                AG.openBookmarkQuickView(bm);
             });
 
             card.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter' || e.key === ' ') {
                     if (e.target.closest('.ag-native-icon-btn')) return;
                     e.preventDefault();
-                    jumpToBookmark(bm);
+                    AG.openBookmarkQuickView(bm);
                 }
             });
 
