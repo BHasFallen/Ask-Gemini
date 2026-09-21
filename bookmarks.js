@@ -345,7 +345,8 @@ window.AskGemini = window.AskGemini || {};
 
             const promptText = findPrecedingUserPrompt(responseEl) || 'Saved Gemini response';
             const fullResponse = extractResponseText(responseEl);
-            const responseText = fullResponse.slice(0, 2500);
+            // Generous 50,000 character buffer ensures extensive code blocks and long replies are never cut off
+            const responseText = fullResponse.slice(0, 50000);
             const currentUrl = window.location.href;
             const conversationId = extractConversationId(currentUrl);
             const modelName = extractModelName();
@@ -1150,6 +1151,155 @@ window.AskGemini = window.AskGemini || {};
         AG.isBookmarksOverlayOpen = false;
     };
 
+    // ─── Format Response HTML (Paragraphs & Code Blocks) ────────────────────────
+    function formatFullResponseHtml(text) {
+        if (!text) return '';
+        const blocks = text.split(/(```[\s\S]*?```)/g);
+        return blocks.map(part => {
+            if (part.startsWith('```') && part.endsWith('```')) {
+                const lines = part.slice(3, -3).trimStart().split('\n');
+                let lang = '';
+                if (lines.length > 1 && /^[a-zA-Z0-9_-]+$/.test(lines[0].trim())) {
+                    lang = lines.shift().trim();
+                }
+                const code = lines.join('\n');
+                return `<div class="ag-modal-code-wrapper">${lang ? `<div class="ag-modal-code-header"><span>${escapeHtml(lang)}</span></div>` : ''}<pre class="ag-modal-pre"><code>${escapeHtml(code)}</code></pre></div>`;
+            }
+            return part.split(/\n\n+/).filter(Boolean).map(p => {
+                const trimmed = p.trim();
+                if (!trimmed) return '';
+                const withBreaks = escapeHtml(trimmed).replace(/\n/g, '<br>');
+                return `<p class="ag-modal-p">${withBreaks}</p>`;
+            }).join('');
+        }).join('');
+    }
+
+    // ─── Quick View Modal (Direct Read / Offline Viewer) ────────────────────────
+    AG.openBookmarkQuickView = function (bm) {
+        if (!bm) return;
+        const existing = document.getElementById('ag-bookmark-modal-overlay');
+        if (existing) existing.remove();
+
+        const modalOverlay = document.createElement('div');
+        modalOverlay.id = 'ag-bookmark-modal-overlay';
+        modalOverlay.className = 'ag-bookmark-modal-overlay';
+
+        const cleanPrompt = cleanPromptText(bm.promptText || 'Saved Gemini response');
+        const rawResponse = bm.responseText || '';
+        const charCount = rawResponse.length.toLocaleString();
+        const timeStr = formatRelativeTime(bm.createdAt);
+        const formattedHtml = formatFullResponseHtml(rawResponse);
+        const modelBadge = bm.modelName ? `<span class="ag-bookmark-model-tag">${escapeHtml(bm.modelName)}</span>` : '';
+
+        modalOverlay.innerHTML = `
+            <div class="ag-bookmark-modal" role="dialog" aria-modal="true" aria-labelledby="ag-modal-title">
+                <div class="ag-bookmark-modal-header">
+                    <div class="ag-bookmark-modal-header-left">
+                        <div class="ag-modal-prompt-row">
+                            <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" class="ag-modal-bookmark-icon">
+                                <path d="M17 3H7c-1.1 0-2 .9-2 2v14.55c0 .91 1.01 1.44 1.77.96L12 17.29l5.23 3.22c.76.47 1.77-.05 1.77-.96V5c0-1.1-.9-2-2-2z"/>
+                            </svg>
+                            <h3 id="ag-modal-title" class="ag-modal-prompt-title" title="${escapeHtml(cleanPrompt)}">${escapeHtml(cleanPrompt)}</h3>
+                        </div>
+                        <div class="ag-modal-header-meta">
+                            ${modelBadge}
+                            <span class="ag-modal-time">${escapeHtml(timeStr)}</span>
+                            <span class="ag-modal-char-count">${charCount} characters</span>
+                        </div>
+                    </div>
+                    <div class="ag-bookmark-modal-header-right">
+                        <button type="button" class="ag-native-icon-btn ag-modal-close-btn" id="ag-modal-close-btn" title="Close (Esc)" aria-label="Close">
+                            <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+                                <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="ag-bookmark-modal-body">
+                    <div class="ag-bookmark-modal-content">
+                        ${formattedHtml || '<p class="ag-modal-p" style="color: #8e918f; font-style: italic;">No text saved for this bookmark.</p>'}
+                    </div>
+                </div>
+
+                <div class="ag-bookmark-modal-footer">
+                    <div class="ag-modal-footer-brand">
+                        <span>Quote Reply Quick View</span>
+                    </div>
+                    <div class="ag-modal-footer-actions">
+                        <button type="button" class="ag-modal-btn ag-modal-copy-btn" id="ag-modal-copy-btn">
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                                <path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/>
+                            </svg>
+                            <span>Copy response</span>
+                        </button>
+                        <button type="button" class="ag-modal-btn ag-modal-jump-btn" id="ag-modal-jump-btn">
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                                <path d="M19 19H5V5h7V3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"/>
+                            </svg>
+                            <span>Jump to chat</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(modalOverlay);
+
+        function closeModal() {
+            modalOverlay.classList.add('ag-modal-out');
+            setTimeout(() => modalOverlay.remove(), 160);
+            document.removeEventListener('keydown', handleKeyDown);
+        }
+
+        function handleKeyDown(e) {
+            if (e.key === 'Escape') {
+                e.stopPropagation();
+                closeModal();
+            }
+        }
+
+        document.addEventListener('keydown', handleKeyDown);
+
+        modalOverlay.addEventListener('click', (e) => {
+            if (e.target === modalOverlay) closeModal();
+        });
+
+        document.getElementById('ag-modal-close-btn').addEventListener('click', closeModal);
+
+        const copyBtn = document.getElementById('ag-modal-copy-btn');
+        copyBtn.addEventListener('click', async () => {
+            try {
+                await navigator.clipboard.writeText(rawResponse);
+                const originalHtml = copyBtn.innerHTML;
+                copyBtn.innerHTML = `
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" style="color: #81c995;">
+                        <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
+                    </svg>
+                    <span>Copied!</span>
+                `;
+                setTimeout(() => { copyBtn.innerHTML = originalHtml; }, 2000);
+            } catch (err) {
+                console.error('Ask Gemini: Failed to copy modal response', err);
+            }
+        });
+
+        const jumpBtn = document.getElementById('ag-modal-jump-btn');
+        jumpBtn.addEventListener('click', () => {
+            closeModal();
+            jumpToBookmark(bm);
+        });
+
+        // Track Quick View open
+        if (chrome.runtime && chrome.runtime.sendMessage) {
+            chrome.runtime.sendMessage({
+                type: 'TRACK_EVENT',
+                name: 'bookmark_quick_view_opened',
+                params: { bookmark_id: bm.id }
+            });
+        }
+    };
+
     function jumpToBookmark(bm) {
         const currentConvId = extractConversationId(window.location.href);
         const isSameConv = currentConvId === bm.conversationId || window.location.href === bm.conversationUrl;
@@ -1197,6 +1347,13 @@ window.AskGemini = window.AskGemini || {};
                     target.scrollIntoView({ behavior: 'smooth', block: 'center' });
                     target.classList.add('ag-text-highlight-blink');
                     setTimeout(() => target.classList.remove('ag-text-highlight-blink'), 2200);
+                } else {
+                    // Turn is not rendered in current DOM (lazy loaded / scrolled off)
+                    AG.showBookmarkToast(
+                        'Earlier in chat (not loaded yet)',
+                        'Read Full Saved Text',
+                        () => AG.openBookmarkQuickView(bm)
+                    );
                 }
             }, 250);
         } else {
@@ -1296,9 +1453,17 @@ window.AskGemini = window.AskGemini || {};
                         </div>
                     </div>
                     <p class="ag-bookmark-preview">${escapeHtml(previewText)}</p>
+                    <div class="ag-bookmark-card-links">
+                        <span class="ag-card-read-more-link">Read full response &rarr;</span>
+                    </div>
                 </div>
 
                 <div class="ag-bookmark-actions">
+                    <button type="button" class="ag-native-icon-btn ag-card-view-btn" title="Quick View full response" aria-label="Quick View full response">
+                        <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+                            <path d="M21 5c-1.11-.35-2.33-.5-3.5-.5-1.95 0-4.05.4-5.5 1.5-1.45-1.1-3.55-1.5-5.5-1.5S2.45 4.9 1 6v14.65c0 .25.25.5.5.5.1 0 .15-.05.25-.05C3.1 20.45 5.05 20 6.5 20c1.95 0 4.05.4 5.5 1.5 1.35-.85 3.8-1.5 5.5-1.5 1.65 0 3.35.3 4.75 1.05.1.05.15.05.25.05.25 0 .5-.25.5-.5V6c-.6-.45-1.25-.75-2-1zm-1 14c-1.15-.35-2.45-.5-3.5-.5-1.65 0-3.35.3-4.75 1.05V7.5c1.45-1.1 3.55-1.5 5.5-1.5 1.15 0 2.35.15 3.5.5v12.5h-.75z"/>
+                        </svg>
+                    </button>
                     <button type="button" class="ag-native-icon-btn ag-card-jump-btn" title="Open in chat" aria-label="Open in chat">
                         <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
                             <path d="M19 19H5V5h7V3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"/>
@@ -1330,6 +1495,23 @@ window.AskGemini = window.AskGemini || {};
                     jumpToBookmark(bm);
                 }
             });
+
+            // Action: Quick View (Modal reader)
+            const viewBtn = card.querySelector('.ag-card-view-btn');
+            if (viewBtn) {
+                viewBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    AG.openBookmarkQuickView(bm);
+                });
+            }
+
+            const readMoreLink = card.querySelector('.ag-card-read-more-link');
+            if (readMoreLink) {
+                readMoreLink.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    AG.openBookmarkQuickView(bm);
+                });
+            }
 
             // Action: Jump to chat
             const jumpBtn = card.querySelector('.ag-card-jump-btn');

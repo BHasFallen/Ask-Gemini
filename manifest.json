@@ -6,6 +6,7 @@
   "description": "Highlight any Google Gemini response and quote-reply with full context. Sharper follow-ups, fewer hallucinations.",
   "permissions": [
     "storage",
+    "unlimitedStorage",
     "alarms"
   ],
   "host_permissions": [
