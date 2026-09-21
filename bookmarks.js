@@ -175,7 +175,33 @@ window.AskGemini = window.AskGemini || {};
         if (!text || typeof text !== 'string') return '';
         let cleaned = text.trim();
         cleaned = cleaned.replace(/\bEdit prompt\b/gi, '').trim();
+
+        // Strip Gemini's accessibility screen-reader duplicate:
+        // "You said [first few words]…\n\n[full prompt text]"
+        const paragraphs = cleaned.split(/\n\s*\n+/).map(p => p.trim()).filter(Boolean);
+        if (paragraphs.length >= 2 && /^You said\b/i.test(paragraphs[0])) {
+            cleaned = paragraphs.slice(1).join('\n\n').trim();
+        } else {
+            // Also check single linebreaks: "You said ...\n..."
+            const lines = cleaned.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+            if (lines.length >= 2 && /^You said\b/i.test(lines[0])) {
+                cleaned = lines.slice(1).join('\n').trim();
+            }
+        }
+
+        // Strip leading "You said:" or "You said" prefix
+        cleaned = cleaned.replace(/^You said:?\s*/i, '').trim();
+
         return deduplicateText(cleaned);
+    }
+
+    function getBookmarkDisplayTitle(bm) {
+        if (!bm) return 'Saved response';
+        if (bm.customTitle && typeof bm.customTitle === 'string' && bm.customTitle.trim()) {
+            return bm.customTitle.trim();
+        }
+        const cleaned = cleanPromptText(bm.promptText || '');
+        return cleaned || 'Saved response';
     }
 
     function cleanResponsePreview(text) {
@@ -187,6 +213,7 @@ window.AskGemini = window.AskGemini || {};
     }
 
     AG.cleanPromptText = cleanPromptText;
+    AG.getBookmarkDisplayTitle = getBookmarkDisplayTitle;
     AG.cleanResponsePreview = cleanResponsePreview;
 
     // ─── DOM Data Extraction ────────────────────────────────────────────────────
@@ -1318,7 +1345,21 @@ window.AskGemini = window.AskGemini || {};
                         <div class="ag-reader-header-titles">
                             <div class="ag-reader-prompt-line">
                                 <span class="google-symbols ag-reader-header-icon" style="font-size: 18px; color: #a8c7fa;" aria-hidden="true">bookmark</span>
-                                <h2 id="ag-reader-title" class="ag-reader-title-text" title="">Quick View</h2>
+                                <div class="ag-reader-title-container" id="ag-reader-title-container">
+                                    <h2 id="ag-reader-title" class="ag-reader-title-text" title="Click to rename">Quick View</h2>
+                                    <button type="button" class="ag-reader-edit-title-btn" id="ag-reader-edit-title-btn" title="Edit bookmark title" aria-label="Edit title">
+                                        <span class="google-symbols" style="font-size: 16px;" aria-hidden="true">edit</span>
+                                    </button>
+                                </div>
+                                <div class="ag-reader-title-edit-box" id="ag-reader-title-edit-box" style="display: none;">
+                                    <input type="text" id="ag-reader-title-input" class="ag-reader-title-input" placeholder="Bookmark title..." maxlength="120" />
+                                    <button type="button" class="ag-reader-title-save-btn" id="ag-reader-title-save-btn" title="Save title">
+                                        <span class="google-symbols" style="font-size: 18px; color: #a8c7fa;" aria-hidden="true">check</span>
+                                    </button>
+                                    <button type="button" class="ag-reader-title-cancel-btn" id="ag-reader-title-cancel-btn" title="Cancel">
+                                        <span class="google-symbols" style="font-size: 18px; color: #8e918f;" aria-hidden="true">close</span>
+                                    </button>
+                                </div>
                                 <div class="ag-bookmarks-brand-tag" title="Feature provided by Quote Reply for Gemini">
                                     ${iconUrl ? `<img src="${iconUrl}" class="ag-brand-mini-logo" alt="" />` : ''}
                                     <span>powered by Quote Reply for Gemini</span>
@@ -1858,6 +1899,7 @@ window.AskGemini = window.AskGemini || {};
         AG.isBookmarkReaderOpen = true;
         AG.activeReaderBookmark = bm;
 
+        const displayTitle = getBookmarkDisplayTitle(bm);
         const cleanPrompt = cleanPromptText(bm.promptText || 'Saved Gemini response');
         const rawResponse = bm.responseText || '';
         const charCount = rawResponse.length.toLocaleString();
@@ -1867,9 +1909,90 @@ window.AskGemini = window.AskGemini || {};
 
         // Update Header
         const titleEl = document.getElementById('ag-reader-title');
+        const titleContainer = document.getElementById('ag-reader-title-container');
+        const titleEditBox = document.getElementById('ag-reader-title-edit-box');
+        const titleInput = document.getElementById('ag-reader-title-input');
+        const editBtn = document.getElementById('ag-reader-edit-title-btn');
+        const saveBtn = document.getElementById('ag-reader-title-save-btn');
+        const cancelBtn = document.getElementById('ag-reader-title-cancel-btn');
+
+        if (titleEditBox) titleEditBox.style.display = 'none';
+        if (titleContainer) titleContainer.style.display = 'inline-flex';
+
         if (titleEl) {
-            titleEl.textContent = cleanPrompt;
-            titleEl.setAttribute('title', cleanPrompt);
+            titleEl.textContent = displayTitle;
+            titleEl.setAttribute('title', `${displayTitle} (click to rename)`);
+        }
+
+        function enterEditMode() {
+            if (!titleContainer || !titleEditBox || !titleInput) return;
+            titleContainer.style.display = 'none';
+            titleEditBox.style.display = 'inline-flex';
+            titleInput.value = bm.customTitle || displayTitle;
+            titleInput.focus();
+            titleInput.select();
+        }
+
+        function exitEditMode() {
+            if (!titleContainer || !titleEditBox) return;
+            titleEditBox.style.display = 'none';
+            titleContainer.style.display = 'inline-flex';
+        }
+
+        async function saveEditedTitle() {
+            if (!titleInput) return;
+            const newTitle = titleInput.value.trim();
+            if (newTitle && newTitle !== displayTitle) {
+                bm.customTitle = newTitle;
+            } else if (!newTitle) {
+                delete bm.customTitle;
+            }
+            await AG.BookmarkManager.saveToStorage();
+            const updatedTitle = getBookmarkDisplayTitle(bm);
+            if (titleEl) {
+                titleEl.textContent = updatedTitle;
+                titleEl.setAttribute('title', `${updatedTitle} (click to rename)`);
+            }
+            exitEditMode();
+            AG.showBookmarkToast('Title updated');
+            const searchInput = document.getElementById('ag-bookmarks-search-input');
+            AG.renderBookmarksList(searchInput ? searchInput.value.trim() : '');
+        }
+
+        if (editBtn) {
+            editBtn.onclick = (e) => {
+                e.stopPropagation();
+                enterEditMode();
+            };
+        }
+        if (titleEl) {
+            titleEl.onclick = (e) => {
+                e.stopPropagation();
+                enterEditMode();
+            };
+        }
+        if (saveBtn) {
+            saveBtn.onclick = (e) => {
+                e.stopPropagation();
+                saveEditedTitle();
+            };
+        }
+        if (cancelBtn) {
+            cancelBtn.onclick = (e) => {
+                e.stopPropagation();
+                exitEditMode();
+            };
+        }
+        if (titleInput) {
+            titleInput.onkeydown = (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    saveEditedTitle();
+                } else if (e.key === 'Escape') {
+                    e.preventDefault();
+                    exitEditMode();
+                }
+            };
         }
 
         const metaEl = document.getElementById('ag-reader-meta');
@@ -2063,12 +2186,14 @@ window.AskGemini = window.AskGemini || {};
 
         let filtered = AG.bookmarksList;
         if (filterQuery) {
-            const q = filterQuery.toLowerCase();
+            const tokens = filterQuery.toLowerCase().split(/\s+/).filter(Boolean);
             filtered = AG.bookmarksList.filter(b => {
+                const title = getBookmarkDisplayTitle(b).toLowerCase();
                 const prompt = cleanPromptText(b.promptText || '').toLowerCase();
                 const response = cleanResponsePreview(b.responseText || '').toLowerCase();
                 const model = (b.modelName || '').toLowerCase();
-                return prompt.includes(q) || response.includes(q) || model.includes(q);
+                const combined = `${title} ${prompt} ${response} ${model}`;
+                return tokens.every(token => combined.includes(token));
             });
         }
 
@@ -2091,9 +2216,9 @@ window.AskGemini = window.AskGemini || {};
 
             const timeStr = formatRelativeTime(bm.createdAt);
             const modelBadge = bm.modelName ? `<span class="ag-bookmark-model-tag">${escapeHtml(bm.modelName)}</span>` : '';
-            const cleanPrompt = cleanPromptText(bm.promptText || 'Saved response');
+            const displayTitle = getBookmarkDisplayTitle(bm);
 
-            card.setAttribute('aria-label', `Quick View bookmark: ${cleanPrompt}`);
+            card.setAttribute('aria-label', `Quick View bookmark: ${displayTitle}`);
 
             const previewHtml = formatCardPreviewHtml(bm);
 
@@ -2106,7 +2231,10 @@ window.AskGemini = window.AskGemini || {};
 
                 <div class="ag-bookmark-content">
                     <div class="ag-bookmark-topline">
-                        <h4 class="ag-bookmark-prompt" title="${escapeHtml(cleanPrompt)}">${escapeHtml(cleanPrompt)}</h4>
+                        <h4 class="ag-bookmark-prompt" title="${escapeHtml(displayTitle)}">${escapeHtml(displayTitle)}</h4>
+                        <button type="button" class="ag-card-edit-title-btn" title="Edit title" aria-label="Edit title" data-id="${bm.id}">
+                            <span class="google-symbols" style="font-size: 15px;" aria-hidden="true">edit</span>
+                        </button>
                         <div class="ag-bookmark-meta">
                             ${modelBadge}
                             <span class="ag-bookmark-time">${escapeHtml(timeStr)}</span>
@@ -2142,15 +2270,29 @@ window.AskGemini = window.AskGemini || {};
                 </div>
             `;
 
+            // Wire up card edit title button
+            const editCardBtn = card.querySelector('.ag-card-edit-title-btn');
+            if (editCardBtn) {
+                editCardBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    AG.openBookmarkQuickView(bm);
+                    setTimeout(() => {
+                        const editBtn = document.getElementById('ag-reader-edit-title-btn');
+                        if (editBtn) editBtn.click();
+                    }, 50);
+                });
+            }
+
             // Card click opens Quick View (NOT chat/full response)
             card.addEventListener('click', (e) => {
-                if (e.target.closest('.ag-native-icon-btn')) return;
+                if (e.target.closest('.ag-native-icon-btn, .ag-card-edit-title-btn')) return;
                 AG.openBookmarkQuickView(bm);
             });
 
             card.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter' || e.key === ' ') {
-                    if (e.target.closest('.ag-native-icon-btn')) return;
+                    if (e.target.closest('.ag-native-icon-btn, .ag-card-edit-title-btn')) return;
                     e.preventDefault();
                     AG.openBookmarkQuickView(bm);
                 }
