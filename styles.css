@@ -1451,8 +1451,8 @@ gem-nav-list-item[data-test-id="gems-side-nav-entry-button"] .mat-mdc-list-item-
 .ag-bookmarks-nav-shortcut {
   display: none !important;
   font-family: var(--gds-font-family-text, 'Google Sans Text', Roboto, sans-serif) !important;
-  font-size: 12px !important;
-  line-height: 16px !important;
+  font-size: 13px !important;
+  line-height: 18px !important;
   font-weight: 400 !important;
   color: var(--mat-sys-on-surface-variant, #c4c7c5) !important;
   letter-spacing: 0.1px !important;
