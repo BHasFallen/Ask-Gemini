@@ -1473,22 +1473,159 @@ window.AskGemini = window.AskGemini || {};
         return result;
     }
 
+    // ── Smart parser for old flat-format bookmarks ─────────────────────────────
+    // Old bookmarks stored everything in a single <p> with <br> for newlines.
+    // Language labels (Bash, YAML, etc.) were concatenated directly before their code.
+    // This parser reconstructs code blocks and step headings from that raw HTML.
+
+    function parseOldFlatHtml(rawHtml) {
+        if (!rawHtml) return '';
+        try {
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(rawHtml, 'text/html');
+            // Turn <br> into real newlines
+            doc.querySelectorAll('br').forEach(br => br.replaceWith(doc.createTextNode('\n')));
+            const text = (doc.body.textContent || '').trim();
+            return text ? smartFormatOldText(text) : '';
+        } catch (e) {
+            return '';
+        }
+    }
+
+    function smartFormatOldText(text) {
+        if (!text) return '';
+
+        // Known Gemini code-block language labels that appear concatenated before code in old flat format
+        const LANGS = [
+            'Bash', 'Shell', 'Python', 'JavaScript', 'TypeScript', 'JSON', 'YAML',
+            'SQL', 'CSS', 'HTML', 'Java', 'Kotlin', 'Swift', 'Rust', 'Go', 'Ruby',
+            'PHP', 'Dockerfile', 'PowerShell', 'Plaintext', 'Text', 'Markdown',
+            'XML', 'TOML', 'GraphQL', 'Terraform', 'Scala', 'Dart', 'Elixir',
+            'Haskell', 'R', 'Lua', 'Perl'
+        ];
+        const langAlts = LANGS.join('|');
+
+        // Insert double newlines before "Step N:" that was concatenated to previous prose
+        // e.g., "...DockerStep 1: Title" → "...Docker\n\nStep 1: Title"
+        text = text.replace(/([\w),!?.])(Step\s+\d+:)/g, '$1\n\n$2');
+
+        // Split text into prose and code blocks using ":LANG" markers as delimiters
+        const blocks = [];
+        const splitRe = new RegExp(`:(?:${langAlts})`, 'g');
+
+        let pos = 0;
+        let m;
+        splitRe.lastIndex = 0;
+
+        while ((m = splitRe.exec(text)) !== null) {
+            // Everything before the ":LANG" marker is prose
+            const before = text.slice(pos, m.index);
+            if (before.trim()) blocks.push({ type: 'prose', content: before });
+
+            const lang = m[0].slice(1); // remove ':'
+            const codeStart = m.index + m[0].length;
+
+            // Find code end: next ":LANG" marker OR next "Step N:" (on its own line) OR end
+            const endRe = new RegExp(`(:(?:${langAlts}))|(\\n\\s*Step\\s+\\d+:)`, 'g');
+            endRe.lastIndex = codeStart;
+            const endM = endRe.exec(text);
+
+            let codeEnd;
+            if (endM) {
+                codeEnd = endM.index;
+                pos = codeEnd;
+                splitRe.lastIndex = codeEnd; // restart from delimiter
+            } else {
+                codeEnd = text.length;
+                pos = text.length;
+            }
+
+            const codeContent = text.slice(codeStart, codeEnd).trim();
+            if (codeContent) blocks.push({ type: 'code', lang, content: codeContent });
+        }
+
+        // Remaining prose after the last code block
+        if (pos < text.length) {
+            const remaining = text.slice(pos).trim();
+            if (remaining) blocks.push({ type: 'prose', content: remaining });
+        }
+
+        // Render blocks to structured HTML
+        let html = '';
+        for (const block of blocks) {
+            if (block.type === 'code') {
+                const hdr = block.lang
+                    ? `<div class="ag-modal-code-header"><span>${escapeHtml(block.lang)}</span></div>`
+                    : '';
+                html += `<div class="ag-modal-code-wrapper">${hdr}<pre class="ag-modal-pre"><code>${escapeHtml(block.content)}</code></pre></div>`;
+            } else {
+                html += renderOldProse(block.content);
+            }
+        }
+
+        return html || '';
+    }
+
+    function renderOldProse(text) {
+        if (!text.trim()) return '';
+        let html = '';
+
+        // Split into paragraphs on double-newlines
+        const paras = text.split(/\n\n+/);
+        for (const para of paras) {
+            const t = para.trim();
+            if (!t) continue;
+
+            // Check if paragraph starts with "Step N:"
+            const stepM = t.match(/^(Step\s+\d+:)\s?([\s\S]*)/);
+            if (stepM) {
+                const stepLabel = stepM[1];        // "Step 1:"
+                const rest = stepM[2] || '';
+
+                // Heuristic: in old flat format, the step title and body are concatenated
+                // without separator. Detect the junction by finding a lowercase→uppercase
+                // transition within the first 60 chars: "RunningMake" → split at 'g'/'M'.
+                const junctionIdx = rest.search(/[a-z][A-Z]/);
+                let stepTitle, stepBody;
+                if (junctionIdx >= 0 && junctionIdx < 60) {
+                    stepTitle = rest.slice(0, junctionIdx + 1); // includes the lowercase char
+                    stepBody = rest.slice(junctionIdx + 1).trim();
+                } else {
+                    stepTitle = '';
+                    stepBody = rest;
+                }
+
+                const fullTitle = stepTitle
+                    ? `${stepLabel} ${stepTitle.trim()}`
+                    : stepLabel;
+                html += `<h4 class="ag-modal-h4">${escapeHtml(fullTitle.trim())}</h4>`;
+                if (stepBody.trim()) {
+                    html += `<p class="ag-modal-p">${escapeHtml(stepBody.trim()).replace(/\n/g, '<br>')}</p>`;
+                }
+            } else {
+                html += `<p class="ag-modal-p">${escapeHtml(t).replace(/\n/g, '<br>')}</p>`;
+            }
+        }
+
+        return html;
+    }
+
     function renderFullBookmarkContent(bm) {
         if (!bm) return '<p class="ag-modal-p" style="color: #8e918f; font-style: italic;">No text saved for this bookmark.</p>';
 
-        // If we have rich HTML from the new extraction pipeline, use it (unless it's old flat format)
-        if (bm.responseHtml && bm.responseHtml.trim() && !isOldFlatHtml(bm.responseHtml)) {
-            return sanitizeResponseHtml(bm.responseHtml);
+        if (bm.responseHtml && bm.responseHtml.trim()) {
+            if (!isOldFlatHtml(bm.responseHtml)) {
+                // New rich-HTML format from the updated extraction pipeline
+                return sanitizeResponseHtml(bm.responseHtml);
+            }
+            // Old flat-format bookmark — parse it intelligently
+            const parsed = parseOldFlatHtml(bm.responseHtml);
+            if (parsed && parsed.trim()) return parsed;
         }
 
-        // Fall back to markdown-formatted responseText (works for both old and new bookmarks)
+        // Fallback: render responseText as markdown
         if (bm.responseText && bm.responseText.trim()) {
             return formatFullResponseMarkdown(bm.responseText);
-        }
-
-        // Last resort: sanitize whatever HTML we have
-        if (bm.responseHtml && bm.responseHtml.trim()) {
-            return sanitizeResponseHtml(bm.responseHtml);
         }
 
         return '<p class="ag-modal-p" style="color: #8e918f; font-style: italic;">No content saved for this bookmark.</p>';
