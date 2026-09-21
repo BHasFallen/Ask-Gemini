@@ -1378,7 +1378,12 @@ body[data-theme="light"] .ag-star-item-btn,
 .top-action-list-pinned #ag-bookmarks-sidebar-btn,
 .sidenav-with-history-container.collapsed #ag-bookmarks-sidebar-btn,
 .side-navigation-content.rail #ag-bookmarks-sidebar-btn,
-bard-sidenav[collapsed] #ag-bookmarks-sidebar-btn {
+bard-sidenav[collapsed] #ag-bookmarks-sidebar-btn,
+.top-action-list-pinned .ag-bookmarks-nav-shortcut,
+.sidenav-with-history-container.collapsed .ag-bookmarks-nav-shortcut,
+.side-navigation-content.rail .ag-bookmarks-nav-shortcut,
+bard-sidenav[collapsed] .ag-bookmarks-nav-shortcut,
+a.mdc-icon-button .ag-bookmarks-nav-shortcut {
   display: none !important;
 }
 
@@ -1430,9 +1435,40 @@ a.gem-nav-list-item[data-ag-nav="bookmarks"]:not(.mdc-icon-button) .leading-icon
   flex-shrink: 0 !important;
 }
 
-.gem-nav-list-item:hover .trailing-slot-content .ag-bookmarks-nav-badge {
+.ag-bookmarks-nav-shortcut {
+  display: none !important;
+  align-items: center !important;
+  justify-content: center !important;
+  background: rgba(255, 255, 255, 0.08) !important;
+  color: #c4c7c5 !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  border-radius: 6px !important;
+  padding: 1px 6px !important;
+  font-size: 10.5px !important;
+  font-weight: 500 !important;
+  letter-spacing: 0.2px !important;
+  margin-left: auto !important;
+  flex-shrink: 0 !important;
+  line-height: 16px !important;
+  font-family: 'Google Sans Text', Roboto, sans-serif !important;
+  user-select: none !important;
+  white-space: nowrap !important;
+}
+
+/* Hover swap: on hover hide number badge and show shortcut chip on the side */
+.gem-nav-list-item:hover .trailing-slot-content .ag-bookmarks-nav-badge,
+a[data-ag-nav="bookmarks"]:hover .trailing-slot-content .ag-bookmarks-nav-badge,
+.ag-bookmarks-nav-item:hover .ag-bookmarks-nav-badge {
+  display: none !important;
+}
+
+.gem-nav-list-item:hover .trailing-slot-content .ag-bookmarks-nav-shortcut,
+a[data-ag-nav="bookmarks"]:hover .trailing-slot-content .ag-bookmarks-nav-shortcut,
+.ag-bookmarks-nav-item:hover .ag-bookmarks-nav-shortcut {
+  display: inline-flex !important;
   color: #ffffff !important;
-  background: rgba(255, 255, 255, 0.18) !important;
+  background: rgba(255, 255, 255, 0.14) !important;
+  border-color: rgba(255, 255, 255, 0.2) !important;
 }
 
 /* Replaced Gems item font size */
@@ -2340,6 +2376,28 @@ html[theme="light"] .ag-bookmarks-nav-badge,
 body[data-theme="light"] .ag-bookmarks-nav-badge {
   background: #e8eaed;
   color: #3c4043;
+}
+
+body.light-theme .ag-bookmarks-nav-shortcut,
+html[theme="light"] .ag-bookmarks-nav-shortcut,
+body[data-theme="light"] .ag-bookmarks-nav-shortcut {
+  background: rgba(0, 0, 0, 0.05) !important;
+  color: #444746 !important;
+  border: 1px solid rgba(0, 0, 0, 0.09) !important;
+}
+
+body.light-theme .gem-nav-list-item:hover .trailing-slot-content .ag-bookmarks-nav-shortcut,
+html[theme="light"] .gem-nav-list-item:hover .trailing-slot-content .ag-bookmarks-nav-shortcut,
+body[data-theme="light"] .gem-nav-list-item:hover .trailing-slot-content .ag-bookmarks-nav-shortcut,
+body.light-theme a[data-ag-nav="bookmarks"]:hover .trailing-slot-content .ag-bookmarks-nav-shortcut,
+html[theme="light"] a[data-ag-nav="bookmarks"]:hover .trailing-slot-content .ag-bookmarks-nav-shortcut,
+body[data-theme="light"] a[data-ag-nav="bookmarks"]:hover .trailing-slot-content .ag-bookmarks-nav-shortcut,
+body.light-theme .ag-bookmarks-nav-item:hover .ag-bookmarks-nav-shortcut,
+html[theme="light"] .ag-bookmarks-nav-item:hover .ag-bookmarks-nav-shortcut,
+body[data-theme="light"] .ag-bookmarks-nav-item:hover .ag-bookmarks-nav-shortcut {
+  color: #1f1f1f !important;
+  background: rgba(0, 0, 0, 0.09) !important;
+  border-color: rgba(0, 0, 0, 0.15) !important;
 }
 
 /* ─── Bookmark Card Read More Link ─── */

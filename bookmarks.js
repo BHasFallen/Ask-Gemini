@@ -972,9 +972,9 @@ window.AskGemini = window.AskGemini || {};
         if (gemsLinks.size > 0) {
             gemsLinks.forEach(gemsLink => {
                 // Set link attributes
-                gemsLink.setAttribute('aria-label', 'Bookmarks (Quote Reply)');
-                gemsLink.setAttribute('title', 'Bookmarks (Quote Reply • Ctrl+Shift+B)');
-                gemsLink.setAttribute('href', '#');
+                gemsLink.setAttribute('aria-label', 'Bookmarks');
+                gemsLink.removeAttribute('title');
+                gemsLink.setAttribute('href', '#bookmarks');
                 gemsLink.dataset.agNav = 'bookmarks';
 
                 const isIconButton = gemsLink.classList.contains('mdc-icon-button') ||
@@ -1037,17 +1037,17 @@ window.AskGemini = window.AskGemini || {};
                         }
                     }
 
-                    // Update badge in trailing meta slot
+                    // Update badge and hover shortcut in trailing meta slot
                     const count = AG.bookmarksList.length;
+                    const isMac = typeof navigator !== 'undefined' && /Mac|iPod|iPhone|iPad/.test(navigator.platform);
+                    const shortcutText = isMac ? '⌘⇧B' : 'Ctrl+Shift+B';
                     const trailingSlot = gemsLink.querySelector('.trailing-slot-content, [matlistitemmeta], .mat-mdc-list-item-meta');
                     if (trailingSlot) {
-                        if (count > 0) {
-                            trailingSlot.className = 'trailing-slot-content ng-star-inserted';
-                            trailingSlot.innerHTML = `<span class="ag-bookmarks-nav-badge">${count}</span>`;
-                        } else {
-                            trailingSlot.className = 'trailing-slot-content no-trailing-content ng-star-inserted';
-                            trailingSlot.innerHTML = '';
-                        }
+                        trailingSlot.className = 'trailing-slot-content ng-star-inserted';
+                        trailingSlot.innerHTML = `
+                            ${count > 0 ? `<span class="ag-bookmarks-nav-badge">${count}</span>` : ''}
+                            <span class="ag-bookmarks-nav-shortcut">${shortcutText}</span>
+                        `;
                     }
                 }
 
@@ -1098,9 +1098,11 @@ window.AskGemini = window.AskGemini || {};
         navBtn.className = 'ag-bookmarks-nav-item';
         navBtn.setAttribute('role', 'button');
         navBtn.setAttribute('tabindex', '0');
-        navBtn.setAttribute('title', 'Bookmarks (Ctrl+Shift+B)');
+        navBtn.setAttribute('aria-label', 'Bookmarks');
 
         const count = AG.bookmarksList.length;
+        const isMac = typeof navigator !== 'undefined' && /Mac|iPod|iPhone|iPad/.test(navigator.platform);
+        const shortcutText = isMac ? '⌘⇧B' : 'Ctrl+Shift+B';
         const countHtml = count > 0 ? `<span class="ag-bookmarks-nav-badge">${count}</span>` : '';
 
         navBtn.innerHTML = `
@@ -1108,7 +1110,10 @@ window.AskGemini = window.AskGemini || {};
                 ${MATERIAL_BOOKMARK_OUTLINE}
             </span>
             <span class="ag-bookmarks-nav-label">Bookmarks</span>
-            ${countHtml}
+            <div class="ag-bookmarks-nav-trailing" style="margin-left: auto; display: inline-flex; align-items: center;">
+                ${countHtml}
+                <span class="ag-bookmarks-nav-shortcut">${shortcutText}</span>
+            </div>
         `;
 
         navBtn.addEventListener('click', (e) => {
@@ -1129,6 +1134,8 @@ window.AskGemini = window.AskGemini || {};
 
     AG.updateSidebarBadge = function () {
         const count = AG.bookmarksList.length;
+        const isMac = typeof navigator !== 'undefined' && /Mac|iPod|iPhone|iPad/.test(navigator.platform);
+        const shortcutText = isMac ? '⌘⇧B' : 'Ctrl+Shift+B';
 
         // Check if Gems was replaced
         const gemsLinks = document.querySelectorAll('a[data-ag-nav="bookmarks"]');
@@ -1137,15 +1144,14 @@ window.AskGemini = window.AskGemini || {};
             document.querySelectorAll('#ag-bookmarks-sidebar-btn').forEach(el => el.remove());
 
             gemsLinks.forEach(gemsLink => {
+                gemsLink.removeAttribute('title');
                 const trailingSlot = gemsLink.querySelector('.trailing-slot-content, [matlistitemmeta], .mat-mdc-list-item-meta');
                 if (trailingSlot) {
-                    if (count > 0) {
-                        trailingSlot.className = 'trailing-slot-content ng-star-inserted';
-                        trailingSlot.innerHTML = `<span class="ag-bookmarks-nav-badge">${count}</span>`;
-                    } else {
-                        trailingSlot.className = 'trailing-slot-content no-trailing-content ng-star-inserted';
-                        trailingSlot.innerHTML = '';
-                    }
+                    trailingSlot.className = 'trailing-slot-content ng-star-inserted';
+                    trailingSlot.innerHTML = `
+                        ${count > 0 ? `<span class="ag-bookmarks-nav-badge">${count}</span>` : ''}
+                        <span class="ag-bookmarks-nav-shortcut">${shortcutText}</span>
+                    `;
                 }
             });
             return;
@@ -1153,7 +1159,9 @@ window.AskGemini = window.AskGemini || {};
 
         const navBtn = document.getElementById('ag-bookmarks-sidebar-btn');
         if (navBtn) {
+            navBtn.removeAttribute('title');
             let badge = navBtn.querySelector('.ag-bookmarks-nav-badge');
+            let shortcut = navBtn.querySelector('.ag-bookmarks-nav-shortcut');
             if (count > 0) {
                 if (!badge) {
                     badge = document.createElement('span');
@@ -1163,6 +1171,12 @@ window.AskGemini = window.AskGemini || {};
                 badge.textContent = count;
             } else if (badge) {
                 badge.remove();
+            }
+            if (!shortcut) {
+                shortcut = document.createElement('span');
+                shortcut.className = 'ag-bookmarks-nav-shortcut';
+                shortcut.textContent = shortcutText;
+                navBtn.appendChild(shortcut);
             }
         }
     };
@@ -1202,8 +1216,16 @@ window.AskGemini = window.AskGemini || {};
         }
     };
 
-    AG.openBookmarksOverlay = function () {
+    AG.openBookmarksOverlay = function (updateUrl = true) {
         if (AG.isBookmarksOverlayOpen) return;
+
+        if (updateUrl && window.location.hash !== '#bookmarks') {
+            try {
+                history.pushState({ agBookmarksOpen: true }, '', window.location.pathname + window.location.search + '#bookmarks');
+            } catch (e) {
+                window.location.hash = 'bookmarks';
+            }
+        }
 
         const iconUrl = (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.getURL)
             ? chrome.runtime.getURL('icons/icon16.png')
@@ -1403,13 +1425,21 @@ window.AskGemini = window.AskGemini || {};
         AG.renderBookmarksList(searchInput ? searchInput.value.trim() : '');
     };
 
-    AG.closeBookmarksOverlay = function () {
+    AG.closeBookmarksOverlay = function (updateUrl = true) {
         const overlay = document.getElementById('ag-bookmarks-overlay');
         if (overlay) {
             overlay.classList.add('ag-overlay-out');
             setTimeout(() => {
                 overlay.remove();
             }, 200);
+        }
+
+        if (updateUrl && window.location.hash === '#bookmarks') {
+            try {
+                history.replaceState(null, '', window.location.pathname + window.location.search);
+            } catch (e) {
+                window.location.hash = '';
+            }
         }
 
         // Restore chat container
@@ -2179,4 +2209,43 @@ window.AskGemini = window.AskGemini || {};
             listEl.appendChild(card);
         });
     };
+
+    // ─── URL Hash & History Navigation Listeners ────────────────────────────────
+    window.addEventListener('popstate', () => {
+        if (window.location.hash === '#bookmarks') {
+            if (!AG.isBookmarksOverlayOpen) {
+                AG.openBookmarksOverlay(false);
+            }
+        } else {
+            if (AG.isBookmarksOverlayOpen) {
+                AG.closeBookmarksOverlay(false);
+            }
+        }
+    });
+
+    window.addEventListener('hashchange', () => {
+        if (window.location.hash === '#bookmarks') {
+            if (!AG.isBookmarksOverlayOpen) {
+                AG.openBookmarksOverlay(false);
+            }
+        } else {
+            if (AG.isBookmarksOverlayOpen) {
+                AG.closeBookmarksOverlay(false);
+            }
+        }
+    });
+
+    // Auto-open if page was opened or refreshed with #bookmarks
+    if (window.location.hash === '#bookmarks') {
+        const autoOpenBookmarks = () => {
+            if (!AG.isBookmarksOverlayOpen && AG.bookmarksEnabled) {
+                AG.openBookmarksOverlay(false);
+            }
+        };
+        if (document.readyState === 'complete') {
+            setTimeout(autoOpenBookmarks, 500);
+        } else {
+            window.addEventListener('load', () => setTimeout(autoOpenBookmarks, 500));
+        }
+    }
 })();
