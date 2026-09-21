@@ -1037,18 +1037,26 @@ window.AskGemini = window.AskGemini || {};
                         }
                     }
 
-                    // Update badge and hover shortcut in trailing meta slot
+                    // Ensure trailing meta class exists on the link
+                    gemsLink.classList.add('mdc-list-item--with-trailing-meta', 'mat-mdc-list-item-both-leading-and-trailing');
+
+                    // Update badge and hover shortcut in trailing meta slot matching native Gemini structure
                     const count = AG.bookmarksList.length;
                     const isMac = typeof navigator !== 'undefined' && /Mac|iPod|iPhone|iPad/.test(navigator.platform);
                     const shortcutText = isMac ? '⌘⇧B' : 'Ctrl+Shift+B';
-                    const trailingSlot = gemsLink.querySelector('.trailing-slot-content, [matlistitemmeta], .mat-mdc-list-item-meta');
-                    if (trailingSlot) {
-                        trailingSlot.className = 'trailing-slot-content ng-star-inserted';
-                        trailingSlot.innerHTML = `
-                            ${count > 0 ? `<span class="ag-bookmarks-nav-badge">${count}</span>` : ''}
-                            <span class="ag-bookmarks-nav-shortcut">${shortcutText}</span>
-                        `;
+                    let metaContainer = gemsLink.querySelector('[matlistitemmeta], .mat-mdc-list-item-meta, .trailing-content');
+                    if (!metaContainer) {
+                        metaContainer = document.createElement('div');
+                        metaContainer.setAttribute('matlistitemmeta', '');
+                        metaContainer.className = 'mat-mdc-list-item-meta mdc-list-item__end trailing-content gmat-override';
+                        gemsLink.appendChild(metaContainer);
                     }
+                    metaContainer.innerHTML = `
+                        <span class="trailing-text-container gds-body-s ag-bookmarks-nav-shortcut ng-star-inserted">${shortcutText}</span>
+                        <div class="trailing-slot-content ${count > 0 ? '' : 'no-trailing-content'} ng-star-inserted">
+                            ${count > 0 ? `<span class="ag-bookmarks-nav-badge">${count}</span>` : ''}
+                        </div>
+                    `;
                 }
 
                 // Intercept clicks and Enter keys in capture phase before Angular router executes
@@ -1110,9 +1118,11 @@ window.AskGemini = window.AskGemini || {};
                 ${MATERIAL_BOOKMARK_OUTLINE}
             </span>
             <span class="ag-bookmarks-nav-label">Bookmarks</span>
-            <div class="ag-bookmarks-nav-trailing" style="margin-left: auto; display: inline-flex; align-items: center;">
-                ${countHtml}
-                <span class="ag-bookmarks-nav-shortcut">${shortcutText}</span>
+            <div class="mat-mdc-list-item-meta trailing-content" style="margin-left: auto; display: inline-flex; align-items: center;">
+                <span class="trailing-text-container gds-body-s ag-bookmarks-nav-shortcut ng-star-inserted">${shortcutText}</span>
+                <div class="trailing-slot-content ${count > 0 ? '' : 'no-trailing-content'} ng-star-inserted">
+                    ${countHtml}
+                </div>
             </div>
         `;
 
@@ -1145,14 +1155,20 @@ window.AskGemini = window.AskGemini || {};
 
             gemsLinks.forEach(gemsLink => {
                 gemsLink.removeAttribute('title');
-                const trailingSlot = gemsLink.querySelector('.trailing-slot-content, [matlistitemmeta], .mat-mdc-list-item-meta');
-                if (trailingSlot) {
-                    trailingSlot.className = 'trailing-slot-content ng-star-inserted';
-                    trailingSlot.innerHTML = `
-                        ${count > 0 ? `<span class="ag-bookmarks-nav-badge">${count}</span>` : ''}
-                        <span class="ag-bookmarks-nav-shortcut">${shortcutText}</span>
-                    `;
+                gemsLink.classList.add('mdc-list-item--with-trailing-meta', 'mat-mdc-list-item-both-leading-and-trailing');
+                let metaContainer = gemsLink.querySelector('[matlistitemmeta], .mat-mdc-list-item-meta, .trailing-content');
+                if (!metaContainer) {
+                    metaContainer = document.createElement('div');
+                    metaContainer.setAttribute('matlistitemmeta', '');
+                    metaContainer.className = 'mat-mdc-list-item-meta mdc-list-item__end trailing-content gmat-override';
+                    gemsLink.appendChild(metaContainer);
                 }
+                metaContainer.innerHTML = `
+                    <span class="trailing-text-container gds-body-s ag-bookmarks-nav-shortcut ng-star-inserted">${shortcutText}</span>
+                    <div class="trailing-slot-content ${count > 0 ? '' : 'no-trailing-content'} ng-star-inserted">
+                        ${count > 0 ? `<span class="ag-bookmarks-nav-badge">${count}</span>` : ''}
+                    </div>
+                `;
             });
             return;
         }
@@ -1160,24 +1176,18 @@ window.AskGemini = window.AskGemini || {};
         const navBtn = document.getElementById('ag-bookmarks-sidebar-btn');
         if (navBtn) {
             navBtn.removeAttribute('title');
-            let badge = navBtn.querySelector('.ag-bookmarks-nav-badge');
-            let shortcut = navBtn.querySelector('.ag-bookmarks-nav-shortcut');
-            if (count > 0) {
-                if (!badge) {
-                    badge = document.createElement('span');
-                    badge.className = 'ag-bookmarks-nav-badge';
-                    navBtn.appendChild(badge);
-                }
-                badge.textContent = count;
-            } else if (badge) {
-                badge.remove();
+            let metaContainer = navBtn.querySelector('.mat-mdc-list-item-meta, .trailing-content');
+            if (!metaContainer) {
+                metaContainer = document.createElement('div');
+                metaContainer.className = 'mat-mdc-list-item-meta mdc-list-item__end trailing-content gmat-override';
+                navBtn.appendChild(metaContainer);
             }
-            if (!shortcut) {
-                shortcut = document.createElement('span');
-                shortcut.className = 'ag-bookmarks-nav-shortcut';
-                shortcut.textContent = shortcutText;
-                navBtn.appendChild(shortcut);
-            }
+            metaContainer.innerHTML = `
+                <span class="trailing-text-container gds-body-s ag-bookmarks-nav-shortcut ng-star-inserted">${shortcutText}</span>
+                <div class="trailing-slot-content ${count > 0 ? '' : 'no-trailing-content'} ng-star-inserted">
+                    ${count > 0 ? `<span class="ag-bookmarks-nav-badge">${count}</span>` : ''}
+                </div>
+            `;
         }
     };
 

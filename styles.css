@@ -1435,40 +1435,64 @@ a.gem-nav-list-item[data-ag-nav="bookmarks"]:not(.mdc-icon-button) .leading-icon
   flex-shrink: 0 !important;
 }
 
-.ag-bookmarks-nav-shortcut {
-  display: none !important;
-  align-items: center !important;
-  justify-content: center !important;
-  background: rgba(255, 255, 255, 0.08) !important;
-  color: #c4c7c5 !important;
-  border: 1px solid rgba(255, 255, 255, 0.12) !important;
-  border-radius: 6px !important;
-  padding: 1px 6px !important;
-  font-size: 10.5px !important;
-  font-weight: 500 !important;
-  letter-spacing: 0.2px !important;
+/* Trailing meta container alignment */
+a[data-ag-nav="bookmarks"] .mat-mdc-list-item-meta,
+.gem-nav-list-item[data-ag-nav="bookmarks"] .mat-mdc-list-item-meta,
+gem-nav-list-item[data-test-id="gems-side-nav-entry-button"] .mat-mdc-list-item-meta,
+#ag-bookmarks-sidebar-btn .mat-mdc-list-item-meta {
   margin-left: auto !important;
-  flex-shrink: 0 !important;
-  line-height: 16px !important;
-  font-family: 'Google Sans Text', Roboto, sans-serif !important;
-  user-select: none !important;
-  white-space: nowrap !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
 }
 
-/* Hover swap: on hover hide number badge and show shortcut chip on the side */
-.gem-nav-list-item:hover .trailing-slot-content .ag-bookmarks-nav-badge,
-a[data-ag-nav="bookmarks"]:hover .trailing-slot-content .ag-bookmarks-nav-badge,
+.trailing-text-container.ag-bookmarks-nav-shortcut,
+.gem-nav-list-item .trailing-text-container.ag-bookmarks-nav-shortcut,
+.ag-bookmarks-nav-shortcut {
+  display: none !important;
+  font-family: var(--gds-font-family-text, 'Google Sans Text', Roboto, sans-serif) !important;
+  font-size: 12px !important;
+  line-height: 16px !important;
+  font-weight: 400 !important;
+  color: var(--mat-sys-on-surface-variant, #c4c7c5) !important;
+  letter-spacing: 0.1px !important;
+  margin-left: auto !important;
+  flex-shrink: 0 !important;
+  user-select: none !important;
+  white-space: nowrap !important;
+  background: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
+  padding: 0 !important;
+  box-shadow: none !important;
+}
+
+/* Hover swap: on hover hide number badge and show trailing shortcut text */
+a[data-ag-nav="bookmarks"]:hover .trailing-slot-content,
+.gem-nav-list-item:hover .trailing-slot-content,
+gem-nav-list-item:hover .trailing-slot-content,
+gem-nav-list-item[data-test-id="gems-side-nav-entry-button"]:hover .trailing-slot-content,
+#ag-bookmarks-sidebar-btn:hover .trailing-slot-content,
+.ag-bookmarks-nav-item:hover .trailing-slot-content,
 .ag-bookmarks-nav-item:hover .ag-bookmarks-nav-badge {
   display: none !important;
 }
 
-.gem-nav-list-item:hover .trailing-slot-content .ag-bookmarks-nav-shortcut,
-a[data-ag-nav="bookmarks"]:hover .trailing-slot-content .ag-bookmarks-nav-shortcut,
+a[data-ag-nav="bookmarks"]:hover .trailing-text-container.ag-bookmarks-nav-shortcut,
+.gem-nav-list-item:hover .trailing-text-container.ag-bookmarks-nav-shortcut,
+gem-nav-list-item:hover .trailing-text-container.ag-bookmarks-nav-shortcut,
+gem-nav-list-item[data-test-id="gems-side-nav-entry-button"]:hover .trailing-text-container.ag-bookmarks-nav-shortcut,
+#ag-bookmarks-sidebar-btn:hover .trailing-text-container.ag-bookmarks-nav-shortcut,
+.ag-bookmarks-nav-item:hover .trailing-text-container.ag-bookmarks-nav-shortcut,
+a[data-ag-nav="bookmarks"]:hover .ag-bookmarks-nav-shortcut,
+.gem-nav-list-item:hover .ag-bookmarks-nav-shortcut,
+gem-nav-list-item:hover .ag-bookmarks-nav-shortcut,
+gem-nav-list-item[data-test-id="gems-side-nav-entry-button"]:hover .ag-bookmarks-nav-shortcut,
+#ag-bookmarks-sidebar-btn:hover .ag-bookmarks-nav-shortcut,
 .ag-bookmarks-nav-item:hover .ag-bookmarks-nav-shortcut {
   display: inline-flex !important;
-  color: #ffffff !important;
-  background: rgba(255, 255, 255, 0.14) !important;
-  border-color: rgba(255, 255, 255, 0.2) !important;
+  align-items: center !important;
+  color: var(--mat-sys-on-surface-variant, #c4c7c5) !important;
 }
 
 /* Replaced Gems item font size */
@@ -2378,26 +2402,27 @@ body[data-theme="light"] .ag-bookmarks-nav-badge {
   color: #3c4043;
 }
 
+body.light-theme .trailing-text-container.ag-bookmarks-nav-shortcut,
+html[theme="light"] .trailing-text-container.ag-bookmarks-nav-shortcut,
+body[data-theme="light"] .trailing-text-container.ag-bookmarks-nav-shortcut,
 body.light-theme .ag-bookmarks-nav-shortcut,
 html[theme="light"] .ag-bookmarks-nav-shortcut,
 body[data-theme="light"] .ag-bookmarks-nav-shortcut {
-  background: rgba(0, 0, 0, 0.05) !important;
+  background: transparent !important;
+  border: none !important;
   color: #444746 !important;
-  border: 1px solid rgba(0, 0, 0, 0.09) !important;
 }
 
-body.light-theme .gem-nav-list-item:hover .trailing-slot-content .ag-bookmarks-nav-shortcut,
-html[theme="light"] .gem-nav-list-item:hover .trailing-slot-content .ag-bookmarks-nav-shortcut,
-body[data-theme="light"] .gem-nav-list-item:hover .trailing-slot-content .ag-bookmarks-nav-shortcut,
-body.light-theme a[data-ag-nav="bookmarks"]:hover .trailing-slot-content .ag-bookmarks-nav-shortcut,
-html[theme="light"] a[data-ag-nav="bookmarks"]:hover .trailing-slot-content .ag-bookmarks-nav-shortcut,
-body[data-theme="light"] a[data-ag-nav="bookmarks"]:hover .trailing-slot-content .ag-bookmarks-nav-shortcut,
-body.light-theme .ag-bookmarks-nav-item:hover .ag-bookmarks-nav-shortcut,
-html[theme="light"] .ag-bookmarks-nav-item:hover .ag-bookmarks-nav-shortcut,
-body[data-theme="light"] .ag-bookmarks-nav-item:hover .ag-bookmarks-nav-shortcut {
-  color: #1f1f1f !important;
-  background: rgba(0, 0, 0, 0.09) !important;
-  border-color: rgba(0, 0, 0, 0.15) !important;
+body.light-theme .gem-nav-list-item:hover .trailing-text-container.ag-bookmarks-nav-shortcut,
+html[theme="light"] .gem-nav-list-item:hover .trailing-text-container.ag-bookmarks-nav-shortcut,
+body[data-theme="light"] .gem-nav-list-item:hover .trailing-text-container.ag-bookmarks-nav-shortcut,
+body.light-theme a[data-ag-nav="bookmarks"]:hover .trailing-text-container.ag-bookmarks-nav-shortcut,
+html[theme="light"] a[data-ag-nav="bookmarks"]:hover .trailing-text-container.ag-bookmarks-nav-shortcut,
+body[data-theme="light"] a[data-ag-nav="bookmarks"]:hover .trailing-text-container.ag-bookmarks-nav-shortcut,
+body.light-theme .ag-bookmarks-nav-item:hover .trailing-text-container.ag-bookmarks-nav-shortcut,
+html[theme="light"] .ag-bookmarks-nav-item:hover .trailing-text-container.ag-bookmarks-nav-shortcut,
+body[data-theme="light"] .ag-bookmarks-nav-item:hover .trailing-text-container.ag-bookmarks-nav-shortcut {
+  color: #444746 !important;
 }
 
 /* ─── Bookmark Card Read More Link ─── */
