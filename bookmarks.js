@@ -125,16 +125,86 @@ window.AskGemini = window.AskGemini || {};
         }, 3600);
     };
 
+    // ─── Text Cleaning & Deduplication Helpers ─────────────────────────────────
+    function deduplicateText(str) {
+        if (!str || typeof str !== 'string') return '';
+        str = str.trim();
+        if (str.length < 4) return str;
+
+        // Check newline duplication
+        const lines = str.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+        if (lines.length === 2 && lines[0] === lines[1]) {
+            return lines[0];
+        }
+        if (lines.length > 2 && lines.every(l => l === lines[0])) {
+            return lines[0];
+        }
+
+        // Check space duplication: e.g. "My battery health is 77% My battery health is 77%"
+        if (str.length % 2 === 1) {
+            const mid = Math.floor(str.length / 2);
+            if (str[mid] === ' ') {
+                const firstHalf = str.slice(0, mid);
+                const secondHalf = str.slice(mid + 1);
+                if (firstHalf === secondHalf) return firstHalf;
+            }
+        }
+        if (str.length % 2 === 0) {
+            const mid = str.length / 2;
+            const firstHalf = str.slice(0, mid).trim();
+            const secondHalf = str.slice(mid).trim();
+            if (firstHalf === secondHalf) return firstHalf;
+        }
+
+        // Check repeated words/tokens
+        const words = str.split(/\s+/);
+        if (words.length >= 2 && words.length % 2 === 0) {
+            const halfWords = words.length / 2;
+            const firstW = words.slice(0, halfWords).join(' ');
+            const secondW = words.slice(halfWords).join(' ');
+            if (firstW === secondW) return firstW;
+        }
+
+        return str;
+    }
+
+    function cleanPromptText(text) {
+        if (!text || typeof text !== 'string') return '';
+        let cleaned = text.trim();
+        cleaned = cleaned.replace(/\bEdit prompt\b/gi, '').trim();
+        return deduplicateText(cleaned);
+    }
+
+    function cleanResponsePreview(text) {
+        if (!text || typeof text !== 'string') return '';
+        let cleaned = text.trim();
+        cleaned = cleaned.replace(/^Gemini\s+said:?\s*/i, '');
+        cleaned = cleaned.replace(/^Gemini\s+said(?=[A-Z0-9])/i, '');
+        return cleaned.trim();
+    }
+
+    AG.cleanPromptText = cleanPromptText;
+    AG.cleanResponsePreview = cleanResponsePreview;
+
     // ─── DOM Data Extraction ────────────────────────────────────────────────────
     function findPrecedingUserPrompt(responseEl) {
         if (!responseEl) return '';
+
+        function getUqText(uq) {
+            if (!uq) return '';
+            const textContainer = uq.querySelector('.query-text, .user-query-text, .text-content, p');
+            const raw = textContainer ? (textContainer.innerText || textContainer.textContent || '') : (uq.innerText || uq.textContent || '');
+            return cleanPromptText(raw);
+        }
+
         // 1. Traverse preceding sibling containers
         let current = responseEl.closest('.conversation-turn, .chat-turn, message-turn, .message-content') || responseEl;
         let prev = current.previousElementSibling;
         while (prev) {
             const uq = prev.matches?.('user-query') ? prev : prev.querySelector?.('user-query');
             if (uq) {
-                return AG.extractCleanPromptText ? AG.extractCleanPromptText(uq) : (uq.innerText || uq.textContent || '').trim();
+                const text = getUqText(uq);
+                if (text) return text;
             }
             prev = prev.previousElementSibling;
         }
@@ -155,7 +225,7 @@ window.AskGemini = window.AskGemini || {};
             }
             const chosen = closest || allUserQueries[allUserQueries.length - 1];
             if (chosen) {
-                return AG.extractCleanPromptText ? AG.extractCleanPromptText(chosen) : (chosen.innerText || chosen.textContent || '').trim();
+                return getUqText(chosen);
             }
         }
 
@@ -170,14 +240,15 @@ window.AskGemini = window.AskGemini || {};
         ) || responseEl;
 
         const clone = textContainer.cloneNode(true);
-        // Strip out actions, buttons, tooltips, and badges
+        // Strip out actions, buttons, tooltips, badges, hidden screenreader text, and avatars
         const toRemove = clone.querySelectorAll(
-            '.buttons-container-v2, .message-actions, button, mat-icon, svg, .mat-mdc-tooltip-trigger, .ag-bookmark-btn'
+            '.buttons-container-v2, .message-actions, button, mat-icon, svg, .mat-mdc-tooltip-trigger, .ag-bookmark-btn, .visually-hidden, [aria-hidden="true"], .avatar-container, .model-avatar'
         );
         toRemove.forEach(n => n.remove());
 
         let text = (clone.innerText || clone.textContent || '').trim();
-        return text.replace(/\n{3,}/g, '\n\n');
+        text = text.replace(/\n{3,}/g, '\n\n');
+        return cleanResponsePreview(text);
     }
 
     function extractModelName() {
@@ -937,59 +1008,53 @@ window.AskGemini = window.AskGemini || {};
         overlay.innerHTML = `
             <div class="ag-bookmarks-header">
                 <div class="ag-bookmarks-header-left">
-                    <button type="button" class="ag-bookmarks-back-btn" id="ag-bookmarks-back-btn" title="Back to chat (Esc)">
-                        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <line x1="19" y1="12" x2="5" y2="12"></line>
-                            <polyline points="12 19 5 12 12 5"></polyline>
+                    <button type="button" class="ag-native-icon-btn ag-bookmarks-back-btn" id="ag-bookmarks-back-btn" title="Back to chat (Esc)" aria-label="Back to chat">
+                        <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
+                            <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/>
                         </svg>
-                        <span>Back</span>
                     </button>
                     <div class="ag-bookmarks-header-title">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="currentColor" style="color: #fbbc04;">
-                            <path d="M17 3H7c-1.1 0-2 .9-2 2v14.55c0 .91 1.01 1.44 1.77.96L12 17.29l5.23 3.22c.76.47 1.77-.05 1.77-.96V5c0-1.1-.9-2-2-2z"/>
-                        </svg>
-                        <h2>Bookmarks</h2>
+                        <h2 class="ag-headline-m">Bookmarks</h2>
                         <span class="ag-bookmarks-count-pill" id="ag-overlay-count-pill">0</span>
                     </div>
                 </div>
 
                 <div class="ag-bookmarks-header-right">
                     <div class="ag-bookmarks-search-box">
-                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <circle cx="11" cy="11" r="8"></circle>
-                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                        <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" class="ag-search-icon">
+                            <path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
                         </svg>
-                        <input type="text" id="ag-bookmarks-search-input" placeholder="Search saved responses..." autocomplete="off">
+                        <input type="text" id="ag-bookmarks-search-input" placeholder="Search bookmarks..." autocomplete="off">
+                        <button type="button" id="ag-bookmarks-search-clear" class="ag-search-clear-btn" title="Clear search" style="display: none;" aria-label="Clear search">
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                                <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+                            </svg>
+                        </button>
                     </div>
-                    <button type="button" class="ag-bookmarks-header-action" id="ag-bookmarks-export-btn" title="Export bookmarks as JSON file">
-                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                            <polyline points="7 10 12 15 17 10"></polyline>
-                            <line x1="12" y1="15" x2="12" y2="3"></line>
+                    <button type="button" class="ag-native-icon-btn" id="ag-bookmarks-export-btn" title="Export bookmarks (JSON)" aria-label="Export bookmarks">
+                        <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+                            <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/>
                         </svg>
-                        <span>Export</span>
                     </button>
-                    <button type="button" class="ag-bookmarks-header-action" id="ag-bookmarks-import-btn" title="Import bookmarks from JSON file">
-                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                            <polyline points="17 8 12 3 7 8"></polyline>
-                            <line x1="12" y1="3" x2="12" y2="15"></line>
+                    <button type="button" class="ag-native-icon-btn" id="ag-bookmarks-import-btn" title="Import bookmarks (JSON)" aria-label="Import bookmarks">
+                        <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+                            <path d="M9 16h6v-6h4l-7-7-7 7h4zm-4 2h14v2H5z"/>
                         </svg>
-                        <span>Import</span>
                     </button>
                     <input type="file" id="ag-bookmarks-file-input" accept=".json" style="display:none;">
-                    <button type="button" class="ag-bookmarks-header-action ag-btn-danger" id="ag-bookmarks-clear-btn" title="Clear all bookmarks">
-                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <polyline points="3 6 5 6 21 6"></polyline>
-                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                    <button type="button" class="ag-native-icon-btn ag-btn-danger" id="ag-bookmarks-clear-btn" title="Clear all bookmarks" aria-label="Clear all bookmarks">
+                        <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+                            <path d="M15 16h4v2h-4zm0-8h7v2h-7zm0 4h6v2h-6zM3 18c0 1.1.9 2 2 2h6c1.1 0 2-.9 2-2V8H3v10zm2-8h6v8H5v-8zm5-6H6L5 5H2v2h12V5h-3z"/>
                         </svg>
-                        <span>Clear All</span>
                     </button>
                 </div>
             </div>
 
             <div class="ag-bookmarks-scroll-container">
                 <div class="ag-bookmarks-main">
+                    <div class="ag-bookmarks-section-header">
+                        <span class="ag-section-title">Saved responses</span>
+                    </div>
                     <div id="ag-bookmarks-list" class="ag-bookmarks-list"></div>
                 </div>
             </div>
@@ -1024,9 +1089,20 @@ window.AskGemini = window.AskGemini || {};
         });
 
         const searchInput = document.getElementById('ag-bookmarks-search-input');
+        const searchClear = document.getElementById('ag-bookmarks-search-clear');
         searchInput.addEventListener('input', () => {
-            AG.renderBookmarksList(searchInput.value.trim());
+            const val = searchInput.value;
+            if (searchClear) searchClear.style.display = val ? 'flex' : 'none';
+            AG.renderBookmarksList(val.trim());
         });
+        if (searchClear) {
+            searchClear.addEventListener('click', () => {
+                searchInput.value = '';
+                searchClear.style.display = 'none';
+                searchInput.focus();
+                AG.renderBookmarksList('');
+            });
+        }
 
         AG.renderBookmarksList();
 
@@ -1061,6 +1137,61 @@ window.AskGemini = window.AskGemini || {};
         AG.isBookmarksOverlayOpen = false;
     };
 
+    function jumpToBookmark(bm) {
+        const currentConvId = extractConversationId(window.location.href);
+        const isSameConv = currentConvId === bm.conversationId || window.location.href === bm.conversationUrl;
+
+        if (chrome.runtime && chrome.runtime.sendMessage) {
+            chrome.runtime.sendMessage({
+                type: 'TRACK_EVENT',
+                name: 'bookmark_navigated',
+                params: {
+                    bookmark_id: bm.id,
+                    same_conversation: isSameConv
+                }
+            });
+        }
+
+        if (isSameConv) {
+            AG.closeBookmarksOverlay();
+            // Try scrolling to matching prompt or response
+            setTimeout(() => {
+                const snippet = cleanResponsePreview(bm.responseText || '').slice(0, 80);
+                const cleanPrompt = cleanPromptText(bm.promptText || '');
+                const prompts = Array.from(document.querySelectorAll('user-query'));
+                let target = null;
+
+                for (const p of prompts) {
+                    const clean = cleanPromptText(p.innerText || '');
+                    if (clean && clean.includes(cleanPrompt.slice(0, 35))) {
+                        target = p;
+                        break;
+                    }
+                }
+
+                if (!target && snippet) {
+                    const responses = Array.from(document.querySelectorAll('.model-response, model-response, .markdown-main-panel'));
+                    for (const r of responses) {
+                        const cleanResp = cleanResponsePreview(r.innerText || r.textContent || '');
+                        if (cleanResp.includes(snippet)) {
+                            target = r;
+                            break;
+                        }
+                    }
+                }
+
+                if (target) {
+                    target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    target.classList.add('ag-text-highlight-blink');
+                    setTimeout(() => target.classList.remove('ag-text-highlight-blink'), 2200);
+                }
+            }, 250);
+        } else {
+            // Navigate to conversation URL
+            window.location.href = bm.conversationUrl;
+        }
+    }
+
     AG.renderBookmarksList = function (filterQuery = '') {
         const listEl = document.getElementById('ag-bookmarks-list');
         const countPill = document.getElementById('ag-overlay-count-pill');
@@ -1077,12 +1208,12 @@ window.AskGemini = window.AskGemini || {};
             listEl.innerHTML = `
                 <div class="ag-bookmarks-empty">
                     <div class="ag-bookmarks-empty-icon">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="currentColor">
+                        <svg viewBox="0 0 24 24" width="48" height="48" fill="currentColor">
                             <path d="M17 3H7c-1.1 0-2 .9-2 2v14.55c0 .91 1.01 1.44 1.77.96L12 17.29l5.23 3.22c.76.47 1.77-.05 1.77-.96V5c0-1.1-.9-2-2-2zm0 13.97-4.46-2.75c-.33-.2-.75-.2-1.08 0L7 16.97V5h10v11.97z"/>
                         </svg>
                     </div>
                     <h3>No bookmarks yet</h3>
-                    <p>Click the bookmark icon (<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style="vertical-align:middle;display:inline;"><path d="M17 3H7c-1.1 0-2 .9-2 2v14.55c0 .91 1.01 1.44 1.77.96L12 17.29l5.23 3.22c.76.47 1.77-.05 1.77-.96V5c0-1.1-.9-2-2-2zm0 13.97-4.46-2.75c-.33-.2-.75-.2-1.08 0L7 16.97V5h10v11.97z"/></svg>) under any Gemini response to save it here for quick access.</p>
+                    <p>Click the bookmark icon under any Gemini response to save it here for quick access.</p>
                 </div>
             `;
             return;
@@ -1091,11 +1222,12 @@ window.AskGemini = window.AskGemini || {};
         let filtered = AG.bookmarksList;
         if (filterQuery) {
             const q = filterQuery.toLowerCase();
-            filtered = AG.bookmarksList.filter(b =>
-                (b.promptText && b.promptText.toLowerCase().includes(q)) ||
-                (b.responseText && b.responseText.toLowerCase().includes(q)) ||
-                (b.modelName && b.modelName.toLowerCase().includes(q))
-            );
+            filtered = AG.bookmarksList.filter(b => {
+                const prompt = cleanPromptText(b.promptText || '').toLowerCase();
+                const response = cleanResponsePreview(b.responseText || '').toLowerCase();
+                const model = (b.modelName || '').toLowerCase();
+                return prompt.includes(q) || response.includes(q) || model.includes(q);
+            });
         }
 
         if (filtered.length === 0) {
@@ -1112,130 +1244,110 @@ window.AskGemini = window.AskGemini || {};
             const card = document.createElement('div');
             card.className = 'ag-bookmark-card';
             card.dataset.id = bm.id;
+            card.setAttribute('role', 'button');
+            card.setAttribute('tabindex', '0');
 
             const timeStr = formatRelativeTime(bm.createdAt);
             const modelBadge = bm.modelName ? `<span class="ag-bookmark-model-tag">${escapeHtml(bm.modelName)}</span>` : '';
+            const cleanPrompt = cleanPromptText(bm.promptText || 'Saved response');
+
+            card.setAttribute('aria-label', `Open bookmark: ${cleanPrompt}`);
 
             // Clean preview snippet
-            let previewText = bm.responseText || '';
-            if (previewText.length > 300) {
-                previewText = previewText.slice(0, 300) + '...';
+            let previewText = cleanResponsePreview(bm.responseText || '');
+            if (previewText.length > 280) {
+                previewText = previewText.slice(0, 280) + '...';
             }
 
             card.innerHTML = `
-                <div class="ag-bookmark-card-header">
-                    <div class="ag-bookmark-card-title-group">
-                        <span class="ag-bookmark-card-icon">🔖</span>
-                        <h4 class="ag-bookmark-card-prompt">${escapeHtml(bm.promptText || 'Saved response')}</h4>
-                    </div>
-                    <div class="ag-bookmark-card-meta">
-                        ${modelBadge}
-                        <span class="ag-bookmark-card-time">${escapeHtml(timeStr)}</span>
-                    </div>
+                <div class="ag-bookmark-icon-container">
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+                        <path d="M17 3H7c-1.1 0-2 .9-2 2v14.55c0 .91 1.01 1.44 1.77.96L12 17.29l5.23 3.22c.76.47 1.77-.05 1.77-.96V5c0-1.1-.9-2-2-2z"/>
+                    </svg>
                 </div>
 
-                <div class="ag-bookmark-card-body">
-                    <p class="ag-bookmark-card-preview">${escapeHtml(previewText)}</p>
+                <div class="ag-bookmark-content">
+                    <div class="ag-bookmark-topline">
+                        <h4 class="ag-bookmark-prompt" title="${escapeHtml(cleanPrompt)}">${escapeHtml(cleanPrompt)}</h4>
+                        <div class="ag-bookmark-meta">
+                            ${modelBadge}
+                            <span class="ag-bookmark-time">${escapeHtml(timeStr)}</span>
+                        </div>
+                    </div>
+                    <p class="ag-bookmark-preview">${escapeHtml(previewText)}</p>
                 </div>
 
-                <div class="ag-bookmark-card-actions">
-                    <button type="button" class="ag-bookmark-card-btn ag-card-jump-btn" title="Open response in conversation">
-                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
-                            <polyline points="15 3 21 3 21 9"></polyline>
-                            <line x1="10" y1="14" x2="21" y2="3"></line>
+                <div class="ag-bookmark-actions">
+                    <button type="button" class="ag-native-icon-btn ag-card-jump-btn" title="Open in chat" aria-label="Open in chat">
+                        <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+                            <path d="M19 19H5V5h7V3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"/>
                         </svg>
-                        <span>Jump to chat</span>
                     </button>
-                    <button type="button" class="ag-bookmark-card-btn ag-card-copy-btn" title="Copy response text">
-                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                    <button type="button" class="ag-native-icon-btn ag-card-copy-btn" title="Copy response" aria-label="Copy response">
+                        <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+                            <path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/>
                         </svg>
-                        <span>Copy</span>
                     </button>
-                    <button type="button" class="ag-bookmark-card-btn ag-card-delete-btn" title="Remove this bookmark">
-                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <polyline points="3 6 5 6 21 6"></polyline>
-                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                    <button type="button" class="ag-native-icon-btn ag-card-delete-btn" title="Remove bookmark" aria-label="Remove bookmark">
+                        <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+                            <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
                         </svg>
-                        <span>Delete</span>
                     </button>
                 </div>
             `;
 
-            // Wire up card actions
-            const jumpBtn = card.querySelector('.ag-card-jump-btn');
-            jumpBtn.addEventListener('click', () => {
-                const currentConvId = extractConversationId(window.location.href);
-                const isSameConv = currentConvId === bm.conversationId || window.location.href === bm.conversationUrl;
+            // Card click to jump to conversation
+            card.addEventListener('click', (e) => {
+                if (e.target.closest('.ag-native-icon-btn')) return;
+                jumpToBookmark(bm);
+            });
 
-                if (chrome.runtime && chrome.runtime.sendMessage) {
-                    chrome.runtime.sendMessage({
-                        type: 'TRACK_EVENT',
-                        name: 'bookmark_navigated',
-                        params: {
-                            bookmark_id: bm.id,
-                            same_conversation: isSameConv
-                        }
-                    });
-                }
-
-                if (isSameConv) {
-                    AG.closeBookmarksOverlay();
-                    // Try scrolling to matching prompt or response
-                    setTimeout(() => {
-                        const snippet = (bm.responseText || '').slice(0, 80);
-                        const prompts = Array.from(document.querySelectorAll('user-query'));
-                        let target = null;
-
-                        for (const p of prompts) {
-                            const clean = AG.extractCleanPromptText ? AG.extractCleanPromptText(p) : (p.innerText || '');
-                            if (clean && clean.includes(bm.promptText.slice(0, 40))) {
-                                target = p;
-                                break;
-                            }
-                        }
-
-                        if (!target && snippet) {
-                            const responses = Array.from(document.querySelectorAll('.model-response, model-response, .markdown-main-panel'));
-                            for (const r of responses) {
-                                if ((r.innerText || r.textContent || '').includes(snippet)) {
-                                    target = r;
-                                    break;
-                                }
-                            }
-                        }
-
-                        if (target) {
-                            target.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                            target.classList.add('ag-text-highlight-blink');
-                            setTimeout(() => target.classList.remove('ag-text-highlight-blink'), 2200);
-                        }
-                    }, 250);
-                } else {
-                    // Navigate to conversation URL
-                    window.location.href = bm.conversationUrl;
+            card.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    if (e.target.closest('.ag-native-icon-btn')) return;
+                    e.preventDefault();
+                    jumpToBookmark(bm);
                 }
             });
 
+            // Action: Jump to chat
+            const jumpBtn = card.querySelector('.ag-card-jump-btn');
+            jumpBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                jumpToBookmark(bm);
+            });
+
+            // Action: Copy response text
             const copyBtn = card.querySelector('.ag-card-copy-btn');
-            copyBtn.addEventListener('click', async () => {
+            copyBtn.addEventListener('click', async (e) => {
+                e.stopPropagation();
                 try {
                     await navigator.clipboard.writeText(bm.responseText || '');
-                    const label = copyBtn.querySelector('span');
-                    const oldText = label.textContent;
-                    label.textContent = 'Copied!';
-                    setTimeout(() => { label.textContent = oldText; }, 1800);
-                } catch (e) {
-                    console.error('Ask Gemini: Failed to copy text', e);
+                    copyBtn.innerHTML = `
+                        <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" style="color: #81c995;">
+                            <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
+                        </svg>
+                    `;
+                    copyBtn.setAttribute('title', 'Copied!');
+                    setTimeout(() => {
+                        copyBtn.innerHTML = `
+                            <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+                                <path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/>
+                            </svg>
+                        `;
+                        copyBtn.setAttribute('title', 'Copy response');
+                    }, 1800);
+                } catch (err) {
+                    console.error('Ask Gemini: Failed to copy text', err);
                 }
             });
 
+            // Action: Delete bookmark
             const deleteBtn = card.querySelector('.ag-card-delete-btn');
-            deleteBtn.addEventListener('click', () => {
+            deleteBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
                 card.style.opacity = '0';
-                card.style.transform = 'scale(0.95)';
+                card.style.transform = 'scale(0.97)';
                 setTimeout(() => {
                     AG.BookmarkManager.removeBookmark(bm.id);
                 }, 180);
