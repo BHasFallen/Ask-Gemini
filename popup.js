@@ -76,6 +76,7 @@ class PopupController {
         this.subRowMqStyle = document.getElementById('sub-row-mq-style'); // Sub-sub-row for Format
         this.switchToc = document.getElementById('switch-toc');
         this.switchLimits = document.getElementById('switch-limits');
+        this.switchBookmarks = document.getElementById('switch-bookmarks');
         // Parent row for the quota limits toggle (hidden for free-plan users)
         this.limitsSettingRow = this.switchLimits ? this.switchLimits.closest('.setting-item') : null;
 
@@ -100,7 +101,8 @@ class PopupController {
             quote_reply_enabled: true,
             multi_quote_enabled: true,
             smart_paste_behavior: 'auto',
-            toc_enabled: true
+            toc_enabled: true,
+            bookmarks_enabled: true
         };
 
         this.init();
@@ -172,6 +174,7 @@ class PopupController {
                 'multi_quote_enabled',
                 'smart_paste_behavior',
                 'toc_enabled',
+                'bookmarks_enabled',
                 'quota_limits'
             ]);
 
@@ -181,6 +184,7 @@ class PopupController {
             const mq = res.multi_quote_enabled !== false;
             const sp = res.smart_paste_behavior || 'auto';
             const toc = res.toc_enabled !== false;
+            const bm = res.bookmarks_enabled !== false;
 
             this.applyQrToggleState(qr);
             this.applyMqToggleState(mq);
@@ -188,6 +192,7 @@ class PopupController {
             this.applySpToggleState(sp);
             this.applyTocToggleState(toc);
             this.applyLimitsToggleState(limits);
+            this.applyBookmarksToggleState(bm);
             this.applyProVisibility(res.quota_limits);
 
             this.currentSettings = {
@@ -196,7 +201,8 @@ class PopupController {
                 quote_reply_enabled: qr,
                 multi_quote_enabled: mq,
                 smart_paste_behavior: sp,
-                toc_enabled: toc
+                toc_enabled: toc,
+                bookmarks_enabled: bm
             };
         } catch (e) {
             console.error('Failed to load settings:', e);
@@ -255,6 +261,10 @@ class PopupController {
 
     applyTocToggleState(enabled) {
         if (this.switchToc) this.switchToc.checked = enabled;
+    }
+
+    applyBookmarksToggleState(enabled) {
+        if (this.switchBookmarks) this.switchBookmarks.checked = enabled;
     }
 
     async saveSetting({ storageKey, settingName, featureName, newValue, extraStorage = {} }) {
@@ -351,6 +361,16 @@ class PopupController {
         });
     }
 
+    async saveBookmarksState(enabled) {
+        this.applyBookmarksToggleState(enabled);
+        await this.saveSetting({
+            storageKey: 'bookmarks_enabled',
+            settingName: 'bookmarks_enabled',
+            featureName: 'bookmarks',
+            newValue: enabled
+        });
+    }
+
     setupEventListeners() {
         // Copy Debug Info
         if (this.copyDebugLink) {
@@ -391,6 +411,10 @@ class PopupController {
 
         if (this.switchLimits) {
             this.switchLimits.addEventListener('change', () => this.saveUsageLimitsState(this.switchLimits.checked));
+        }
+
+        if (this.switchBookmarks) {
+            this.switchBookmarks.addEventListener('change', () => this.saveBookmarksState(this.switchBookmarks.checked));
         }
 
         // Multi-Quote Style Segmented Buttons
@@ -440,7 +464,7 @@ class PopupController {
                 'quote_reply_enabled', 'multi_quote_enabled', 'multi_quote_display',
                 'smart_paste_behavior', 'smart_paste_enabled', 'smart_paste_threshold',
                 'smart_paste_preference_explicitly_set', 'usage_limits_enabled',
-                'toc_enabled', 'quota_limits', 'rating_state', 'amplitude_device_id',
+                'toc_enabled', 'bookmarks_enabled', 'quota_limits', 'rating_state', 'amplitude_device_id',
                 'last_quota_check', 'developerMode', 'developerLogsEnabled'
             ]);
 
@@ -461,6 +485,7 @@ class PopupController {
                     smart_paste_preference_explicitly_set: !!res.smart_paste_preference_explicitly_set,
                     usage_limits_enabled: res.usage_limits_enabled !== false,
                     toc_enabled: res.toc_enabled !== false,
+                    bookmarks_enabled: res.bookmarks_enabled !== false,
                     developer_mode: !!res.developerMode,
                     developer_logs: !!res.developerLogsEnabled
                 },

@@ -109,6 +109,8 @@ class AmplitudeWizard {
             'multi_quote_enabled',
             'multi_quote_display',
             'usage_limits_enabled',
+            'bookmarks_enabled',
+            'bookmarks_count',
             'reply_count_lifetime'
         ]);
         const userId = storageResult.user_email || null;
@@ -141,6 +143,8 @@ class AmplitudeWizard {
                     multi_quote_enabled: storageResult.multi_quote_enabled !== false,
                     multi_quote_display: storageResult.multi_quote_display || 'compact',
                     usage_limits_enabled: storageResult.usage_limits_enabled !== false,
+                    bookmarks_enabled: storageResult.bookmarks_enabled !== false,
+                    bookmarks_count: storageResult.bookmarks_count || 0,
                     reply_count_lifetime: storageResult.reply_count_lifetime || 0
                 }
             }

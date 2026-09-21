@@ -24,7 +24,11 @@ window.AskGemini.ICONS = {
     ask: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/><path d="M5 3v4"/><path d="M19 17v4"/><path d="M3 5h4"/><path d="M17 19h4"/></svg>',
     reply: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 14 4 9 9 4"></polyline><path d="M20 20v-7a4 4 0 0 0-4-4H4"></path></svg>',
     close: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>',
-    star: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ag-star"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>'
+    star: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ag-star"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>',
+    bookmarkOutline: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M17 3H7c-1.1 0-2 .9-2 2v14.55c0 .91 1.01 1.44 1.77.96L12 17.29l5.23 3.22c.76.47 1.77-.05 1.77-.96V5c0-1.1-.9-2-2-2zm0 13.97-4.46-2.75c-.33-.2-.75-.2-1.08 0L7 16.97V5h10v11.97z"/></svg>',
+    bookmarkFilled: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M17 3H7c-1.1 0-2 .9-2 2v14.55c0 .91 1.01 1.44 1.77.96L12 17.29l5.23 3.22c.76.47 1.77-.05 1.77-.96V5c0-1.1-.9-2-2-2z"/></svg>',
+    bookmark_outline: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M17 3H7c-1.1 0-2 .9-2 2v14.55c0 .91 1.01 1.44 1.77.96L12 17.29l5.23 3.22c.76.47 1.77-.05 1.77-.96V5c0-1.1-.9-2-2-2zm0 13.97-4.46-2.75c-.33-.2-.75-.2-1.08 0L7 16.97V5h10v11.97z"/></svg>',
+    bookmark_filled: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M17 3H7c-1.1 0-2 .9-2 2v14.55c0 .91 1.01 1.44 1.77.96L12 17.29l5.23 3.22c.76.47 1.77-.05 1.77-.96V5c0-1.1-.9-2-2-2z"/></svg>'
 };
 
 // ─── Remaining Core State ─────────────────────────────────────────────────────
@@ -491,7 +495,7 @@ chrome.runtime.onMessage.addListener((message) => {
 chrome.storage.local.get([
     'multi_quote_display', 'usage_limits_enabled', 'multi_quote_enabled',
     'smart_paste_behavior', 'smart_paste_threshold', 'smart_paste_feedback_done', 'toc_enabled',
-    'quote_reply_enabled'
+    'quote_reply_enabled', 'bookmarks_enabled'
 ], (res) => {
     var AG = window.AskGemini;
     AG.multiQuoteDisplay = res.multi_quote_display || 'compact';
@@ -503,12 +507,17 @@ chrome.storage.local.get([
     AG.smartPasteThreshold = res.smart_paste_threshold || 5000;
     AG.smartPasteFeedbackDone = res.smart_paste_feedback_done === true;
     AG.tocEnabled = res.toc_enabled !== false;
+    AG.bookmarksEnabled = res.bookmarks_enabled !== false;
+
     if (!AG.usageLimitsEnabled) {
         const card = document.getElementById('ag-quota-sidebar');
         if (card) card.remove();
     }
     AG.buildTableOfContents();
     AG.setupTOCObserver();
+    if (AG.BookmarkManager && AG.BookmarkManager.init) {
+        AG.BookmarkManager.init();
+    }
 });
 
 // ─── Boot: React to Real-Time Pref Changes ────────────────────────────────────
@@ -548,6 +557,18 @@ chrome.storage.onChanged.addListener((changes, area) => {
         AG.tocEnabled = changes.toc_enabled.newValue !== false;
         AG.buildTableOfContents();
     }
+    if (changes.bookmarks_enabled) {
+        AG.bookmarksEnabled = changes.bookmarks_enabled.newValue !== false;
+        if (!AG.bookmarksEnabled) {
+            document.querySelectorAll('.ag-bookmark-btn').forEach(el => el.remove());
+            const sidebarBtn = document.getElementById('ag-bookmarks-sidebar-btn');
+            if (sidebarBtn) sidebarBtn.remove();
+            AG.closeBookmarksOverlay && AG.closeBookmarksOverlay();
+        } else {
+            AG.injectBookmarkButtons && AG.injectBookmarkButtons();
+            AG.injectSidebarBookmarkNav && AG.injectSidebarBookmarkNav();
+        }
+    }
 });
 
 // ─── Boot Sequence ────────────────────────────────────────────────────────────
@@ -557,6 +578,15 @@ window.AskGemini.updateUserProfile().catch(console.error);
 window.AskGemini.incrementSessionVisits().catch(console.error);
 window.AskGemini.buildTableOfContents();
 window.AskGemini.setupTOCObserver();
+if (window.AskGemini.BookmarkManager && window.AskGemini.BookmarkManager.init) {
+    window.AskGemini.BookmarkManager.init();
+}
+if (window.AskGemini.injectBookmarkButtons) {
+    window.AskGemini.injectBookmarkButtons();
+}
+if (window.AskGemini.injectSidebarBookmarkNav) {
+    window.AskGemini.injectSidebarBookmarkNav();
+}
 
 setInterval(window.AskGemini.requestUsageLimits, 60000);
 
@@ -569,7 +599,8 @@ document.addEventListener('AG_DEBUG_REPORT_REQUEST', function() {
         'quote_reply_enabled', 'multi_quote_enabled', 'multi_quote_display',
         'smart_paste_behavior', 'smart_paste_enabled', 'smart_paste_threshold',
         'smart_paste_preference_explicitly_set', 'usage_limits_enabled',
-        'toc_enabled', 'quota_limits', 'rating_state', 'amplitude_device_id',
+        'toc_enabled', 'bookmarks_enabled', 'bookmarks_count', 'quota_limits',
+        'rating_state', 'amplitude_device_id',
         'last_quota_check', 'developerMode', 'developerLogsEnabled'
     ];
 
@@ -591,6 +622,8 @@ document.addEventListener('AG_DEBUG_REPORT_REQUEST', function() {
                 smart_paste_preference_explicitly_set: !!res.smart_paste_preference_explicitly_set,
                 usage_limits_enabled: res.usage_limits_enabled !== false,
                 toc_enabled: res.toc_enabled !== false,
+                bookmarks_enabled: res.bookmarks_enabled !== false,
+                bookmarks_count: res.bookmarks_count || (AG.bookmarksList || []).length,
                 developer_mode: !!res.developerMode,
                 developer_logs: !!res.developerLogsEnabled
             },
@@ -601,6 +634,8 @@ document.addEventListener('AG_DEBUG_REPORT_REQUEST', function() {
                 smart_paste_behavior: AG.smartPasteBehavior,
                 usage_limits_enabled: AG.usageLimitsEnabled,
                 toc_enabled: AG.tocEnabled,
+                bookmarks_enabled: AG.bookmarksEnabled,
+                bookmarks_count: (AG.bookmarksList || []).length,
                 active_contexts: (AG.currentContexts || []).length,
                 is_injecting: AG.isInjecting
             },

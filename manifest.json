@@ -28,6 +28,7 @@
         "quote-reply.js",
         "smart-paste.js",
         "toc.js",
+        "bookmarks.js",
         "rating-banner.js",
         "paste-stats.js",
         "content.js",

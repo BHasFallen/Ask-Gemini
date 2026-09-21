@@ -834,6 +834,10 @@ window.AskGemini.transformMessages = function transformMessages() {
     // Check generation state and trigger quota sync
     AG.checkAndTriggerOnGenerationEnd();
 
+    // Inject Bookmarks buttons & sidebar nav item
+    if (AG.injectBookmarkButtons) AG.injectBookmarkButtons();
+    if (AG.injectSidebarBookmarkNav) AG.injectSidebarBookmarkNav();
+
     // Attach focus listener to input area
     AG.attachInputFocusListener();
 
