@@ -395,6 +395,9 @@ document.addEventListener('keydown', (e) => {
     var AG = window.AskGemini;
     if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) {
         if (AG.flushPendingSmartPastesOnSend) AG.flushPendingSmartPastesOnSend();
+        if (AG.isAutoModeActive && AG.isAutoModeActive()) {
+            console.log('%c[Ask Gemini] 🤖 Prompt submitted with AUTO MODE active (Google smart routing: ' + AG.AUTO_MODE_ID + ')', 'background: #1a73e8; color: white; padding: 3px 8px; border-radius: 4px; font-weight: bold;');
+        }
         if (AG.currentContexts.length > 0) {
             const input = AG.findInputArea();
             const isInsideInput = !e.target || (input && (e.target === input || input.contains(e.target) || (e.target.closest && e.target.closest('.input-area, .text-input-field, rich-textarea, .ql-editor'))));
@@ -443,6 +446,9 @@ document.addEventListener('click', (e) => {
     if (sendBtn && !isMic) {
         if (AG.flushPendingSmartPastesOnSend) AG.flushPendingSmartPastesOnSend();
         if (AG.maybeShowPowerUserFeedbackPrompt) AG.maybeShowPowerUserFeedbackPrompt();
+        if (AG.isAutoModeActive && AG.isAutoModeActive()) {
+            console.log('%c[Ask Gemini] 🤖 Prompt submitted with AUTO MODE active (Google smart routing: ' + AG.AUTO_MODE_ID + ')', 'background: #1a73e8; color: white; padding: 3px 8px; border-radius: 4px; font-weight: bold;');
+        }
     }
     if (AG.currentContexts.length > 0 && sendBtn && !isMic) {
         const handled = AG.maybeInjectAndSend();
@@ -590,6 +596,46 @@ if (window.AskGemini.injectSidebarBookmarkNav) {
 
 setInterval(window.AskGemini.requestUsageLimits, 60000);
 
+// ─── Test & Automation Bridge ──────────────────────────────────────────────
+document.addEventListener('AG_TEST_DISPATCH', function(e) {
+    if (!e.detail || !e.detail.action) return;
+    var AG = window.AskGemini;
+    var action = e.detail.action;
+    var data = e.detail.data;
+
+    switch (action) {
+        case 'transformMessages':
+            if (AG.transformMessages) AG.transformMessages();
+            break;
+        case 'updateQuotaDisplay':
+            var limitsObj = typeof data === 'string' ? JSON.parse(data) : data;
+            if (AG.updateQuotaDisplay) AG.updateQuotaDisplay(limitsObj);
+            break;
+        case 'setMultiQuoteDisplay':
+            AG.multiQuoteDisplay = data;
+            break;
+        case 'processSmartPaste':
+            if (AG.processSmartPaste) AG.processSmartPaste(data);
+            break;
+        case 'buildTableOfContents':
+            if (AG.buildTableOfContents) AG.buildTableOfContents();
+            break;
+        case 'clearDraft':
+            if (AG.clearDraft) AG.clearDraft();
+            if (AG.clearContext) AG.clearContext();
+            break;
+        case 'promptSmartPasteTurnOffFeedback':
+            if (AG.promptSmartPasteTurnOffFeedback) AG.promptSmartPasteTurnOffFeedback();
+            break;
+        case 'promptSmartPasteConfirmation':
+            if (AG.promptSmartPasteConfirmation) AG.promptSmartPasteConfirmation(data);
+            break;
+        case 'setSmartPasteBehavior':
+            AG.smartPasteBehavior = data;
+            break;
+    }
+});
+
 // ─── Debug Report Handler ──────────────────────────────────────────────────────
 document.addEventListener('AG_DEBUG_REPORT_REQUEST', function() {
     var AG = window.AskGemini;
@@ -599,7 +645,7 @@ document.addEventListener('AG_DEBUG_REPORT_REQUEST', function() {
         'quote_reply_enabled', 'multi_quote_enabled', 'multi_quote_display',
         'smart_paste_behavior', 'smart_paste_enabled', 'smart_paste_threshold',
         'smart_paste_preference_explicitly_set', 'usage_limits_enabled',
-        'toc_enabled', 'bookmarks_enabled', 'bookmarks_count', 'quota_limits',
+        'toc_enabled', 'bookmarks_enabled', 'bookmarks_count', 'auto_mode_enabled', 'quota_limits',
         'rating_state', 'amplitude_device_id',
         'last_quota_check', 'developerMode', 'developerLogsEnabled'
     ];
@@ -624,6 +670,7 @@ document.addEventListener('AG_DEBUG_REPORT_REQUEST', function() {
                 toc_enabled: res.toc_enabled !== false,
                 bookmarks_enabled: res.bookmarks_enabled !== false,
                 bookmarks_count: res.bookmarks_count || (AG.bookmarksList || []).length,
+                auto_mode_enabled: res.auto_mode_enabled !== false,
                 developer_mode: !!res.developerMode,
                 developer_logs: !!res.developerLogsEnabled
             },
@@ -636,6 +683,7 @@ document.addEventListener('AG_DEBUG_REPORT_REQUEST', function() {
                 toc_enabled: AG.tocEnabled,
                 bookmarks_enabled: AG.bookmarksEnabled,
                 bookmarks_count: (AG.bookmarksList || []).length,
+                auto_mode_enabled: AG.autoModeEnabled,
                 active_contexts: (AG.currentContexts || []).length,
                 is_injecting: AG.isInjecting
             },

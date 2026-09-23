@@ -823,7 +823,7 @@ window.AskGemini = window.AskGemini || {};
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
-            URL.revokeObjectURL(url);
+            setTimeout(() => URL.revokeObjectURL(url), 2000);
 
             if (chrome.runtime && chrome.runtime.sendMessage) {
                 chrome.runtime.sendMessage({

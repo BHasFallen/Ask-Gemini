@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Gemini</title>
+  <style>
+    :root {
+      --gem-sys-color--surface: #131314;
+      --gem-sys-color--on-surface: #e3e3e3;
+      --gem-sys-color--surface-container: #1e1f20;
+      --mat-sys-on-surface-variant: #c4c7c5;
+      font-family: 'Google Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+    body {
+      margin: 0;
+      padding: 0;
+      background: #131314;
+      color: #e3e3e3;
+      display: flex;
+      height: 100vh;
+      overflow: hidden;
+    }
+    bard-sidenav, .side-nav-container {
+      width: 260px;
+      background: #1e1f20;
+      border-right: 1px solid rgba(255,255,255,0.08);
+      display: flex;
+      flex-direction: column;
+      padding: 12px;
+      box-sizing: border-box;
+    }
+    .gem-nav-list-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 14px;
+      border-radius: 20px;
+      color: #c4c7c5;
+      text-decoration: none;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    .gem-nav-list-item:hover {
+      background: rgba(255,255,255,0.08);
+      color: #ffffff;
+    }
+    .trailing-slot-content {
+      margin-left: auto;
+    }
+    bard-sidenav-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      overflow: hidden;
+    }
+    .content-wrapper {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+      padding: 24px 40px;
+      box-sizing: border-box;
+    }
+    .content-container {
+      max-width: 800px;
+      width: 100%;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 28px;
+    }
+    .user-query-container {
+      align-self: flex-end;
+      background: #282a2c;
+      border-radius: 20px;
+      padding: 12px 20px;
+      max-width: 70%;
+      font-size: 15px;
+    }
+    model-response, .model-response {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .message-content {
+      font-size: 16px;
+      line-height: 1.6;
+      color: #e3e3e3;
+    }
+    .response-container-footer, .response-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 8px;
+    }
+    .action-btn {
+      background: transparent;
+      border: none;
+      color: #c4c7c5;
+      cursor: pointer;
+      padding: 6px;
+      border-radius: 50%;
+    }
+    .chat-input-area, .input-area-container {
+      padding: 16px 40px;
+      background: #131314;
+      display: flex;
+      justify-content: center;
+    }
+    .input-box-wrapper {
+      width: 100%;
+      max-width: 800px;
+      background: #1e1f20;
+      border-radius: 24px;
+      padding: 12px 18px;
+      display: flex;
+      align-items: center;
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+    rich-textarea {
+      width: 100%;
+      display: block;
+    }
+    .ql-editor {
+      min-height: 24px;
+      outline: none;
+      font-size: 15px;
+      color: #ffffff;
+      width: 100%;
+      white-space: pre-wrap;
+    }
+  </style>
+</head>
+<body>
+  <bard-sidenav class="side-nav-container">
+    <div style="font-weight: 600; font-size: 18px; padding: 8px 12px; margin-bottom: 8px;">Gemini</div>
+    <a class="gem-nav-list-item" data-test-id="gems-side-nav-entry-button" href="/gems/view">
+      <span class="leading-icon-container">💎</span>
+      <span class="title-text">Gems</span>
+      <div class="mat-mdc-list-item-meta trailing-content" style="margin-left: auto;">
+        <div class="trailing-slot-content no-trailing-content"></div>
+      </div>
+    </a>
+    <div class="sidebar-spacer" style="flex: 1;"></div>
+    <div class="mavatar-footer-left" style="padding: 12px; font-size: 13px; color: #8e918f;">
+      <button aria-label="Close" style="display: none;">Close</button>
+      <span>User Account</span>
+    </div>
+  </bard-sidenav>
+
+  <bard-sidenav-content>
+    <div class="content-wrapper">
+      <div class="content-container">
+        <!-- User Query 1 -->
+        <user-query class="user-query-container">
+          <p class="query-text">Explain how Chrome extensions handle service workers in Manifest V3.</p>
+        </user-query>
+
+        <!-- Assistant Response 1 -->
+        <model-response class="model-response">
+          <div class="message-content">
+            <p id="gemini-response-p1">Manifest V3 extensions use event-driven background service workers instead of persistent background pages.</p>
+            <p id="gemini-response-p2">This architectural design dramatically optimizes memory and CPU consumption across active tabs.</p>
+          </div>
+          <div class="response-container-footer response-actions">
+            <button class="action-btn" aria-label="Copy response">📋</button>
+            <button class="action-btn" aria-label="Good response">👍</button>
+            <button class="action-btn" aria-label="Bad response">👎</button>
+          </div>
+        </model-response>
+
+        <!-- User Query 2 -->
+        <user-query class="user-query-container">
+          <p class="query-text">How does the Quote Reply extension speed up follow-up questions?</p>
+        </user-query>
+
+        <!-- Assistant Response 2 -->
+        <model-response class="model-response">
+          <div class="message-content">
+            <p id="gemini-response-p3">Quote Reply lets you highlight any specific passage from Gemini's response and directly quote it into your follow-up prompt with clean Markdown formatting.</p>
+          </div>
+          <div class="response-container-footer response-actions">
+            <button class="action-btn" aria-label="Copy response">📋</button>
+            <button class="action-btn" aria-label="Good response">👍</button>
+          </div>
+        </model-response>
+      </div>
+    </div>
+
+    <!-- Input Area Container -->
+    <div class="chat-input-area input-area-container text-input-field">
+      <div class="input-box-wrapper" style="flex-direction: column; align-items: stretch;">
+        <div class="attachment-preview-wrapper" style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 6px;">
+          <uploader-file-preview-container style="display: flex; flex-wrap: wrap; gap: 8px;"></uploader-file-preview-container>
+        </div>
+        <div style="display: flex; align-items: center; width: 100%;">
+          <rich-textarea class="text-input-field_textarea" style="flex: 1;">
+            <div class="ql-editor" contenteditable="true" role="textbox" aria-label="Ask Gemini"></div>
+          </rich-textarea>
+          <div class="send-button-container">
+            <button class="send-button action-btn" aria-label="Send message" data-test-id="send-button" style="background: rgba(255,255,255,0.1); border-radius: 50%; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; cursor: pointer; border: none; color: #ffffff;">
+              <svg width="20" height="20" viewBox="0 0 24 24"><path fill="currentColor" d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </bard-sidenav-content>
+
+  <input type="file" id="mock-file-input" style="display: none;" />
+
+  <script>
+    function handleFiles(files) {
+      if (!files || files.length === 0) return;
+      var container = document.querySelector('uploader-file-preview-container');
+      if (!container) return;
+      for (var i = 0; i < files.length; i++) {
+        var file = files[i];
+        var preview = document.createElement('uploader-file-preview');
+        preview.style.display = 'inline-flex';
+        preview.style.alignItems = 'center';
+        preview.style.padding = '6px 12px';
+        preview.style.background = '#282a2c';
+        preview.style.borderRadius = '16px';
+        preview.style.marginRight = '8px';
+        preview.innerHTML = `
+          <span class="gem-attachment-content" style="display:flex;align-items:center;gap:6px;">
+            <span>📄</span>
+            <span class="file-name">${file.name}</span>
+            <div class="gem-attachment-close-button">
+              <button type="button" aria-label="close" style="background:transparent;border:none;color:#aaa;cursor:pointer;">✕</button>
+            </div>
+          </span>
+        `;
+        container.appendChild(preview);
+      }
+    }
+
+    document.addEventListener('paste', function(e) {
+      if (e.clipboardData && e.clipboardData.files) {
+        handleFiles(e.clipboardData.files);
+      }
+    });
+
+    document.addEventListener('drop', function(e) {
+      if (e.dataTransfer && e.dataTransfer.files) {
+        handleFiles(e.dataTransfer.files);
+      }
+    });
+
+    document.getElementById('mock-file-input').addEventListener('change', function() {
+      if (this.files) handleFiles(this.files);
+    });
+  </script>
+</body>
+</html>

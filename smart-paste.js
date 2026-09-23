@@ -188,6 +188,7 @@ window.AskGemini.enhanceAttachmentChip = function enhanceAttachmentChip(filename
 
             // 5. Remove from pending queue
             AG.pendingSmartPastes = (AG.pendingSmartPastes || []).filter(p => p.filename !== filename);
+            if (document.body) document.body.dataset.agPendingPastes = AG.pendingSmartPastes.length;
 
             // 6. If older smart paste attachments remain, move pill to the previous one
             if (AG.pendingSmartPastes.length > 0) {
@@ -256,6 +257,7 @@ window.AskGemini.syncSmartPasteAttachments = function syncSmartPasteAttachments(
 
     if (stillPresent.length !== AG.pendingSmartPastes.length) {
         AG.pendingSmartPastes = stillPresent;
+        if (document.body) document.body.dataset.agPendingPastes = AG.pendingSmartPastes.length;
 
         // If attachments still remain, smoothly move the pill to the newest remaining attachment
         if (AG.pendingSmartPastes.length > 0) {
@@ -280,6 +282,7 @@ window.AskGemini.flushPendingSmartPastesOnSend = function flushPendingSmartPaste
     const sentItems = [...AG.pendingSmartPastes];
     // Reset pending queue immediately to avoid duplicate events
     AG.pendingSmartPastes = [];
+    if (document.body) document.body.dataset.agPendingPastes = '0';
 
     console.log('🏰 [AskGemini] Flushing smart pastes on send:', sentItems);
 
@@ -329,6 +332,7 @@ window.AskGemini.processSmartPaste = async function processSmartPaste(pastedText
             pastedText,
             length: pastedText.length
         });
+        if (document.body) document.body.dataset.agPendingPastes = AG.pendingSmartPastes.length;
         console.log('🏰 [AskGemini] Smart paste queued:', filename, 'Queue:', AG.pendingSmartPastes);
 
         // Add / move inline "Paste as text" pill to this newest attachment chip
@@ -358,8 +362,10 @@ window.AskGemini.uploadFileToGemini = async function uploadFileToGemini(file, ra
                 cancelable: true,
                 clipboardData: dt
             });
-            input.dispatchEvent(pasteEvent);
-            return true;
+            if (pasteEvent.clipboardData && pasteEvent.clipboardData.files && pasteEvent.clipboardData.files.length > 0) {
+                input.dispatchEvent(pasteEvent);
+                return true;
+            }
         } catch (err) {
             console.warn('ClipboardEvent file dispatch failed:', err);
         }

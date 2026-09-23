@@ -30,6 +30,7 @@
         "smart-paste.js",
         "toc.js",
         "bookmarks.js",
+        "auto-mode.js",
         "rating-banner.js",
         "paste-stats.js",
         "content.js",

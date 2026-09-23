@@ -1,0 +1,34 @@
+{
+  "name": "quote-reply-for-gemini",
+  "version": "2.8.0",
+  "description": "Highlight any Google Gemini response and quote-reply with full context. Sharper follow-ups, fewer hallucinations.",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build.js",
+    "setup:auth": "node scripts/setup-auth.js",
+    "test": "npm run test:unit && npm run test:e2e:local",
+    "test:unit": "vitest run",
+    "test:unit:watch": "vitest",
+    "test:e2e": "npm run build && playwright test tests/e2e/local",
+    "test:e2e:local": "npm run build && playwright test tests/e2e/local",
+    "test:e2e:live": "node scripts/clean-locks.js && npm run build && playwright test tests/e2e/live",
+    "test:e2e:ui": "npm run build && playwright test --ui",
+    "test:perf": "npm run build && playwright test tests/e2e/performance.spec.ts"
+  },
+  "keywords": [
+    "chrome-extension",
+    "gemini",
+    "quote-reply",
+    "bookmarks"
+  ],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@playwright/test": "^1.63.0",
+    "@types/node": "^26.6.2",
+    "jsdom": "^30.1.0",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.1"
+  }
+}

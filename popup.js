@@ -77,6 +77,7 @@ class PopupController {
         this.switchToc = document.getElementById('switch-toc');
         this.switchLimits = document.getElementById('switch-limits');
         this.switchBookmarks = document.getElementById('switch-bookmarks');
+        this.switchAutoMode = document.getElementById('switch-auto-mode');
         // Parent row for the quota limits toggle (hidden for free-plan users)
         this.limitsSettingRow = this.switchLimits ? this.switchLimits.closest('.setting-item') : null;
 
@@ -175,6 +176,7 @@ class PopupController {
                 'smart_paste_behavior',
                 'toc_enabled',
                 'bookmarks_enabled',
+                'auto_mode_enabled',
                 'quota_limits'
             ]);
 
@@ -185,6 +187,7 @@ class PopupController {
             const sp = res.smart_paste_behavior || 'auto';
             const toc = res.toc_enabled !== false;
             const bm = res.bookmarks_enabled !== false;
+            const am = res.auto_mode_enabled !== false;
 
             this.applyQrToggleState(qr);
             this.applyMqToggleState(mq);
@@ -193,6 +196,7 @@ class PopupController {
             this.applyTocToggleState(toc);
             this.applyLimitsToggleState(limits);
             this.applyBookmarksToggleState(bm);
+            this.applyAutoModeToggleState(am);
             this.applyProVisibility(res.quota_limits);
 
             this.currentSettings = {
@@ -202,7 +206,8 @@ class PopupController {
                 multi_quote_enabled: mq,
                 smart_paste_behavior: sp,
                 toc_enabled: toc,
-                bookmarks_enabled: bm
+                bookmarks_enabled: bm,
+                auto_mode_enabled: am
             };
         } catch (e) {
             console.error('Failed to load settings:', e);
@@ -265,6 +270,10 @@ class PopupController {
 
     applyBookmarksToggleState(enabled) {
         if (this.switchBookmarks) this.switchBookmarks.checked = enabled;
+    }
+
+    applyAutoModeToggleState(enabled) {
+        if (this.switchAutoMode) this.switchAutoMode.checked = enabled;
     }
 
     async saveSetting({ storageKey, settingName, featureName, newValue, extraStorage = {} }) {
@@ -371,6 +380,16 @@ class PopupController {
         });
     }
 
+    async saveAutoModeState(enabled) {
+        this.applyAutoModeToggleState(enabled);
+        await this.saveSetting({
+            storageKey: 'auto_mode_enabled',
+            settingName: 'auto_mode_enabled',
+            featureName: 'auto_mode',
+            newValue: enabled
+        });
+    }
+
     setupEventListeners() {
         // Copy Debug Info
         if (this.copyDebugLink) {
@@ -415,6 +434,10 @@ class PopupController {
 
         if (this.switchBookmarks) {
             this.switchBookmarks.addEventListener('change', () => this.saveBookmarksState(this.switchBookmarks.checked));
+        }
+
+        if (this.switchAutoMode) {
+            this.switchAutoMode.addEventListener('change', () => this.saveAutoModeState(this.switchAutoMode.checked));
         }
 
         // Multi-Quote Style Segmented Buttons

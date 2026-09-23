@@ -1,9 +1,29 @@
+# Dependencies & Build Output
+node_modules/
+dist/
+.test-user-data/
+.test-user-data-temp/
+test-results/
+playwright-report/
+.playwright/
+blob-report/
+
+# Archives & Logs
 *.zip
-*.csv
-*.json
-*.html
 *.log
-!manifest.json
-!popup.html
-!onboarding.html
-!docs/*.html
+*.har
+
+# Dev Data Dumps & Scratch
+*.csv
+gemini.google.comm*.json
+test-request.json
+gemini.html
+gemini_dom.html
+export.zip
+.test-user-data-*/
+scratch/
+conversation_export/
+FULL_CONVERSATION.md
+assignment.java
+
+
