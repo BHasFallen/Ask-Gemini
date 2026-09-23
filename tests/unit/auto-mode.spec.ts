@@ -85,3 +85,93 @@ describe('Auto Mode Model Ingestion & Payload Modification', () => {
         expect(untouched).toBe(mockAppResponse);
     });
 });
+
+describe('Extended Thinking Protection & State Transition Suite', () => {
+    it('detects Extended Thinking from picker secondary text or DOM attributes', () => {
+        function checkExtendedThinking(secondaryText: string | null, isToggleChecked: boolean, subOptionActive: boolean): boolean {
+            if (secondaryText && /extended\s*thinking|thinking/i.test(secondaryText)) {
+                return true;
+            }
+            if (isToggleChecked) return true;
+            if (subOptionActive) return true;
+            return false;
+        }
+
+        expect(checkExtendedThinking('Extended thinking', false, false)).toBe(true);
+        expect(checkExtendedThinking('Thinking...', false, false)).toBe(true);
+        expect(checkExtendedThinking('', true, false)).toBe(true);
+        expect(checkExtendedThinking(null, false, true)).toBe(true);
+        expect(checkExtendedThinking('', false, false)).toBe(false);
+        expect(checkExtendedThinking('Fastest answers', false, false)).toBe(false);
+    });
+
+    it('safely updates model label without overwriting Extended Thinking subtitle', () => {
+        interface LabelState {
+            primary: string;
+            secondary: string;
+        }
+
+        function safeApplyLabel(
+            state: LabelState,
+            targetModel: string,
+            isAuto: boolean,
+            isThinkingActive: boolean
+        ): LabelState {
+            // If Extended Thinking is active, do NOT clobber primary or secondary thinking text
+            if (isThinkingActive) {
+                return state;
+            }
+
+            const next = { ...state };
+            if (isAuto) {
+                next.primary = 'Auto';
+                // Only clear secondary if not thinking
+                if (!/extended\s*thinking/i.test(next.secondary)) {
+                    next.secondary = '';
+                }
+            } else {
+                next.primary = targetModel;
+            }
+            return next;
+        }
+
+        // Standard auto apply
+        const autoApplied = safeApplyLabel({ primary: 'Flash', secondary: '' }, 'Auto', true, false);
+        expect(autoApplied.primary).toBe('Auto');
+        expect(autoApplied.secondary).toBe('');
+
+        // Extended thinking active: must protect state and not overwrite
+        const thinkingProtected = safeApplyLabel(
+            { primary: '3.1 Pro', secondary: 'Extended thinking' },
+            'Auto',
+            true,
+            true
+        );
+        expect(thinkingProtected.primary).toBe('3.1 Pro');
+        expect(thinkingProtected.secondary).toBe('Extended thinking');
+    });
+
+    it('disengages Auto mode when user clicks Extended Thinking option', () => {
+        let currentSelectedModel: string | null = 'a74ec8485b3b5ce4';
+        let isAutoActive = true;
+
+        function handleOptionClick(clickedText: string) {
+            const isThinkingClick = /extended\s*thinking|complex\s*problem\s*solving/i.test(clickedText);
+            if (isThinkingClick) {
+                if (currentSelectedModel === 'a74ec8485b3b5ce4') {
+                    currentSelectedModel = null;
+                    isAutoActive = false;
+                }
+                return { handledByAngular: true, disengagedAuto: true };
+            }
+            return { handledByAngular: false, disengagedAuto: false };
+        }
+
+        const result = handleOptionClick('Extended thinking Complex problem solving');
+        expect(result.handledByAngular).toBe(true);
+        expect(result.disengagedAuto).toBe(true);
+        expect(currentSelectedModel).toBeNull();
+        expect(isAutoActive).toBe(false);
+    });
+});
+

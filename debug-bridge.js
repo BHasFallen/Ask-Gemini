@@ -299,6 +299,13 @@
         const primaryEls = Array.from(document.querySelectorAll('.picker-primary-text, .logo-pill-label-container .gds-body-m'));
         console.log('Picker Button Primary Text:', primaryEls.map(el => el.textContent.trim()));
 
+        const secondaryEls = Array.from(document.querySelectorAll('.picker-secondary-text'));
+        const isThinking = secondaryEls.some(el => /extended\s*thinking|thinking/i.test(el.textContent));
+        console.log('Extended Thinking Detected in DOM:', isThinking);
+        if (secondaryEls.length > 0) {
+            console.log('Picker Button Secondary Text:', secondaryEls.map(el => el.textContent.trim()));
+        }
+
         const menuItems = Array.from(document.querySelectorAll('gem-menu-item[data-mode-id], .bard-mode-list-button[data-mode-id]'));
         console.log('Menu Items in DOM:', menuItems.map(m => ({
             modeId: m.getAttribute('data-mode-id'),
@@ -312,8 +319,10 @@
             enabled: window.AskGemini.autoModeEnabled,
             currentModel: window.AskGemini.currentSelectedModel,
             isAuto: window.AskGemini.currentSelectedModel === window.AskGemini.AUTO_MODE_ID,
+            isExtendedThinking: isThinking,
             lastRpc: window.AskGemini.lastModelSwitch,
             pickerText: primaryEls.map(el => el.textContent.trim()),
+            secondaryText: secondaryEls.map(el => el.textContent.trim()),
             menuItemsCount: menuItems.length
         };
     };

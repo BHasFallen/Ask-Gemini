@@ -82,6 +82,23 @@ window.AskGemini = window.AskGemini || {};
         console.error('[Ask Gemini:Auto] ' + action, err);
     }
 
+    // ─── Reinforcement Timer Management ───────────────────────────────────────
+    let reinforcementTimers = [];
+    function clearReinforcementTimers() {
+        reinforcementTimers.forEach(id => clearTimeout(id));
+        reinforcementTimers = [];
+    }
+
+    function scheduleReinforcement(fn) {
+        clearReinforcementTimers();
+        [20, 60, 120, 250, 500, 1000].forEach(delay => {
+            const tid = setTimeout(() => {
+                fn();
+            }, delay);
+            reinforcementTimers.push(tid);
+        });
+    }
+
     // ─── Strict State Checker ──────────────────────────────────────────────────
     /**
      * Checks if Gemini is currently in Auto mode.
@@ -90,6 +107,38 @@ window.AskGemini = window.AskGemini || {};
      */
     AG.isAutoModeActive = function isAutoModeActive() {
         return Boolean(AG.autoModeEnabled && AG.currentSelectedModel === AG.AUTO_MODE_ID);
+    };
+
+    /**
+     * Checks if Extended Thinking mode is currently active on the page.
+     * Prevents clobbering thinking chips, subtitles, or model names.
+     */
+    AG.isExtendedThinkingActive = function isExtendedThinkingActive() {
+        try {
+            // 1. Check secondary subtitle on the picker trigger button
+            const secondary = document.querySelector('.picker-secondary-text');
+            if (secondary && /extended\s*thinking|thinking/i.test(secondary.textContent)) {
+                return true;
+            }
+            // 2. Check slide toggle or checkbox
+            const toggle = document.querySelector(
+                '[data-test-id="thinking-level-toggle"] input, ' +
+                '[data-test-id="thinking-level-toggle"][aria-checked="true"], ' +
+                '.embedded-thinking-level-container mat-slide-toggle.mat-mdc-slide-toggle-checked'
+            );
+            if (toggle && (toggle.checked || toggle.getAttribute('aria-checked') === 'true')) {
+                return true;
+            }
+            // 3. Check active sub-option in open/closed menu
+            const activeThinking = document.querySelector(
+                'gem-menu-item[data-active="true"] .label, ' +
+                '[data-test-id*="bard-mode-sub-option"][aria-current="true"]'
+            );
+            if (activeThinking && /extended\s*thinking|complex\s*problem/i.test(activeThinking.textContent)) {
+                return true;
+            }
+        } catch (_) {}
+        return false;
     };
 
     // ─── Storage & Main World Sync ─────────────────────────────────────────────
@@ -202,19 +251,26 @@ window.AskGemini = window.AskGemini || {};
     }
 
     // ─── Uncollapsed Picker Button Label Synchronization ──────────────────────
+    let isApplyingLabels = false;
+
     /**
      * Updates the uncollapsed trigger button to display the active model name.
      * Uses AG.modelRegistry or falls back to known defaults.
      */
     AG.applyModelToPickerLabels = function applyModelToPickerLabels(modelId, force = false) {
+        if (isApplyingLabels) return;
+
+        // If Extended Thinking is active in the UI, do NOT force or overwrite labels
+        if (!force && AG.isExtendedThinkingActive()) {
+            return;
+        }
+
         const targetId = modelId || AG.currentSelectedModel;
         if (!targetId) return;
 
         const info = AG.modelRegistry[targetId];
         const title = info ? info.title : (targetId === AG.AUTO_MODE_ID ? 'Auto' : null);
         if (!title) return;
-
-        const subtitle = info ? info.subtitle : '';
 
         if (!force) {
             // Avoid modifying the button while the user is actively browsing an open menu
@@ -227,6 +283,7 @@ window.AskGemini = window.AskGemini || {};
             if (openMenu) return;
         }
 
+        isApplyingLabels = true;
         try {
             // 1. Primary text elements (Flash-Lite / Flash / Pro / Auto)
             const primaryEls = document.querySelectorAll(
@@ -251,15 +308,19 @@ window.AskGemini = window.AskGemini || {};
                 logAuto(`Applied "${title}" to ${updatedCount} picker label(s)`);
             }
 
-            // 2. Secondary subtitle element
-            const secondaryEls = document.querySelectorAll('.picker-secondary-text');
-            secondaryEls.forEach(el => {
-                if (el.closest('gem-menu-item, [role="menuitem"], .bard-mode-list-button')) return;
-                const targetSub = (targetId === AG.AUTO_MODE_ID) ? '' : subtitle;
-                if (el.textContent.trim() !== targetSub) {
-                    el.textContent = targetSub;
-                }
-            });
+            // 2. Secondary subtitle element:
+            // CRITICAL FIX: Only blank if strictly in Auto Mode AND it does not contain Extended Thinking!
+            // Never clobber Google's Extended Thinking label.
+            if (targetId === AG.AUTO_MODE_ID) {
+                const secondaryEls = document.querySelectorAll('.picker-secondary-text');
+                secondaryEls.forEach(el => {
+                    if (el.closest('gem-menu-item, [role="menuitem"], .bard-mode-list-button')) return;
+                    if (/extended\s*thinking|thinking/i.test(el.textContent)) return;
+                    if (el.textContent.trim() !== '') {
+                        el.textContent = '';
+                    }
+                });
+            }
 
             // 3. Update aria-label on trigger button for accessibility
             const triggerBtns = document.querySelectorAll(
@@ -275,6 +336,8 @@ window.AskGemini = window.AskGemini || {};
             });
         } catch (err) {
             errorAuto('applyModelToPickerLabels error', err);
+        } finally {
+            isApplyingLabels = false;
         }
     };
 
@@ -384,6 +447,7 @@ window.AskGemini = window.AskGemini || {};
             if (e.stopImmediatePropagation) e.stopImmediatePropagation();
         }
 
+        clearReinforcementTimers();
         logAuto('🎯 Auto Mode selected by user click');
 
         // 1. Update State
@@ -413,10 +477,8 @@ window.AskGemini = window.AskGemini || {};
         dismissMenu();
 
         // 6. Progressive label reinforcement to override Angular re-renders
-        [20, 60, 120, 250, 500, 1000].forEach(delay => {
-            setTimeout(() => {
-                AG.applyAutoToPickerLabels(true);
-            }, delay);
+        scheduleReinforcement(() => {
+            AG.applyAutoToPickerLabels(true);
         });
     }
 
@@ -557,6 +619,37 @@ window.AskGemini = window.AskGemini || {};
                 });
             }
 
+            // Check if click was on Extended Thinking option
+            const isThinkingClick = Boolean(
+                e.target.closest(
+                    '[data-test-id*="thinking"], ' +
+                    '[data-test-id*="bard-mode-sub-option"], ' +
+                    '.embedded-thinking-level-container, ' +
+                    'thinking-level-picker, ' +
+                    '[id*="extended-thinking"]'
+                ) || (
+                    e.target.closest('gem-menu-item, button, [role="menuitem"]') &&
+                    /extended\s*thinking|complex\s*problem\s*solving/i.test(e.target.closest('gem-menu-item, button, [role="menuitem"]').textContent)
+                )
+            );
+
+            if (isThinkingClick) {
+                logAuto('🧠 Extended Thinking option clicked; yielding to Angular and clearing Auto mode');
+                clearReinforcementTimers();
+
+                // Clear Auto mode state so Ask Gemini stops enforcing 'Auto' labels
+                if (AG.currentSelectedModel === AG.AUTO_MODE_ID) {
+                    AG.currentSelectedModel = null;
+                    try { sessionStorage.removeItem('ag_gemini_mode'); } catch (_) {}
+                    if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+                        chrome.storage.local.remove('gemini_selected_mode');
+                    }
+                    syncWithMainWorld();
+                }
+                // Yield to Angular: do NOT preventDefault or stopPropagation
+                return;
+            }
+
             // Check if click was on a model option inside the menu
             const item = e.target.closest(
                 'gem-menu-item[data-mode-id], ' +
@@ -574,6 +667,7 @@ window.AskGemini = window.AskGemini || {};
                 handleAutoClick(e, item);
             } else {
                 // Standard Model (Flash-Lite, Flash, Pro) option clicked!
+                clearReinforcementTimers();
                 logAuto('🎯 Standard model option clicked:', modeId);
                 registerModelItem(item);
 
@@ -601,10 +695,8 @@ window.AskGemini = window.AskGemini || {};
                 AG.applyModelToPickerLabels(modeId, true);
 
                 // Progressive label reinforcement to prevent Angular reverts
-                [20, 60, 120, 250, 500, 1000].forEach(delay => {
-                    setTimeout(() => {
-                        AG.applyModelToPickerLabels(modeId, true);
-                    }, delay);
+                scheduleReinforcement(() => {
+                    AG.applyModelToPickerLabels(modeId, true);
                 });
 
                 // Dismiss menu smoothly
@@ -654,6 +746,7 @@ window.AskGemini = window.AskGemini || {};
                 autoModeEnabled: AG.autoModeEnabled,
                 currentSelectedModel: AG.currentSelectedModel,
                 isAutoModeActive: AG.isAutoModeActive(),
+                isExtendedThinkingActive: AG.isExtendedThinkingActive(),
                 activeModelTitle: AG.modelRegistry[AG.currentSelectedModel]?.title || (AG.currentSelectedModel === AG.AUTO_MODE_ID ? 'Auto' : 'UNKNOWN'),
                 sessionStorage_ag_gemini_mode: (function () { try { return sessionStorage.getItem('ag_gemini_mode'); } catch (e) { return 'ERROR: ' + e.message; } })(),
                 lastRpcStatus: window.AskGemini.lastModelSwitch || 'No RPC sent yet'
@@ -700,14 +793,20 @@ window.AskGemini = window.AskGemini || {};
         return report;
     };
 
-    // ─── MutationObserver: Keep Auto Option in Menu & Label Synced ─────────────
+    // ─── MutationObserver: Keep Auto Option in Menu & Safe Debounced Trigger Sync ─
+    let labelSyncDebounce = null;
+    function debouncedSyncPickerLabels() {
+        if (labelSyncDebounce) return;
+        labelSyncDebounce = requestAnimationFrame(() => {
+            labelSyncDebounce = null;
+            if (AG.currentSelectedModel && !AG.isExtendedThinkingActive()) {
+                AG.applyModelToPickerLabels(AG.currentSelectedModel, false);
+            }
+        });
+    }
+
     const menuObserver = new MutationObserver((mutations) => {
         if (!AG.autoModeEnabled) return;
-
-        // Maintain trigger button label for currently selected model if menu is closed
-        if (AG.currentSelectedModel) {
-            AG.applyModelToPickerLabels(AG.currentSelectedModel, false);
-        }
 
         for (const m of mutations) {
             for (const node of m.addedNodes) {
@@ -727,6 +826,16 @@ window.AskGemini = window.AskGemini || {};
                         if (parentMenu) {
                             AG.ensureAutoModeOptionInDOM(parentMenu);
                         }
+                    }
+
+                    // Only sync picker label if the trigger button itself was mounted/re-rendered
+                    const isTrigger = node.matches && (
+                        node.matches('button.input-area-switch, bard-mode-switcher, [data-test-id="bard-mode-menu-button"]')
+                            ? node
+                            : node.querySelector('button.input-area-switch, bard-mode-switcher, [data-test-id="bard-mode-menu-button"]')
+                    );
+                    if (isTrigger) {
+                        debouncedSyncPickerLabels();
                     }
                 }
             }
