@@ -13,17 +13,17 @@ blob-report/
 *.log
 *.har
 
-# Dev Data Dumps & Scratch
+# Dev Resources & Scratch
+dev/
+scratch/
+conversation_export/
+FULL_CONVERSATION.md
+assignment.java
 *.csv
 gemini.google.comm*.json
 test-request.json
 gemini.html
 gemini_dom.html
-export.zip
 .test-user-data-*/
-scratch/
-conversation_export/
-FULL_CONVERSATION.md
-assignment.java
 
 
