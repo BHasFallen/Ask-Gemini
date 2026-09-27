@@ -24,7 +24,7 @@ test.describe('Onboarding & Interactive Tour Suite', () => {
 
     // 2. Navigate in update mode
     await page.goto(`chrome-extension://${extensionId}/onboarding.html?reason=update`);
-    await expect(page.locator('.ob-update-headline')).toContainText("The fixes you've");
+    await expect(page.locator('.ob-update-headline')).toContainText("The upgrade you've");
     await expect(page.locator('#ob-open-gemini-update')).toBeVisible();
   });
 

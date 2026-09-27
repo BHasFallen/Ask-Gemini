@@ -479,19 +479,22 @@ body.mode-update .ob-page {
     flex-shrink: 0;
 }
 
-.ob-feature-icon--paste {
+.ob-feature-icon--paste,
+.ob-feature-icon--auto {
     background: rgba(168, 199, 250, 0.12);
     color: #a8c7fa;
     border: 1px solid rgba(168, 199, 250, 0.2);
 }
 
-.ob-feature-icon--toc {
+.ob-feature-icon--toc,
+.ob-feature-icon--thinking {
     background: rgba(196, 181, 253, 0.12);
     color: #c4b5fd;
     border: 1px solid rgba(196, 181, 253, 0.2);
 }
 
-.ob-feature-icon--quote {
+.ob-feature-icon--quote,
+.ob-feature-icon--sync {
     background: rgba(109, 213, 140, 0.1);
     color: #6dd58c;
     border: 1px solid rgba(109, 213, 140, 0.2);
