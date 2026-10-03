@@ -411,6 +411,8 @@ window.AskGemini.scrollToAndHighlightText = function scrollToAndHighlightText(te
 
     const normalize = (str) => (str || '').replace(/\s+/g, ' ').trim();
     const normalizedTarget = normalize(cleanText);
+    const words = normalizedTarget.split(/\s+/).filter(Boolean);
+    const headWords = words.slice(0, Math.min(6, words.length)).join(' ');
 
     // Collect response candidates (model responses and message containers)
     const responseCandidates = document.querySelectorAll(
@@ -419,10 +421,21 @@ window.AskGemini.scrollToAndHighlightText = function scrollToAndHighlightText(te
 
     let bestElement = null;
 
+    // Helper: Verify if an element belongs to the Ask Gemini UI
+    function isExtensionUi(el) {
+        if (!el || !(el instanceof Element)) return false;
+        return Boolean(
+            el.closest(
+                '.ask-gemini-transformed-proxy, #ask-gemini-context-box, .ask-gemini-reply-preview, #ask-gemini-float-btn, [data-ag-processed="true"], .ag-text-highlight-blink'
+            )
+        );
+    }
+
     // Helper to search within a list of elements
     function searchElements(elements, targetStr) {
+        if (!targetStr) return null;
         for (const el of elements) {
-            if (el.closest('.ask-gemini-transformed-proxy')) continue;
+            if (isExtensionUi(el)) continue;
             const text = normalize(el.textContent);
             if (text.includes(targetStr)) {
                 return el;
@@ -434,37 +447,41 @@ window.AskGemini.scrollToAndHighlightText = function scrollToAndHighlightText(te
     // 1. First search: Exact normalized match across assistant message blocks
     let matchedBlock = searchElements(responseCandidates, normalizedTarget);
 
-    // If not found in assistant responses, try all conversation containers (in case quoting earlier user prompt)
-    if (!matchedBlock) {
-        const allCandidates = document.querySelectorAll('.query-text, .user-query-container, .conversation-container, user-query');
-        matchedBlock = searchElements(allCandidates, normalizedTarget);
+    // 2. If exact normalized string not found (e.g. cross-element quote, multiline or formatting differences),
+    // try anchoring on the head words (first 5-6 words) across assistant responses:
+    if (!matchedBlock && headWords.length >= 6) {
+        matchedBlock = searchElements(responseCandidates, headWords);
     }
 
-    // 2. If exact normalized string not found (e.g. cross-element quote or formatting differences),
-    // try anchoring on the first 6-8 words or first 40 characters:
-    if (!matchedBlock && normalizedTarget.length > 25) {
-        const words = normalizedTarget.split(/\s+/);
-        if (words.length >= 4) {
-            const anchorWords = words.slice(0, Math.min(8, words.length)).join(' ');
-            matchedBlock = searchElements(responseCandidates, anchorWords);
+    // 3. If still not found in assistant responses, search user prompt blocks (EXCLUDING any quote previews)
+    if (!matchedBlock) {
+        const userPromptCandidates = Array.from(document.querySelectorAll(
+            '.ask-gemini-bubble-text, .user-query-container .query-text, user-query .query-text'
+        )).filter(el => !isExtensionUi(el));
+        matchedBlock = searchElements(userPromptCandidates, normalizedTarget);
+        if (!matchedBlock && headWords.length >= 6) {
+            matchedBlock = searchElements(userPromptCandidates, headWords);
         }
     }
 
-    // 3. Drill down to the most specific child element inside matchedBlock (p, li, blockquote, etc.)
+    // 4. Drill down to the most specific child element inside matchedBlock (p, li, blockquote, etc.)
     if (matchedBlock) {
         bestElement = matchedBlock;
-        const subElements = matchedBlock.querySelectorAll('p, li, blockquote, pre, h1, h2, h3, h4, span');
+        const subElements = Array.from(
+            matchedBlock.querySelectorAll('p, li, blockquote, pre, h1, h2, h3, h4, span')
+        ).filter(el => !isExtensionUi(el));
+
+        // First attempt drill down: exact normalized target in subEl
         for (const subEl of subElements) {
             if (normalize(subEl.textContent).includes(normalizedTarget)) {
                 bestElement = subEl;
                 break;
             }
         }
-        // If whole text didn't fit in a single subEl, check if the anchor words match a subEl
-        if (bestElement === matchedBlock && normalizedTarget.length > 25) {
-            const anchorWords = normalizedTarget.split(/\s+/).slice(0, 6).join(' ');
+        // Second attempt drill down: if quote is multiline/cross-element, find subEl matching the head anchor
+        if (bestElement === matchedBlock && headWords.length >= 6) {
             for (const subEl of subElements) {
-                if (normalize(subEl.textContent).includes(anchorWords)) {
+                if (normalize(subEl.textContent).includes(headWords)) {
                     bestElement = subEl;
                     break;
                 }
@@ -472,24 +489,44 @@ window.AskGemini.scrollToAndHighlightText = function scrollToAndHighlightText(te
         }
     }
 
-    // 4. Scroll to and highlight ONLY the specific quoted text (normal highlight, no block styling)
+    // Final safety check: NEVER allow bestElement to be extension UI!
+    if (bestElement && isExtensionUi(bestElement)) {
+        bestElement = null;
+    }
+
+    // 5. Scroll to and highlight ONLY the specific quoted text (normal highlight, no block styling)
     if (bestElement) {
         let highlighted = false;
+
+        // Determine what text to highlight within bestElement.
+        // If bestElement contains the entire cleanText, highlight cleanText.
+        // If cleanText is multiline or spans across sibling elements, highlight the first line or headWords!
+        let targetSlice = cleanText;
+        if (!normalize(bestElement.textContent).includes(normalizedTarget)) {
+            const firstLine = cleanText.split(/[\r\n]+/)[0].trim();
+            if (firstLine && normalize(bestElement.textContent).includes(normalize(firstLine))) {
+                targetSlice = firstLine;
+            } else if (headWords && normalize(bestElement.textContent).includes(headWords)) {
+                targetSlice = headWords;
+            }
+        }
+
         try {
             // First check: Exact match within a single text node
             const walk = document.createTreeWalker(bestElement, NodeFilter.SHOW_TEXT, null, false);
             let node;
             while ((node = walk.nextNode())) {
+                if (isExtensionUi(node.parentElement)) continue;
                 const nodeText = node.nodeValue || '';
-                const idx = nodeText.indexOf(cleanText);
+                const idx = nodeText.indexOf(targetSlice);
                 if (idx !== -1 && node.parentNode && !node.parentNode.classList.contains('ag-text-highlight-blink')) {
                     highlighted = true;
                     const span = document.createElement('span');
                     span.className = 'ag-text-highlight-blink';
-                    span.textContent = cleanText;
+                    span.textContent = targetSlice;
 
                     const beforeText = nodeText.substring(0, idx);
-                    const afterText = nodeText.substring(idx + cleanText.length);
+                    const afterText = nodeText.substring(idx + targetSlice.length);
 
                     const beforeNode = document.createTextNode(beforeText);
                     const afterNode = document.createTextNode(afterText);
@@ -504,7 +541,7 @@ window.AskGemini.scrollToAndHighlightText = function scrollToAndHighlightText(te
 
                     setTimeout(() => {
                         if (span.parentNode) {
-                            const merged = beforeText + cleanText + afterText;
+                            const merged = beforeText + targetSlice + afterText;
                             const restored = document.createTextNode(merged);
                             pNode.insertBefore(restored, beforeNode);
                             pNode.removeChild(beforeNode);
@@ -524,19 +561,30 @@ window.AskGemini.scrollToAndHighlightText = function scrollToAndHighlightText(te
                 let cumulative = '';
                 let n;
                 while ((n = fullWalk.nextNode())) {
-                    if (!n.parentNode || n.parentNode.classList.contains('ag-text-highlight-blink')) continue;
+                    if (!n.parentNode || n.parentNode.classList.contains('ag-text-highlight-blink') || isExtensionUi(n.parentElement)) continue;
                     const start = cumulative.length;
                     cumulative += n.nodeValue;
                     const end = cumulative.length;
                     textNodes.push({ node: n, start, end, text: n.nodeValue });
                 }
 
-                let matchIdx = cumulative.indexOf(cleanText);
-                let matchLen = cleanText.length;
-                if (matchIdx === -1 && cleanText.length > 25) {
-                    const anchor = cleanText.slice(0, 30);
-                    matchIdx = cumulative.indexOf(anchor);
-                    if (matchIdx !== -1) matchLen = anchor.length;
+                let matchIdx = cumulative.indexOf(targetSlice);
+                let matchLen = targetSlice.length;
+
+                // Flexible regex matching if whitespace differences exist
+                if (matchIdx === -1) {
+                    const sliceWords = targetSlice.split(/\s+/).filter(Boolean);
+                    if (sliceWords.length >= 2) {
+                        const escaped = sliceWords.map(w => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('\\s+');
+                        try {
+                            const re = new RegExp(escaped, 'i');
+                            const reMatch = re.exec(cumulative);
+                            if (reMatch) {
+                                matchIdx = reMatch.index;
+                                matchLen = reMatch[0].length;
+                            }
+                        } catch (e) {}
+                    }
                 }
 
                 if (matchIdx !== -1) {
@@ -591,9 +639,13 @@ window.AskGemini.scrollToAndHighlightText = function scrollToAndHighlightText(te
             // Slicing text nodes failed
         }
 
-        // Fallback: If inline text highlight couldn't be wrapped, just scroll to the element without any block highlight
-        if (!highlighted) {
+        // Fallback: If inline text highlight couldn't be wrapped, smoothly scroll to bestElement without breaking DOM
+        if (!highlighted && bestElement && !isExtensionUi(bestElement)) {
             bestElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            bestElement.classList.add('ag-text-highlight-blink');
+            setTimeout(() => {
+                bestElement.classList.remove('ag-text-highlight-blink');
+            }, 2000);
         }
     }
 };
@@ -705,27 +757,28 @@ function parseMultiQuote(text) {
 window.AskGemini.transformMessages = function transformMessages() {
     var AG = window.AskGemini;
 
-    const replies = document.querySelectorAll('.model-response, model-response, .message-content, message-content, .markdown-main-panel');
+    const replies = document.querySelectorAll('model-response, .model-response');
     const currentCount = replies.length;
     if (currentCount > AG.lastRepliesCount) {
         AG.lastRepliesCount = currentCount;
         AG.isTipTemporarilyDismissed = false;
     }
 
-    // Query top-level user prompt bubbles, avoiding child duplicates
+    // Query top-level user prompt bubbles that have not been transformed yet
     const allBubbles = document.querySelectorAll(
-        '.user-query-bubble-with-background, [data-test-id="luminous-collapsed-bubble"], .query-text'
+        '.user-query-bubble-with-background:not([data-ag-processed]), [data-test-id="luminous-collapsed-bubble"]:not([data-ag-processed]), .query-text:not([data-ag-processed])'
     );
 
-    const rootBubbles = [];
-    allBubbles.forEach(b => {
-        if (b.closest('[data-ag-processed="true"]')) return;
-        if (rootBubbles.some(p => p.contains(b))) return;
-        rootBubbles.push(b);
-    });
+    if (allBubbles.length > 0) {
+        const rootBubbles = [];
+        allBubbles.forEach(b => {
+            if (b.closest('[data-ag-processed="true"]')) return;
+            if (rootBubbles.some(p => p.contains(b))) return;
+            rootBubbles.push(b);
+        });
 
-    rootBubbles.forEach(el => {
-        if (el.hasAttribute('data-ag-processed')) return;
+        rootBubbles.forEach(el => {
+            if (el.hasAttribute('data-ag-processed')) return;
 
         const text = extractPromptText(el);
         const hasSingle = /I['\u2019]m replying to this:/i.test(text);
@@ -824,6 +877,7 @@ window.AskGemini.transformMessages = function transformMessages() {
             wrapper.querySelectorAll('*').forEach(child => child.setAttribute('data-ag-processed', 'true'));
         }
     });
+    }
 
     // Dynamic retention tips checks
     AG.evaluateRetentionTip().catch(console.error);

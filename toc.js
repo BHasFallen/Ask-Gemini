@@ -232,20 +232,25 @@ window.AskGemini.setupTOCScrollSpy = function setupTOCScrollSpy() {
     // Window Bottom Scroll Detection (Guarantees bottom line is highlighted when at bottom of page)
     if (!AG.hasTocWindowScrollListener) {
         AG.hasTocWindowScrollListener = true;
+        let _scrollRaf = null;
         window.addEventListener('scroll', () => {
-            const scrollPosition = window.innerHeight + window.scrollY;
-            const bodyHeight = Math.max(document.body.scrollHeight, document.documentElement.scrollHeight);
-            if (scrollPosition >= bodyHeight - 120) {
-                const currentPrompts = document.querySelectorAll('user-query');
-                if (currentPrompts.length > 0) {
-                    const lastIdx = currentPrompts.length - 1;
-                    if (AG.activePromptIndex !== lastIdx) {
-                        AG.activePromptIndex = lastIdx;
-                        if (currentPrompts[lastIdx].id) AG.activeAnchorId = currentPrompts[lastIdx].id;
-                        AG.scheduleTOCBuild();
+            if (_scrollRaf) return;
+            _scrollRaf = requestAnimationFrame(() => {
+                _scrollRaf = null;
+                const scrollPosition = window.innerHeight + window.scrollY;
+                const bodyHeight = Math.max(document.body.scrollHeight, document.documentElement.scrollHeight);
+                if (scrollPosition >= bodyHeight - 120) {
+                    const currentPrompts = document.querySelectorAll('user-query');
+                    if (currentPrompts.length > 0) {
+                        const lastIdx = currentPrompts.length - 1;
+                        if (AG.activePromptIndex !== lastIdx) {
+                            AG.activePromptIndex = lastIdx;
+                            if (currentPrompts[lastIdx].id) AG.activeAnchorId = currentPrompts[lastIdx].id;
+                            AG.scheduleTOCBuild();
+                        }
                     }
                 }
-            }
+            });
         }, { passive: true });
     }
 
@@ -322,6 +327,35 @@ window.AskGemini.setupTOCObserver = function setupTOCObserver() {
                    (m.target && m.target.id === 'ag-toc-widget');
         });
         if (isSelfMutation) return;
+
+        // Fast-path: Only rebuild TOC if mutations actually contain user-query elements or new conversation turns
+        let hasPromptChange = false;
+        for (const m of mutations) {
+            // Completely skip streaming text inside model response
+            if (m.target && m.target.closest && m.target.closest('.model-response, model-response, .markdown-main-panel')) {
+                continue;
+            }
+            for (const node of m.addedNodes) {
+                if (node.nodeType === Node.ELEMENT_NODE) {
+                    if (node.matches && (node.matches('user-query, [data-test-id="user-query"]') || node.querySelector('user-query, [data-test-id="user-query"]'))) {
+                        hasPromptChange = true;
+                        break;
+                    }
+                }
+            }
+            if (hasPromptChange) break;
+            for (const node of m.removedNodes) {
+                if (node.nodeType === Node.ELEMENT_NODE) {
+                    if (node.matches && (node.matches('user-query, [data-test-id="user-query"]') || node.querySelector('user-query, [data-test-id="user-query"]'))) {
+                        hasPromptChange = true;
+                        break;
+                    }
+                }
+            }
+            if (hasPromptChange) break;
+        }
+
+        if (!hasPromptChange) return;
 
         AG.scheduleTOCBuild();
     });

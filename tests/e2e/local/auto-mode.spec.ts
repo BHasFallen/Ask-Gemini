@@ -1,5 +1,5 @@
 import { test, expect } from '../fixtures.js';
-import { setupMockGeminiPage } from '../helpers.js';
+import { setupMockGeminiPage, setExtensionStorage } from '../helpers.js';
 
 test.describe('Auto Mode Feature Suite', () => {
   test('verifies Auto Mode state, DOM option insertion, and popup toggle control', async ({ page, extensionId, context }) => {
@@ -73,7 +73,12 @@ test.describe('Auto Mode Feature Suite', () => {
     expect(isAutoRestored).toBe(true);
   });
 
-  test('verifies symmetrical switching between Auto and standard models updates trigger label and exclusive checkmarks', async ({ page }) => {
+  test('verifies symmetrical switching between Auto and standard models updates trigger label and exclusive checkmarks', async ({ page, extensionId, context }) => {
+    // Set standard model Flash-Lite as active before loading page
+    const popupPage = await context.newPage();
+    await setExtensionStorage(popupPage, extensionId, { gemini_selected_mode: '8c46e95b1a07cecc' });
+    await popupPage.close();
+
     await setupMockGeminiPage(page);
 
     // Setup trigger button and mock menu in page

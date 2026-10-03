@@ -162,15 +162,42 @@ window.AskGemini.trackEvent = function trackEvent(name, params) {
 };
 
 // ─── evaluateRetentionTip ─────────────────────────────────────────────────────
+let _retentionStorageCache = null;
+let _retentionFetchPromise = null;
+
+async function getCachedRetentionStorage() {
+    if (_retentionStorageCache) return _retentionStorageCache;
+    if (_retentionFetchPromise) return _retentionFetchPromise;
+    _retentionFetchPromise = chrome.storage.local.get([
+        'reply_count_lifetime', 'last_reply_time', 'gemini_visits_since_last_reply'
+    ]).then(res => {
+        _retentionStorageCache = res || {};
+        _retentionFetchPromise = null;
+        return _retentionStorageCache;
+    }).catch(err => {
+        _retentionFetchPromise = null;
+        return {};
+    });
+    return _retentionFetchPromise;
+}
+
+// Invalidate cache when storage values change
+if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.onChanged) {
+    chrome.storage.onChanged.addListener((changes, area) => {
+        if (area === 'local' && (changes.reply_count_lifetime || changes.last_reply_time || changes.gemini_visits_since_last_reply)) {
+            _retentionStorageCache = null;
+        }
+    });
+}
+
 window.AskGemini.evaluateRetentionTip = async function evaluateRetentionTip() {
     var AG = window.AskGemini;
     const input = AG.findInputArea();
     if (!input) return;
     const oldTip = document.getElementById('ag-retention-tip');
     if (oldTip) oldTip.remove();
-    const res = await chrome.storage.local.get([
-        'reply_count_lifetime', 'last_reply_time', 'gemini_visits_since_last_reply'
-    ]);
+
+    const res = await getCachedRetentionStorage();
     const replyCount = res.reply_count_lifetime || 0;
     const lastReplyTime = res.last_reply_time || 0;
     const visits = res.gemini_visits_since_last_reply || 0;
@@ -469,22 +496,37 @@ document.addEventListener('click', (e) => {
 document.addEventListener('mouseup', () => window.AskGemini.handleSelection());
 
 let _transformDebounceTimer = null;
-const observer = new MutationObserver(() => {
-    if (_transformDebounceTimer) return; // leading-edge: already queued
+const observer = new MutationObserver((mutations) => {
+    // 1. Ignore self-mutations produced by our own extension UI elements
+    const isSelfMutation = mutations.every(m => {
+        const t = m.target;
+        return t && t.closest && t.closest(
+            '#ag-toc-widget, #ag-bookmarks-overlay, #ag-bookmark-toast, .ag-bookmark-btn, ' +
+            '.ask-gemini-transformed-proxy, #ag-quota-sidebar, #ag-sp-toast, #ag-tour-overlay, ' +
+            '#ask-gemini-float-btn, #ask-gemini-context-box, .ag-bookmark-first-banner'
+        );
+    });
+    if (isSelfMutation) return;
+
+    // 2. Ignore streaming token mutations inside model-response to eliminate CPU lag during generation
+    const isOnlyStreaming = mutations.every(m => {
+        return m.target && m.target.closest && m.target.closest('.model-response, model-response, .markdown-main-panel');
+    });
+    if (isOnlyStreaming) return;
+
+    if (_transformDebounceTimer) clearTimeout(_transformDebounceTimer);
     _transformDebounceTimer = setTimeout(() => {
         _transformDebounceTimer = null;
         window.AskGemini.transformMessages();
 
-        // Safety fallback: if Gemini is generating and there are pending smart pastes, flush them
-        const isGenerating = !!document.querySelector('button[aria-label*="Stop"]')
-            || !!document.querySelector('button[class*="stop"]')
-            || !!document.querySelector('mat-progress-bar')
-            || !!document.querySelector('.is-generating')
-            || !!document.querySelector('div[class*="generating"]');
-        if (isGenerating && window.AskGemini.pendingSmartPastes && window.AskGemini.pendingSmartPastes.length > 0) {
-            window.AskGemini.flushPendingSmartPastesOnSend();
+        // Safety fallback: only check generation state if there are actually pending smart pastes to flush
+        if (window.AskGemini.pendingSmartPastes && window.AskGemini.pendingSmartPastes.length > 0) {
+            const isGenerating = !!document.querySelector('button[aria-label*="Stop" i], button[class*="stop"], mat-progress-bar, .is-generating');
+            if (isGenerating) {
+                window.AskGemini.flushPendingSmartPastesOnSend();
+            }
         }
-    }, 150);
+    }, 180);
 });
 observer.observe(document.body, { childList: true, subtree: true });
 

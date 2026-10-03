@@ -829,10 +829,18 @@ chrome.runtime.onInstalled.addListener(async (details) => {
         }
 
         // Initialize default settings
-        const result = await chrome.storage.local.get(['developerMode']);
+        const result = await chrome.storage.local.get(['developerMode', 'gemini_selected_mode']);
         if (result.developerMode === undefined) {
             await chrome.storage.local.set({ developerMode: false });
             logBackgroundEvent('DEFAULT_SETTINGS_INITIALIZED');
+        }
+        // Auto Mode is the default model selection for new installs
+        if (details.reason === chrome.runtime.OnInstalledReason.INSTALL && result.gemini_selected_mode === undefined) {
+            await chrome.storage.local.set({
+                auto_mode_enabled: true,
+                gemini_selected_mode: 'a74ec8485b3b5ce4' // AUTO_MODE_ID
+            });
+            logBackgroundEvent('AUTO_MODE_SET_AS_DEFAULT');
         }
     } catch (error) {
         logBackgroundEvent('ON_INSTALLED_ERROR', { error: error.message }, 'ERROR');

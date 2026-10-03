@@ -809,8 +809,18 @@ window.AskGemini = window.AskGemini || {};
         if (!AG.autoModeEnabled) return;
 
         for (const m of mutations) {
+            const target = m.target;
+            // High-performance filter: completely bypass chat stream, history, and extension widgets
+            if (target && target.closest && target.closest('infinite-scroller, model-response, user-query, chat-history, .conversation-container, #ag-toc-widget, #ag-bookmarks-overlay, .ag-bookmark-toast')) {
+                continue;
+            }
+
             for (const node of m.addedNodes) {
                 if (node.nodeType === Node.ELEMENT_NODE) {
+                    if (node.closest && node.closest('infinite-scroller, model-response, user-query, chat-history, .conversation-container, #ag-toc-widget, #ag-bookmarks-overlay')) {
+                        continue;
+                    }
+
                     const isMenu = node.matches && (
                         node.matches('gem-menu, [data-test-id="gem-mode-menu"], .mat-mdc-menu-panel, .cdk-overlay-pane')
                             ? node

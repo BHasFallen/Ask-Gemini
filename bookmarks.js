@@ -624,6 +624,9 @@ window.AskGemini = window.AskGemini || {};
                 AG.firstBookmarkBannerShown = true;
             }
 
+            // Immediately reflect initial badge state (e.g. New badge or count)
+            AG.updateSidebarBadge();
+
             // Listen for cross-tab or background changes
             chrome.storage.onChanged.addListener((changes, area) => {
                 if (area !== 'local') return;
@@ -914,25 +917,26 @@ window.AskGemini = window.AskGemini || {};
 
     // ─── Find Bookmark For Given Response DOM ───────────────────────────────────
     AG.findBookmarkForResponse = function (responseEl) {
-        if (!responseEl || AG.bookmarksList.length === 0) return null;
+        if (!responseEl || !AG.bookmarksList || AG.bookmarksList.length === 0) return null;
 
-        const text = extractResponseText(responseEl);
-        if (!text) return null;
-
-        const snippet = text.slice(0, 100);
-        // 1. Try matching first 100 characters of response text
-        for (const bm of AG.bookmarksList) {
-            if (bm.responseText && bm.responseText.slice(0, 100) === snippet) {
-                return bm;
-            }
-        }
-
-        // 2. Try prompt text matching if within current conversation
+        // 1. Try prompt text matching if within current conversation (fast & direct)
         const prompt = findPrecedingUserPrompt(responseEl);
         if (prompt) {
             const currentConvId = extractConversationId(window.location.href);
             for (const bm of AG.bookmarksList) {
                 if (bm.conversationId === currentConvId && bm.promptText === prompt) {
+                    return bm;
+                }
+            }
+        }
+
+        // 2. Fast snippet match directly from textContent without expensive deep DOM cloning
+        const raw = (responseEl.textContent || '').trim();
+        if (!raw) return null;
+        for (const bm of AG.bookmarksList) {
+            if (bm.responseText) {
+                const snippet = bm.responseText.slice(0, 70).trim();
+                if (snippet && raw.includes(snippet)) {
                     return bm;
                 }
             }
@@ -1112,6 +1116,17 @@ window.AskGemini = window.AskGemini || {};
     // ─── Sidebar Navigation Item ────────────────────────────────────────────────
     AG.injectSidebarBookmarkNav = function () {
         if (!AG.bookmarksEnabled) return;
+
+        // Fast-path: Skip if active bookmark nav already exists in DOM and is properly transformed
+        const existingNav = document.querySelector('a[data-ag-nav="bookmarks"]');
+        if (existingNav && document.body.contains(existingNav)) {
+            const isConfigured = existingNav.querySelector('.trailing-slot-content') ||
+                                 existingNav.classList.contains('mdc-icon-button') ||
+                                 existingNav.closest('gem-icon-button, .icon-button-badge-container');
+            if (isConfigured) {
+                return;
+            }
+        }
 
         // 1. Clean up any stray custom button so there is never a duplicate bookmark button
         document.querySelectorAll('#ag-bookmarks-sidebar-btn').forEach(el => el.remove());
@@ -2197,11 +2212,11 @@ window.AskGemini = window.AskGemini || {};
             };
         }
 
-        // Jump to chat button
+        // Jump to chat button (Stubbed to Coming Soon)
         const jumpBtn = document.getElementById('ag-reader-jump-btn');
         if (jumpBtn) {
             jumpBtn.onclick = () => {
-                jumpToBookmark(bm);
+                AG.showBookmarkToast('Jump to Chat — Coming Soon ✨');
             };
         }
 
@@ -2227,68 +2242,6 @@ window.AskGemini = window.AskGemini || {};
             });
         }
     };
-
-    function jumpToBookmark(bm) {
-        const currentConvId = extractConversationId(window.location.href);
-        const isSameConv = currentConvId === bm.conversationId || window.location.href === bm.conversationUrl;
-
-        if (chrome.runtime && chrome.runtime.sendMessage) {
-            chrome.runtime.sendMessage({
-                type: 'TRACK_EVENT',
-                name: 'bookmark_navigated',
-                params: {
-                    bookmark_id: bm.id,
-                    same_conversation: isSameConv
-                }
-            });
-        }
-
-        if (isSameConv) {
-            AG.closeBookmarksOverlay();
-            // Try scrolling to matching prompt or response
-            setTimeout(() => {
-                const snippet = cleanResponsePreview(bm.responseText || '').slice(0, 80);
-                const cleanPrompt = cleanPromptText(bm.promptText || '');
-                const prompts = Array.from(document.querySelectorAll('user-query'));
-                let target = null;
-
-                for (const p of prompts) {
-                    const clean = cleanPromptText(p.innerText || '');
-                    if (clean && clean.includes(cleanPrompt.slice(0, 35))) {
-                        target = p;
-                        break;
-                    }
-                }
-
-                if (!target && snippet) {
-                    const responses = Array.from(document.querySelectorAll('.model-response, model-response, .markdown-main-panel'));
-                    for (const r of responses) {
-                        const cleanResp = cleanResponsePreview(r.innerText || r.textContent || '');
-                        if (cleanResp.includes(snippet)) {
-                            target = r;
-                            break;
-                        }
-                    }
-                }
-
-                if (target) {
-                    target.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    target.classList.add('ag-text-highlight-blink');
-                    setTimeout(() => target.classList.remove('ag-text-highlight-blink'), 2200);
-                } else {
-                    // Turn is not rendered in current DOM (lazy loaded / scrolled off)
-                    AG.showBookmarkToast(
-                        'Earlier in chat (not loaded yet)',
-                        'Read Full Saved Text',
-                        () => AG.openBookmarkQuickView(bm)
-                    );
-                }
-            }, 250);
-        } else {
-            // Navigate to conversation URL
-            window.location.href = bm.conversationUrl;
-        }
-    }
 
     AG.renderBookmarksList = function (filterQuery = '') {
         const iconUrl = (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.getURL)
@@ -2476,12 +2429,14 @@ window.AskGemini = window.AskGemini || {};
                 });
             }
 
-            // Action: Jump to chat
+            // Action: Jump to chat (Stubbed to Coming Soon)
             const jumpBtn = card.querySelector('.ag-card-jump-btn');
-            jumpBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                jumpToBookmark(bm);
-            });
+            if (jumpBtn) {
+                jumpBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    AG.showBookmarkToast('Jump to Chat — Coming Soon ✨');
+                });
+            }
 
             // Action: Copy response text
             const copyBtn = card.querySelector('.ag-card-copy-btn');

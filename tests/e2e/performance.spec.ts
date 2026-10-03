@@ -43,7 +43,20 @@ test.describe('Extension Speed & Performance Benchmark', () => {
       return Math.round((performance.now() - startTime) * 100) / 100;
     });
 
-    // 4. Capture CDP Performance Metrics
+    // 4. Simulate active streaming tokens (100 rapid updates like live Gemini streaming)
+    await page.evaluate(() => {
+      const responseEl = document.querySelector('model-response .message-content');
+      if (responseEl) {
+        for (let i = 0; i < 100; i++) {
+          const span = document.createElement('span');
+          span.textContent = ` streaming-token-chunk-${i}`;
+          responseEl.appendChild(span);
+        }
+      }
+    });
+    await page.waitForTimeout(400);
+
+    // 5. Capture CDP Performance Metrics
     const { metrics } = await client.send('Performance.getMetrics');
     const metricMap: Record<string, number> = {};
     for (const m of metrics) {

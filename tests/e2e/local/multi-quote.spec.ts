@@ -120,4 +120,33 @@ Give me a comparative breakdown.</p>
     await expect(previews.nth(0)).toContainText('First excerpt in expanded test');
     await expect(previews.nth(1)).toContainText('Second excerpt in expanded test');
   });
+
+  test('verifies multiline and formatted quote jump targets original response and never self-targets the chip', async ({ page }) => {
+    await setupMockGeminiPage(page);
+
+    const floatBtn = page.locator('#ask-gemini-float-btn');
+    const contextBox = page.locator('#ask-gemini-context-box');
+
+    // 1. Highlight across the multi-paragraph response block (.message-content contains p1 and p2)
+    await selectTextInElement(page, '.message-content');
+    await expect(floatBtn).toBeVisible({ timeout: 5000 });
+    await floatBtn.click();
+    await page.waitForTimeout(200);
+
+    await expect(contextBox).toBeVisible();
+
+    // 2. Click the draft quote chip to jump to the highlighted text
+    const draftContentBtn = page.locator('.ask-gemini-draft-content');
+    await draftContentBtn.click();
+    await page.waitForTimeout(200);
+
+    // 3. Verify that the chip itself is NEVER wrapped or decorated with .ag-text-highlight-blink
+    const chipHighlight = contextBox.locator('.ag-text-highlight-blink');
+    expect(await chipHighlight.count()).toBe(0);
+
+    // 4. Verify that the highlight blink was attached to the source model response paragraph
+    const p1Highlight = page.locator('#gemini-response-p1 .ag-text-highlight-blink, .message-content .ag-text-highlight-blink');
+    await expect(p1Highlight.first()).toBeAttached();
+    await expect(p1Highlight.first()).toContainText('Manifest V3 extensions');
+  });
 });
