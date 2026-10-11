@@ -216,8 +216,8 @@ window.AskGemini.evaluateRetentionTip = async function evaluateRetentionTip() {
     if (!hasReply && AG.currentContexts.length === 0) shouldShow = false;
     const originalPlaceholder = input.getAttribute('data-placeholder');
     if (originalPlaceholder
-        && originalPlaceholder !== "Highlight any text to quote-reply."
-        && originalPlaceholder !== "Highlight another passage to add a 2nd quote..."
+        && !originalPlaceholder.startsWith("Highlight")
+        && !originalPlaceholder.startsWith("Tip:")
         && !input.hasAttribute('data-ag-original-placeholder')) {
         input.setAttribute('data-ag-original-placeholder', originalPlaceholder);
     }
@@ -226,14 +226,20 @@ window.AskGemini.evaluateRetentionTip = async function evaluateRetentionTip() {
     if (AG.currentContexts.length > 0 && AG.multiQuoteEnabled && isInputEmpty) {
         targetPlaceholder = "Highlight another passage to add a 2nd quote...";
     } else if (shouldShow && !AG.isTipTemporarilyDismissed && isInputEmpty) {
-        targetPlaceholder = "Highlight any text to quote-reply.";
+        if (!AG._retentionTipChoice) {
+            AG._retentionTipChoice = Math.random() < 0.5 ? 'quote' : 'bookmark';
+        }
+        targetPlaceholder = AG._retentionTipChoice === 'bookmark'
+            ? "Tip: Tap the bookmark icon to save any reply."
+            : "Highlight any text to quote-reply.";
     }
     if (input.getAttribute('data-placeholder') !== targetPlaceholder) {
         AG.animatePlaceholderChange(input, targetPlaceholder);
-        if (targetPlaceholder === "Highlight any text to quote-reply.") {
+        if (targetPlaceholder === "Highlight any text to quote-reply." || targetPlaceholder === "Tip: Tap the bookmark icon to save any reply.") {
             if (AG.retentionTipTimeout) clearTimeout(AG.retentionTipTimeout);
             AG.retentionTipTimeout = setTimeout(() => {
                 AG.isTipTemporarilyDismissed = true;
+                AG._retentionTipChoice = null;
                 AG.evaluateRetentionTip().catch(console.error);
             }, 6000);
         } else {
@@ -518,6 +524,9 @@ const observer = new MutationObserver((mutations) => {
     _transformDebounceTimer = setTimeout(() => {
         _transformDebounceTimer = null;
         window.AskGemini.transformMessages();
+        if (window.AskGemini.injectSidebarBookmarkNav) {
+            window.AskGemini.injectSidebarBookmarkNav();
+        }
 
         // Safety fallback: only check generation state if there are actually pending smart pastes to flush
         if (window.AskGemini.pendingSmartPastes && window.AskGemini.pendingSmartPastes.length > 0) {

@@ -326,5 +326,16 @@
             menuItemsCount: menuItems.length
         };
     };
+
+    window.AskGemini.testBanner = function(featureId) {
+        document.dispatchEvent(new CustomEvent('AG_TEST_FEATURE_BANNER', {
+            detail: { featureId: featureId || 'bookmarks_v1' }
+        }));
+    };
+    window.AskGemini.showFeatureBanner = function() {
+        document.dispatchEvent(new CustomEvent('AG_TEST_FEATURE_BANNER', {
+            detail: { featureId: 'bookmarks_v1' }
+        }));
+    };
 })();
 

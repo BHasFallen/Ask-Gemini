@@ -57,6 +57,30 @@ window.AskGemini = window.AskGemini || {};
         }
     }
 
+    function getModelTitle(modelIdOrName) {
+        if (!modelIdOrName) return 'Unknown';
+        if (modelIdOrName === AG.AUTO_MODE_ID || modelIdOrName === 'Auto') return 'Auto';
+        if (AG.modelRegistry[modelIdOrName]?.title) return AG.modelRegistry[modelIdOrName].title;
+        return modelIdOrName;
+    }
+
+    function trackAutoModeSwitch(fromId, toId, triggerReason) {
+        const from_model = getModelTitle(fromId);
+        const to_model = getModelTitle(toId);
+        if (from_model === to_model && from_model !== 'Unknown') return;
+        if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
+            chrome.runtime.sendMessage({
+                type: 'TRACK_EVENT',
+                name: 'auto_mode_switched',
+                params: {
+                    from_model,
+                    to_model,
+                    trigger_reason: triggerReason || 'user_select'
+                }
+            });
+        }
+    }
+
     // ─── Logging & Diagnostics Ring Buffer ────────────────────────────────────
     function logAuto(action, details) {
         const time = new Date().toLocaleTimeString();
@@ -334,6 +358,8 @@ window.AskGemini = window.AskGemini || {};
                     btn.setAttribute('aria-label', currentAria.replace(/(currently\s+)[^,\.]+/i, '$1' + title));
                 }
             });
+
+            updateCollapsedIndicator();
         } catch (err) {
             errorAuto('applyModelToPickerLabels error', err);
         } finally {
@@ -441,6 +467,10 @@ window.AskGemini = window.AskGemini || {};
 
     // ─── Click Handler for Auto Mode ──────────────────────────────────────────
     function handleAutoClick(e, item) {
+        if (e && e.target && e.target.closest('.ag-pro-preview-pill')) {
+            return;
+        }
+
         if (e) {
             e.preventDefault();
             e.stopPropagation();
@@ -449,6 +479,10 @@ window.AskGemini = window.AskGemini || {};
 
         clearReinforcementTimers();
         logAuto('🎯 Auto Mode selected by user click');
+
+        // Track model switch telemetry
+        const previousModel = AG.currentSelectedModel;
+        trackAutoModeSwitch(previousModel, AG.AUTO_MODE_ID, e ? 'user_select' : 'programmatic');
 
         // 1. Update State
         AG.currentSelectedModel = AG.AUTO_MODE_ID;
@@ -487,8 +521,200 @@ window.AskGemini = window.AskGemini || {};
         autoEl.setAttribute('data-ag-has-listener', 'true');
 
         autoEl.addEventListener('click', (e) => {
+            if (e.target && e.target.closest('.ag-pro-preview-pill')) {
+                return;
+            }
             handleAutoClick(e, autoEl);
         }, true);
+    }
+
+    // ─── Pro Preview Minimalist Tooltip System ────────────────────────────────
+    AG.showProPreviewTooltip = function showProPreviewTooltip(anchorEl, featureType) {
+        const existing = document.querySelector('.ag-pro-preview-tooltip');
+        if (existing) {
+            existing.remove();
+            if (existing.dataset.anchorFor === featureType && Date.now() - (Number(existing.dataset.openedAt) || 0) < 500) {
+                return;
+            }
+        }
+        if (!anchorEl) return;
+
+        // ─── Telemetry: Track Pro Preview Button Tap ──────────────────────────
+        try {
+            const loc = anchorEl.id || (anchorEl.classList && anchorEl.classList.contains('ag-pro-preview-pill') ? 'model_picker_pill' : 'pro_preview_pill');
+            if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+                chrome.storage.local.set({ has_tapped_pro_preview: true });
+            }
+            if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
+                chrome.runtime.sendMessage({
+                    type: 'TRACK_EVENT',
+                    name: 'pro_preview_tapped',
+                    params: {
+                        feature: featureType,
+                        location: loc
+                    }
+                });
+                chrome.runtime.sendMessage({
+                    type: 'SET_USER_PROPERTY',
+                    properties: {
+                        tapped_pro_preview: true,
+                        last_pro_preview_feature: featureType
+                    }
+                });
+            }
+        } catch (_) {}
+
+        const isAuto = featureType === 'auto';
+        const title = isAuto ? 'Auto Mode (Free Preview)' : 'Unlimited Bookmarks (Free Preview)';
+        const body = isAuto
+            ? 'Automatically switches between Gemini models based on your task. This feature is in free preview and will be exclusive to Quote Reply Pro upon launch.'
+            : 'During this preview, you can save unlimited responses. When Pro launches, the free tier will be limited to 10 saved bookmarks.';
+
+        const tooltip = document.createElement('div');
+        tooltip.className = 'ag-pro-preview-tooltip';
+        tooltip.setAttribute('role', 'tooltip');
+        tooltip.dataset.anchorFor = featureType;
+        tooltip.dataset.openedAt = String(Date.now());
+
+        tooltip.innerHTML = `
+            <div class="ag-pro-preview-tooltip-header">
+                <span class="ag-pro-preview-tooltip-tag">Pro Preview Active</span>
+                <button type="button" class="ag-pro-preview-tooltip-close" aria-label="Close tooltip">✕</button>
+            </div>
+            <div class="ag-pro-preview-tooltip-title">${title}</div>
+            <div class="ag-pro-preview-tooltip-body">${body}</div>
+            <div class="ag-pro-preview-tooltip-footer">
+                Check the <strong>Quote Reply extension popup</strong> for Pro details and waitlist access.
+            </div>
+        `;
+
+        // Prevent tooltip clicks from dismissing menus or propagating
+        const stopTooltipEvent = (e) => {
+            e.stopPropagation();
+            if (e.stopImmediatePropagation) e.stopImmediatePropagation();
+        };
+        tooltip.addEventListener('pointerdown', stopTooltipEvent, true);
+        tooltip.addEventListener('mousedown', stopTooltipEvent, true);
+        tooltip.addEventListener('click', stopTooltipEvent, true);
+
+        document.body.appendChild(tooltip);
+
+        const rect = anchorEl.getBoundingClientRect();
+        const tooltipRect = tooltip.getBoundingClientRect();
+
+        let top = rect.bottom + 8;
+        let left = rect.left + (rect.width / 2) - (tooltipRect.width / 2);
+
+        if (left < 12) left = 12;
+        if (left + tooltipRect.width > window.innerWidth - 12) {
+            left = window.innerWidth - tooltipRect.width - 12;
+        }
+
+        if (top + tooltipRect.height > window.innerHeight - 12) {
+            top = Math.max(12, rect.top - tooltipRect.height - 8);
+        }
+
+        tooltip.style.top = `${top}px`;
+        tooltip.style.left = `${left}px`;
+
+        const closeBtn = tooltip.querySelector('.ag-pro-preview-tooltip-close');
+        const dismissTooltip = () => {
+            if (tooltip.parentNode) tooltip.remove();
+            document.removeEventListener('click', outsideClickHandler, true);
+        };
+
+        if (closeBtn) closeBtn.onclick = (e) => {
+            e.stopPropagation();
+            dismissTooltip();
+        };
+
+        const outsideClickHandler = (e) => {
+            if (!tooltip.contains(e.target) && e.target !== anchorEl && !anchorEl.contains(e.target)) {
+                dismissTooltip();
+            }
+        };
+
+        setTimeout(() => {
+            document.addEventListener('click', outsideClickHandler, true);
+        }, 50);
+
+        setTimeout(() => {
+            if (document.body.contains(tooltip)) dismissTooltip();
+        }, 8000);
+    };
+
+    function attachAutoProPreviewPill(autoEl) {
+        if (!autoEl || autoEl.querySelector('.ag-pro-preview-pill')) return;
+        const titleEl = autoEl.querySelector('.label, .mode-title');
+        const pill = document.createElement('span');
+        pill.className = 'ag-pro-preview-pill';
+        pill.setAttribute('data-ag-feature', 'auto');
+        pill.style.marginLeft = '8px';
+        pill.textContent = 'PRO PREVIEW';
+        pill.setAttribute('title', 'Click to learn about Pro Preview');
+
+        const stopPillEvent = (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            if (e.stopImmediatePropagation) e.stopImmediatePropagation();
+        };
+
+        pill.addEventListener('pointerdown', stopPillEvent, true);
+        pill.addEventListener('mousedown', stopPillEvent, true);
+        pill.addEventListener('pointerup', stopPillEvent, true);
+        pill.addEventListener('mouseup', stopPillEvent, true);
+        pill.addEventListener('touchstart', stopPillEvent, true);
+        pill.addEventListener('touchend', stopPillEvent, true);
+
+        pill.addEventListener('click', (e) => {
+            stopPillEvent(e);
+            if (typeof AG.showProPreviewTooltip === 'function') {
+                AG.showProPreviewTooltip(pill, 'auto');
+            }
+        }, true);
+
+        if (titleEl) {
+            titleEl.insertAdjacentElement('afterend', pill);
+        } else {
+            const fallback = autoEl.querySelector('gem-menu-item-content') || autoEl;
+            fallback.appendChild(pill);
+        }
+    }
+
+    // ─── Collapsed Picker Button Indicator ────────────────────────────────────
+    let autoIndicatorDismissed = false;
+    if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+        chrome.storage.local.get(['ag_auto_model_indicator_dismissed'], (res) => {
+            autoIndicatorDismissed = !!res.ag_auto_model_indicator_dismissed;
+            if (!autoIndicatorDismissed) {
+                updateCollapsedIndicator();
+            }
+        });
+    }
+
+    function updateCollapsedIndicator() {
+        if (autoIndicatorDismissed) {
+            document.querySelectorAll('.ag-auto-collapsed-indicator').forEach(el => el.remove());
+            return;
+        }
+        const triggerBtns = document.querySelectorAll(
+            'button.input-area-switch, ' +
+            'button[data-test-id="bard-mode-menu-button"], ' +
+            'bard-mode-switcher button'
+        );
+        triggerBtns.forEach(btn => {
+            if (btn.querySelector('.ag-auto-collapsed-indicator')) return;
+            const primaryLabel = btn.querySelector('.gds-body-m, .picker-primary-text');
+            const targetContainer = btn.querySelector('.logo-pill-label-container') || btn;
+            const ind = document.createElement('span');
+            ind.className = 'ag-auto-collapsed-indicator';
+            ind.textContent = 'NEW';
+            if (primaryLabel && primaryLabel.parentNode) {
+                primaryLabel.insertAdjacentElement('afterend', ind);
+            } else {
+                targetContainer.appendChild(ind);
+            }
+        });
     }
 
     // ─── DOM Injector ──────────────────────────────────────────────────────────
@@ -503,6 +729,7 @@ window.AskGemini = window.AskGemini || {};
             const existingAuto = menuContainer.querySelector('[data-mode-id="' + AG.AUTO_MODE_ID + '"]');
             if (existingAuto) {
                 bindAutoClickListener(existingAuto);
+                attachAutoProPreviewPill(existingAuto);
                 AG.syncMenuDOM(menuContainer);
                 return existingAuto;
             }
@@ -550,6 +777,7 @@ window.AskGemini = window.AskGemini || {};
                 if (modeDesc) modeDesc.textContent = 'Adapts to your needs';
 
                 bindAutoClickListener(autoItem);
+                attachAutoProPreviewPill(autoItem);
 
                 // Insert at the very top of the menu
                 const parent = sampleItem.parentNode;
@@ -583,6 +811,7 @@ window.AskGemini = window.AskGemini || {};
                 desc.textContent = 'Adapts to your needs';
 
                 bindAutoClickListener(autoBtn);
+                attachAutoProPreviewPill(autoBtn);
 
                 const parent = sampleItem.parentNode;
                 parent.insertBefore(autoBtn, parent.firstChild);
@@ -599,6 +828,21 @@ window.AskGemini = window.AskGemini || {};
     // Intercepts click at document root BEFORE Angular tears down or modifies menu DOM
     document.addEventListener('click', (e) => {
         try {
+            if (e.target && e.target.closest('.ag-pro-preview-pill, .ag-pro-preview-tooltip')) {
+                return;
+            }
+
+            // Dismiss collapsed "NEW" indicator if clicked anywhere on trigger or indicator
+            if (e.target.closest('.ag-auto-collapsed-indicator') || e.target.closest('button.input-area-switch, button[data-test-id="bard-mode-menu-button"], bard-mode-switcher button, [gemmenutrigger]')) {
+                if (!autoIndicatorDismissed) {
+                    autoIndicatorDismissed = true;
+                    if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+                        chrome.storage.local.set({ ag_auto_model_indicator_dismissed: true });
+                    }
+                    document.querySelectorAll('.ag-auto-collapsed-indicator').forEach(el => el.remove());
+                }
+            }
+
             // Check if click was on or inside the mode picker trigger button
             const trigger = e.target.closest(
                 'button.input-area-switch, ' +
@@ -671,6 +915,10 @@ window.AskGemini = window.AskGemini || {};
                 logAuto('🎯 Standard model option clicked:', modeId);
                 registerModelItem(item);
 
+                // Track model switch telemetry
+                const previousModel = AG.currentSelectedModel;
+                trackAutoModeSwitch(previousModel, modeId, 'user_select');
+
                 // Explicitly record standard model ID so isAutoModeActive() becomes FALSE
                 AG.currentSelectedModel = modeId;
                 try { sessionStorage.setItem('ag_gemini_mode', modeId); } catch (_) {}
@@ -723,6 +971,8 @@ window.AskGemini = window.AskGemini || {};
         if (modeId === AG.AUTO_MODE_ID) {
             return AG.selectAutoMode();
         }
+        const previousModel = AG.currentSelectedModel;
+        trackAutoModeSwitch(previousModel, modeId, 'programmatic');
         AG.currentSelectedModel = modeId;
         try { sessionStorage.setItem('ag_gemini_mode', modeId); } catch (_) {}
         if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {

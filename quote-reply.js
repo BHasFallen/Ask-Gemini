@@ -262,25 +262,112 @@ window.AskGemini.maybeInjectAndSend = function maybeInjectAndSend() {
     }
 };
 
+// ─── isSelectionInsideAiResponse ─────────────────────────────────────────────
+window.AskGemini.isSelectionInsideAiResponse = function isSelectionInsideAiResponse(selection) {
+    if (!selection || selection.rangeCount === 0 || selection.isCollapsed) return false;
+
+    let range;
+    try {
+        range = selection.getRangeAt(0);
+    } catch (_) {
+        return false;
+    }
+    if (!range) return false;
+
+    const startNode = range.startContainer;
+    const endNode = range.endContainer;
+    const commonNode = range.commonAncestorContainer;
+    if (!startNode || !endNode || !commonNode) return false;
+
+    const startEl = startNode.nodeType === Node.ELEMENT_NODE ? startNode : startNode.parentElement;
+    const endEl = endNode.nodeType === Node.ELEMENT_NODE ? endNode : endNode.parentElement;
+    const commonEl = commonNode.nodeType === Node.ELEMENT_NODE ? commonNode : commonNode.parentElement;
+    if (!startEl || !endEl || !commonEl) return false;
+
+    const EXCLUSION_SELECTOR = [
+        'user-query', '.user-query', '.user-query-container', 'user-turn', '.user-turn',
+        '.query-content', '.query-text', '.user-message', '.user-query-bubble-with-background',
+        '.ask-gemini-transformed-proxy', '.ask-gemini-message-bubble', '.ask-gemini-reply-preview',
+        'rich-textarea', '.ql-editor', 'textarea', 'input', '[contenteditable="true"]',
+        '.text-input-field', '.chat-input-area', '.input-area-container', '.input-box-wrapper',
+        'bard-sidenav', 'mat-sidenav', '.side-nav-container', 'header', 'nav',
+        '.response-container-footer', '.response-actions', '.action-btn', 'button', 'mat-icon',
+        '#ag-bookmarks-overlay', '#ag-bookmarks-view-panel', '#ag-quota-sidebar',
+        '#ask-gemini-float-btn', '#ask-gemini-context-box', '.ag-feature-banner',
+        '.ag-rating-modal', '#ag-tour-overlay', '.ag-bookmark-btn'
+    ].join(', ');
+
+    // If start, end, or common ancestor is inside an excluded component, reject
+    if (startEl.closest(EXCLUSION_SELECTOR) || endEl.closest(EXCLUSION_SELECTOR) || commonEl.closest(EXCLUSION_SELECTOR)) {
+        return false;
+    }
+
+    const TOP_RESPONSE_SELECTOR = 'model-response, .model-response, [data-test-id="model-response"], .response-container, div[class*="model-response"]';
+    const FALLBACK_RESPONSE_SELECTOR = 'message-content, .message-content, .markdown-main-panel, model-response-content, structured-content-container, div[class*="message-content"]';
+
+    function findTopModelResponse(el) {
+        if (!el || !(el instanceof Element)) return null;
+        const containers = [];
+        let cur = el;
+        while (cur && cur !== document.body && cur !== document.documentElement) {
+            if (cur.matches && cur.matches(TOP_RESPONSE_SELECTOR)) {
+                containers.push(cur);
+            }
+            cur = cur.parentElement;
+        }
+        if (containers.length > 0) {
+            return containers[containers.length - 1];
+        }
+        return el.closest(FALLBACK_RESPONSE_SELECTOR);
+    }
+
+    const startContainer = findTopModelResponse(startEl);
+    const endContainer = findTopModelResponse(endEl);
+    const commonContainer = findTopModelResponse(commonEl);
+
+    if (!startContainer || !endContainer || !commonContainer) {
+        return false;
+    }
+
+    // Both start and end of selection must belong to the exact same top-level AI response
+    if (startContainer !== endContainer) {
+        return false;
+    }
+
+    return true;
+};
+
 // ─── handleSelection ──────────────────────────────────────────────────────────
 window.AskGemini.handleSelection = function handleSelection() {
     var AG = window.AskGemini;
     if (!AG.quoteReplyEnabled) return; // master toggle off
     const selection = window.getSelection();
-    const text = selection.toString().trim();
-
-    if (text.length > 0 && text.length < 5000) {
-        AG.showFloatButton(selection);
-        AG.isTipTemporarilyDismissed = true;
-        AG.evaluateRetentionTip().catch(console.error);
-    } else {
+    if (!selection || selection.rangeCount === 0 || selection.isCollapsed) {
         AG.hideFloatButton();
+        return;
     }
+
+    const text = selection.toString().trim();
+    if (text.length === 0 || text.length >= 5000) {
+        AG.hideFloatButton();
+        return;
+    }
+
+    // Only show button if selection is strictly inside an AI response
+    if (!AG.isSelectionInsideAiResponse(selection)) {
+        AG.hideFloatButton();
+        return;
+    }
+
+    AG.showFloatButton(selection);
+    AG.isTipTemporarilyDismissed = true;
+    AG.evaluateRetentionTip().catch(console.error);
 };
 
 // ─── showFloatButton ──────────────────────────────────────────────────────────
 window.AskGemini.showFloatButton = function showFloatButton(selection) {
     var AG = window.AskGemini;
+    if (!selection || selection.rangeCount === 0) return;
     const text = selection.toString().trim();
 
     if (!AG.floatButton) {

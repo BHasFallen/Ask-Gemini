@@ -487,14 +487,17 @@ body.mode-update .ob-page {
 }
 
 .ob-feature-icon--toc,
-.ob-feature-icon--thinking {
+.ob-feature-icon--thinking,
+.ob-feature-icon--bookmarks {
     background: rgba(196, 181, 253, 0.12);
     color: #c4b5fd;
     border: 1px solid rgba(196, 181, 253, 0.2);
 }
 
 .ob-feature-icon--quote,
-.ob-feature-icon--sync {
+.ob-feature-icon--sync,
+.ob-feature-icon--fast,
+.ob-feature-icon--lighter {
     background: rgba(109, 213, 140, 0.1);
     color: #6dd58c;
     border: 1px solid rgba(109, 213, 140, 0.2);

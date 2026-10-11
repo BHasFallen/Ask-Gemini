@@ -10,30 +10,29 @@ window.AskGemini.hasEvaluatedFeatureBanner = false;
 
 // ─── CURRENT_FEATURE ──────────────────────────────────────────────────────────
 window.AskGemini.CURRENT_FEATURE = {
-    id: "multi_quote_v1",
-    title: "New: Quote multiple excerpts",
-    description: "Highlight text, then keep highlighting more — look for the '+ Add Quote' button to build a multi-quote reply.",
-    primaryText: "Try it",
-    secondaryText: "Later",
+    id: "bookmarks_v1",
+    title: "New: Bookmark Gemini responses",
+    description: "You can now bookmark Gemini responses! Tap the bookmark icon on any reply to save it for later.",
+    primaryText: "Show me",
+    secondaryText: "Got it",
     onTry: () => {
-        chrome.storage.local.set({ ask_gemini_tour_active: true, tour_step: 1 }, () => {
-            if (typeof AskGeminiTour !== 'undefined') {
-                AskGeminiTour.step = 1;
-                AskGeminiTour.step1ListenersAttached = false;
-                AskGeminiTour.step4ListenersAttached = false;
-                AskGeminiTour.step6ListenersAttached = false;
-
-                // If a reply already exists, skip step 1 and go directly to step 2 (highlighting)
-                if (AskGeminiTour.getLatestGeminiReply()) {
-                    AskGeminiTour.step = 2;
-                    chrome.storage.local.set({ tour_step: 2 });
-                }
-                AskGeminiTour.init();
-            } else {
-                window.location.reload();
-            }
-        });
+        if (typeof window.AskGemini.highlightBookmarkButton === 'function') {
+            window.AskGemini.highlightBookmarkButton();
+        }
     }
+};
+
+window.AskGemini.highlightBookmarkButton = function highlightBookmarkButton() {
+    const btns = document.querySelectorAll('.ag-bookmark-btn');
+    if (!btns || btns.length === 0) return;
+    const btn = btns[btns.length - 1];
+    try {
+        btn.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    } catch (_) {}
+    btn.classList.add('ag-bookmark-btn-highlight');
+    setTimeout(() => {
+        btn.classList.remove('ag-bookmark-btn-highlight');
+    }, 2000);
 };
 
 /*
@@ -328,18 +327,34 @@ window.AskGemini.showFeatureBanner = function showFeatureBanner() {
         }, { once: true });
     };
 
+    // Auto highlight bookmark button a few seconds later, then gracefully leave
+    const autoHighlightTimer = setTimeout(() => {
+        if (!document.body.contains(banner) || banner.classList.contains('slide-out')) return;
+        if (typeof AG.highlightBookmarkButton === 'function') {
+            AG.highlightBookmarkButton();
+        }
+        // Leave a short second after highlighting
+        setTimeout(() => {
+            if (!document.body.contains(banner) || banner.classList.contains('slide-out')) return;
+            const bannerKey = `feature_banner_seen_${AG.CURRENT_FEATURE.id}`;
+            chrome.storage.local.set({ [bannerKey]: true }, () => {
+                closeBanner();
+            });
+        }, 2200);
+    }, 3500);
+
     dismissBtn.onclick = () => {
+        clearTimeout(autoHighlightTimer);
         const bannerKey = `feature_banner_seen_${AG.CURRENT_FEATURE.id}`;
         chrome.storage.local.set({ [bannerKey]: true }, () => {
-            // Note: feature_banner_ events are deprecated
             closeBanner();
         });
     };
 
     tryBtn.onclick = () => {
+        clearTimeout(autoHighlightTimer);
         const bannerKey = `feature_banner_seen_${AG.CURRENT_FEATURE.id}`;
         chrome.storage.local.set({ [bannerKey]: true }, () => {
-            // Note: feature_banner_ events are deprecated
             closeBanner(() => {
                 if (AG.CURRENT_FEATURE.onTry) AG.CURRENT_FEATURE.onTry();
             });
@@ -465,6 +480,18 @@ window.AskGemini.debugRating = {
     }
 };
 
+window.AskGemini.testFeatureBanner = async function testFeatureBanner() {
+    const old = document.querySelector('.ag-feature-banner');
+    if (old) old.remove();
+    const bannerKey = `feature_banner_seen_${window.AskGemini.CURRENT_FEATURE.id}`;
+    if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+        await chrome.storage.local.remove([bannerKey]);
+    }
+    window.AskGemini.hasEvaluatedFeatureBanner = false;
+    window.AskGemini.showFeatureBanner();
+    console.log('📢 [AskGemini] Feature banner triggered for testing!');
+};
+
 // ─── Bridge to 'top' (Main World) Context ────────────────────────────────────
 document.addEventListener('AG_DEBUG_RATING', function(e) {
     if (!e || !e.detail) return;
@@ -472,6 +499,16 @@ document.addEventListener('AG_DEBUG_RATING', function(e) {
     const feature = e.detail.feature;
     if (window.AskGemini && window.AskGemini.debugRating && typeof window.AskGemini.debugRating[action] === 'function') {
         window.AskGemini.debugRating[action](feature);
+    }
+});
+
+document.addEventListener('AG_TEST_FEATURE_BANNER', function() {
+    if (typeof window.AskGemini.testFeatureBanner === 'function') {
+        window.AskGemini.testFeatureBanner();
+    } else if (typeof window.AskGemini.showFeatureBanner === 'function') {
+        const old = document.querySelector('.ag-feature-banner');
+        if (old) old.remove();
+        window.AskGemini.showFeatureBanner();
     }
 });
 

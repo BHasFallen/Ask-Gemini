@@ -726,8 +726,10 @@ window.AskGemini = window.AskGemini || {};
             if (chrome.runtime && chrome.runtime.sendMessage) {
                 chrome.runtime.sendMessage({
                     type: 'TRACK_EVENT',
-                    name: 'bookmark_added',
+                    name: 'bookmark_saved',
                     params: {
+                        total_bookmarks_count: AG.bookmarksList.length,
+                        source: 'inline_response',
                         response_length: responseText.length,
                         has_code: responseText.includes('```') || !!responseEl.querySelector('pre, code'),
                         prompt_length: promptText.length
@@ -774,8 +776,11 @@ window.AskGemini = window.AskGemini || {};
             if (chrome.runtime && chrome.runtime.sendMessage) {
                 chrome.runtime.sendMessage({
                     type: 'TRACK_EVENT',
-                    name: 'bookmark_removed',
-                    params: { bookmark_id: idToRemove }
+                    name: 'bookmark_deleted',
+                    params: {
+                        bookmark_id: idToRemove,
+                        total_bookmarks_count: AG.bookmarksList.length
+                    }
                 });
             }
 
@@ -795,6 +800,17 @@ window.AskGemini = window.AskGemini || {};
 
             if (AG.isBookmarksOverlayOpen) {
                 AG.renderBookmarksList();
+            }
+
+            if (chrome.runtime && chrome.runtime.sendMessage) {
+                chrome.runtime.sendMessage({
+                    type: 'TRACK_EVENT',
+                    name: 'bookmark_deleted',
+                    params: {
+                        action: 'clear_all',
+                        total_bookmarks_count: 0
+                    }
+                });
             }
 
             AG.showBookmarkToast('All bookmarks cleared');
@@ -1070,6 +1086,8 @@ window.AskGemini = window.AskGemini || {};
 
         function isGems(el) {
             if (!el || el.id === 'ag-bookmarks-sidebar-btn' || el.closest('#ag-bookmarks-sidebar-btn')) return false;
+            // Ignore Gems that live inside the overflow/More drawer
+            if (el.closest('gem-popover, .overflow-nav-item, [data-test-id="overflow-side-nav-entry-button"], [data-test-id="overflow-popover-menu"]')) return false;
             const text = (el.textContent || '').trim().toLowerCase();
             const href = el.getAttribute ? (el.getAttribute('href') || '') : '';
             const testId = el.getAttribute ? (el.getAttribute('data-test-id') || '') : '';
@@ -1077,8 +1095,19 @@ window.AskGemini = window.AskGemini || {};
             return text === 'gems' || text.startsWith('gems\n') || href.includes('/gems') || testId.includes('gems') || aria.toLowerCase() === 'gems';
         }
 
+        function isStudents(el) {
+            if (!el || el.id === 'ag-bookmarks-sidebar-btn' || el.closest('#ag-bookmarks-sidebar-btn')) return false;
+            if (el.closest('gem-popover, .overflow-nav-item')) return false;
+            const text = (el.textContent || '').trim().toLowerCase();
+            const href = el.getAttribute ? (el.getAttribute('href') || '') : '';
+            const testId = el.getAttribute ? (el.getAttribute('data-test-id') || '') : '';
+            const aria = el.getAttribute ? (el.getAttribute('aria-label') || '') : '';
+            return text === 'students' || text.startsWith('students\n') || href.includes('/students') || testId.includes('learn-side-nav') || aria.toLowerCase() === 'students';
+        }
+
         function isLibrary(el) {
             if (!el || el.id === 'ag-bookmarks-sidebar-btn' || el.closest('#ag-bookmarks-sidebar-btn')) return false;
+            if (el.closest('gem-popover, .overflow-nav-item')) return false;
             const text = (el.textContent || '').trim().toLowerCase();
             const href = el.getAttribute ? (el.getAttribute('href') || '') : '';
             const testId = el.getAttribute ? (el.getAttribute('data-test-id') || '') : '';
@@ -1087,7 +1116,7 @@ window.AskGemini = window.AskGemini || {};
         }
 
         const candidates = Array.from(sidebar.querySelectorAll('a, button, [role="button"], [role="listitem"], mat-list-item, div'));
-        let target = candidates.find(isGems) || candidates.find(isLibrary);
+        let target = candidates.find(isGems) || candidates.find(isStudents) || candidates.find(isLibrary);
 
         if (target) {
             let itemWrapper = target.closest('mat-list-item, [role="listitem"], [role="presentation"], li, a, button') || target;
@@ -1114,227 +1143,61 @@ window.AskGemini = window.AskGemini || {};
     }
 
     // ─── Sidebar Navigation Item ────────────────────────────────────────────────
+    // ─── Sidebar Navigation Item ────────────────────────────────────────────────
     AG.injectSidebarBookmarkNav = function () {
         if (!AG.bookmarksEnabled) return;
 
-        // Fast-path: Skip if active bookmark nav already exists in DOM and is properly transformed
-        const existingNav = document.querySelector('a[data-ag-nav="bookmarks"]');
-        if (existingNav && document.body.contains(existingNav)) {
-            const isConfigured = existingNav.querySelector('.trailing-slot-content') ||
-                                 existingNav.classList.contains('mdc-icon-button') ||
-                                 existingNav.closest('gem-icon-button, .icon-button-badge-container');
-            if (isConfigured) {
-                return;
+        // 1. Target modern Gemini DOM: expanded actions list with More/Students
+        const expandedNav = document.querySelector('mat-nav-list.top-nav-expanded') ||
+                            document.querySelector('mat-nav-list.top-action-list-scrollable') ||
+                            Array.from(document.querySelectorAll('mat-nav-list')).find(nl =>
+                                nl.querySelector('[data-test-id="overflow-side-nav-entry-button"]') ||
+                                nl.querySelector('[data-test-id="learn-side-nav-entry-button"]')
+                            );
+
+        // Find More button wrapper (direct child of expandedNav)
+        const moreItem = expandedNav ? expandedNav.querySelector('[data-test-id="overflow-side-nav-entry-button"]') : null;
+        let moreWrapper = moreItem;
+        if (moreWrapper && expandedNav) {
+            while (moreWrapper && moreWrapper.parentElement !== expandedNav) {
+                moreWrapper = moreWrapper.parentElement;
             }
         }
 
-        // 1. Clean up any stray custom button so there is never a duplicate bookmark button
-        document.querySelectorAll('#ag-bookmarks-sidebar-btn').forEach(el => el.remove());
+        // Find Students item in expandedNav
+        const studentsItem = expandedNav ? expandedNav.querySelector('[data-test-id="learn-side-nav-entry-button"]') : null;
 
-        // 2. Discover all Gems nav items or links in sidebar (both expanded list row & collapsed rail button)
-        const gemsLinks = new Set();
-        document.querySelectorAll('gem-nav-list-item[data-test-id="gems-side-nav-entry-button"]').forEach(container => {
-            const link = container.querySelector('a, button');
-            if (link) gemsLinks.add(link);
-        });
-        document.querySelectorAll(
-            'a[href="/gems/view"], a[href*="/gems"], a[aria-label="Gems"], a[data-ag-nav="bookmarks"], ' +
-            'a:has(mat-icon[fonticon="gems"]), a:has(mat-icon[data-mat-icon-name="gems"])'
-        ).forEach(link => {
-            gemsLinks.add(link);
-        });
+        const hasModernNav = expandedNav && (moreWrapper || studentsItem);
 
-        if (gemsLinks.size > 0) {
-            gemsLinks.forEach(gemsLink => {
-                // Set link attributes
+        if (!hasModernNav) {
+            // 2. Fallback: check for direct Gems nav item in sidebar (legacy / test mock DOM)
+            const directGems = document.querySelector('bard-sidenav [data-test-id="gems-side-nav-entry-button"], .side-nav-container [data-test-id="gems-side-nav-entry-button"], a[href="/gems/view"]');
+            if (directGems && !directGems.closest('gem-popover, .overflow-nav-item, [data-test-id="overflow-side-nav-entry-button"]')) {
+                const gemsLink = directGems.matches('a') ? directGems : (directGems.querySelector('a') || directGems);
                 gemsLink.setAttribute('aria-label', 'Bookmarks');
                 gemsLink.removeAttribute('title');
                 gemsLink.setAttribute('href', '#bookmarks');
                 gemsLink.dataset.agNav = 'bookmarks';
 
-                const isIconButton = gemsLink.classList.contains('mdc-icon-button') ||
-                                     gemsLink.hasAttribute('maticonbutton') ||
-                                     Boolean(gemsLink.closest('gem-icon-button, .icon-button-badge-container'));
+                const titleSpan = gemsLink.querySelector('.title-text, .label-and-badge span');
+                if (titleSpan) titleSpan.textContent = 'Bookmarks';
 
-                if (isIconButton) {
-                    // COLLAPSED RAIL MODE: Circular button matching Students/Images/Videos/Library
-                    gemsLink.style.paddingLeft = '';
-                    gemsLink.style.paddingRight = '';
-                    gemsLink.style.paddingInlineStart = '';
-
-                    const iconEl = gemsLink.querySelector('gem-icon, mat-icon');
-                    if (iconEl) {
-                        iconEl.style.marginLeft = '';
-                        iconEl.style.marginInlineStart = '';
-                        iconEl.style.paddingLeft = '';
-                        iconEl.style.paddingInlineStart = '';
-                        iconEl.style.width = '';
-                        iconEl.style.minWidth = '';
-                        iconEl.style.display = 'flex';
-                        iconEl.style.justifyContent = 'center';
-                        iconEl.style.alignItems = 'center';
-
-                        const existingSvg = iconEl.querySelector('svg');
-                        if (!existingSvg || iconEl.querySelector('.ag-bookmarks-nav-icon')) {
-                            iconEl.innerHTML = MATERIAL_BOOKMARK_OUTLINE;
-                        }
+                const iconContainer = gemsLink.querySelector('[matlistitemicon], .leading-icon-container, gem-icon');
+                if (iconContainer) {
+                    const existingSvg = iconContainer.querySelector('svg');
+                    if (!existingSvg || iconContainer.querySelector('.ag-bookmarks-nav-icon')) {
+                        iconContainer.innerHTML = MATERIAL_BOOKMARK_OUTLINE;
                     }
-                } else {
-                    // EXPANDED SIDEBAR MODE: Row item with left icon, 13px label, and trailing badge
-                    const titleSpan = gemsLink.querySelector('.title-text, .label-and-badge span, .mdc-list-item__primary-text span');
-                    if (titleSpan) {
-                        if (titleSpan.textContent !== 'Bookmarks') {
-                            titleSpan.textContent = 'Bookmarks';
-                        }
-                        titleSpan.style.fontSize = '13px';
-                    }
-
-                    // Push SVG to the farthest left of the containing container
-                    gemsLink.style.paddingLeft = '0px';
-                    gemsLink.style.paddingInlineStart = '0px';
-
-                    // Replace icon with Google Material Symbols Rounded Bookmark directly (no wrapper span)
-                    const iconContainer = gemsLink.querySelector('[matlistitemicon], .leading-icon-container, gem-icon');
-                    if (iconContainer) {
-                        iconContainer.style.marginLeft = '0px';
-                        iconContainer.style.marginInlineStart = '0px';
-                        iconContainer.style.paddingLeft = '0px';
-                        iconContainer.style.paddingInlineStart = '0px';
-                        iconContainer.style.width = 'auto';
-                        iconContainer.style.minWidth = '0px';
-                        iconContainer.style.display = 'flex';
-                        iconContainer.style.justifyContent = 'flex-start';
-                        iconContainer.style.alignItems = 'center';
-
-                        const existingSvg = iconContainer.querySelector('svg');
-                        if (!existingSvg || iconContainer.querySelector('.ag-bookmarks-nav-icon')) {
-                            iconContainer.innerHTML = MATERIAL_BOOKMARK_OUTLINE;
-                        }
-                    }
-
-                    // Ensure trailing meta class exists on the link
-                    gemsLink.classList.add('mdc-list-item--with-trailing-meta', 'mat-mdc-list-item-both-leading-and-trailing');
-
-                    // Update badge and hover shortcut in trailing meta slot matching native Gemini structure
-                    const isMac = typeof navigator !== 'undefined' && /Mac|iPod|iPhone|iPad/.test(navigator.platform);
-                    const shortcutText = isMac ? '⌘⇧B' : 'Ctrl+Shift+B';
-                    const badgeInfo = getSidebarBadgeInfo();
-                    let metaContainer = gemsLink.querySelector('[matlistitemmeta], .mat-mdc-list-item-meta, .trailing-content');
-                    if (!metaContainer) {
-                        metaContainer = document.createElement('div');
-                        metaContainer.setAttribute('matlistitemmeta', '');
-                        metaContainer.className = 'mat-mdc-list-item-meta mdc-list-item__end trailing-content gmat-override';
-                        gemsLink.appendChild(metaContainer);
-                    }
-                    metaContainer.innerHTML = `
-                        <span class="trailing-text-container gds-body-s ag-bookmarks-nav-shortcut ng-star-inserted">${shortcutText}</span>
-                        <div class="trailing-slot-content ${badgeInfo.hasTrailing ? '' : 'no-trailing-content'} ng-star-inserted">
-                            ${badgeInfo.html}
-                        </div>
-                    `;
                 }
 
-                // Intercept clicks and Enter keys in capture phase before Angular router executes
-                if (!gemsLink.dataset.agIntercepted) {
-                    gemsLink.dataset.agIntercepted = 'true';
-                    gemsLink.addEventListener('click', (e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        e.stopImmediatePropagation();
-                        AG.toggleBookmarksOverlay();
-                    }, true);
+                const isMac = typeof navigator !== 'undefined' && /Mac|iPod|iPhone|iPad/.test(navigator.platform);
+                const shortcutText = isMac ? '⌘⇧B' : 'Ctrl+Shift+B';
+                const badgeInfo = getSidebarBadgeInfo();
 
-                    gemsLink.addEventListener('keydown', (e) => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            e.stopImmediatePropagation();
-                            AG.toggleBookmarksOverlay();
-                        }
-                    }, true);
-                }
-            });
-
-            return; // Never fall back to creating custom element when Gems entries are present
-        }
-
-        // 3. Fallback only if Gems entry does not exist at all in DOM: inject custom button into sidebar
-        const sidebar = document.querySelector('bard-sidenav, mat-sidenav, .side-nav-container, nav[role="navigation"], div[class*="sidebar"]');
-        if (!sidebar) return;
-
-        const existingBtn = document.getElementById('ag-bookmarks-sidebar-btn');
-        const anchor = findSidebarAnchor(sidebar);
-        if (!anchor) {
-            if (existingBtn) AG.updateSidebarBadge();
-            return;
-        }
-
-        if (existingBtn && existingBtn.previousElementSibling === anchor) {
-            AG.updateSidebarBadge();
-            return;
-        }
-
-        if (existingBtn) existingBtn.remove();
-
-        const navBtn = document.createElement('div');
-        navBtn.id = 'ag-bookmarks-sidebar-btn';
-        navBtn.className = 'ag-bookmarks-nav-item';
-        navBtn.setAttribute('role', 'button');
-        navBtn.setAttribute('tabindex', '0');
-        navBtn.setAttribute('aria-label', 'Bookmarks');
-
-        const isMac = typeof navigator !== 'undefined' && /Mac|iPod|iPhone|iPad/.test(navigator.platform);
-        const shortcutText = isMac ? '⌘⇧B' : 'Ctrl+Shift+B';
-        const badgeInfo = getSidebarBadgeInfo();
-
-        navBtn.innerHTML = `
-            <span class="ag-bookmarks-nav-icon">
-                ${MATERIAL_BOOKMARK_OUTLINE}
-            </span>
-            <span class="ag-bookmarks-nav-label">Bookmarks</span>
-            <div class="mat-mdc-list-item-meta trailing-content" style="margin-left: auto; display: inline-flex; align-items: center;">
-                <span class="trailing-text-container gds-body-s ag-bookmarks-nav-shortcut ng-star-inserted">${shortcutText}</span>
-                <div class="trailing-slot-content ${badgeInfo.hasTrailing ? '' : 'no-trailing-content'} ng-star-inserted">
-                    ${badgeInfo.html}
-                </div>
-            </div>
-        `;
-
-        navBtn.addEventListener('click', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            AG.toggleBookmarksOverlay();
-        });
-
-        navBtn.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                AG.toggleBookmarksOverlay();
-            }
-        });
-
-        anchor.insertAdjacentElement('afterend', navBtn);
-    };
-
-    AG.updateSidebarBadge = function () {
-        const isMac = typeof navigator !== 'undefined' && /Mac|iPod|iPhone|iPad/.test(navigator.platform);
-        const shortcutText = isMac ? '⌘⇧B' : 'Ctrl+Shift+B';
-        const badgeInfo = getSidebarBadgeInfo();
-
-        // Check if Gems was replaced
-        const gemsLinks = document.querySelectorAll('a[data-ag-nav="bookmarks"]');
-        if (gemsLinks.length > 0) {
-            // Clean up any stray custom button if Gems is present
-            document.querySelectorAll('#ag-bookmarks-sidebar-btn').forEach(el => el.remove());
-
-            gemsLinks.forEach(gemsLink => {
-                gemsLink.removeAttribute('title');
-                gemsLink.classList.add('mdc-list-item--with-trailing-meta', 'mat-mdc-list-item-both-leading-and-trailing');
                 let metaContainer = gemsLink.querySelector('[matlistitemmeta], .mat-mdc-list-item-meta, .trailing-content');
                 if (!metaContainer) {
                     metaContainer = document.createElement('div');
-                    metaContainer.setAttribute('matlistitemmeta', '');
-                    metaContainer.className = 'mat-mdc-list-item-meta mdc-list-item__end trailing-content gmat-override';
+                    metaContainer.className = 'mat-mdc-list-item-meta mdc-list-item__end trailing-content';
                     gemsLink.appendChild(metaContainer);
                 }
                 metaContainer.innerHTML = `
@@ -1343,18 +1206,166 @@ window.AskGemini = window.AskGemini || {};
                         ${badgeInfo.html}
                     </div>
                 `;
-            });
+
+                if (!gemsLink.dataset.agIntercepted) {
+                    gemsLink.dataset.agIntercepted = 'true';
+                    gemsLink.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        e.stopImmediatePropagation();
+                        AG.toggleBookmarksOverlay();
+                    }, true);
+                }
+                return;
+            }
+
+            // Still loading sidebar; retry shortly
+            if (!AG._sidebarRetryTimer) {
+                AG._sidebarRetryTimer = setTimeout(() => {
+                    AG._sidebarRetryTimer = null;
+                    AG.injectSidebarBookmarkNav();
+                }, 300);
+            }
             return;
         }
+
+        // Check if button is already injected in the exact right spot
+        const existingBtn = document.getElementById('ag-bookmarks-sidebar-btn');
+        if (existingBtn) {
+            const isCorrectPosition = moreWrapper
+                ? (existingBtn.nextElementSibling === moreWrapper)
+                : (existingBtn.previousElementSibling === studentsItem);
+            if (isCorrectPosition) {
+                AG.updateSidebarBadge();
+                AG.injectCollapsedBookmarkNav();
+                return;
+            }
+            existingBtn.remove();
+        }
+
+        // Create native-styled gem-nav-list-item for Bookmarks
+        const navItem = document.createElement('gem-nav-list-item');
+        navItem.id = 'ag-bookmarks-sidebar-btn';
+        navItem.className = 'ng-star-inserted';
+        navItem.setAttribute('data-test-id', 'bookmarks-side-nav-entry-button');
+
+        const isMac = typeof navigator !== 'undefined' && /Mac|iPod|iPhone|iPad/.test(navigator.platform);
+        const shortcutText = isMac ? '⌘⇧B' : 'Ctrl+Shift+B';
+        const badgeInfo = getSidebarBadgeInfo();
+
+        navItem.innerHTML = `
+            <a mat-list-item="" theme="lm" class="mat-mdc-list-item mdc-list-item mat-mdc-tooltip-trigger gem-nav-list-item gmat-override mat-mdc-list-item-interactive mdc-list-item--with-leading-icon mdc-list-item--with-trailing-meta mat-mdc-list-item-both-leading-and-trailing mat-mdc-tooltip-disabled lm-enabled mat-mdc-list-item-single-line mdc-list-item--with-one-line ng-star-inserted" href="#bookmarks" data-ag-nav="bookmarks" aria-label="Bookmarks" tabindex="0" role="button">
+                <div matlistitemicon="" class="mat-mdc-list-item-icon leading-icon-container mdc-list-item__start">
+                    <gem-icon class="gem-nav-list-item-icon ng-star-inserted">
+                        <span class="ag-bookmarks-nav-icon" style="display:flex;align-items:center;justify-content:center;width:20px;height:20px;">
+                            ${MATERIAL_BOOKMARK_OUTLINE}
+                        </span>
+                    </gem-icon>
+                </div>
+                <span class="mdc-list-item__content">
+                    <span class="mat-mdc-list-item-unscoped-content mdc-list-item__primary-text">
+                        <span class="label-and-badge menu-entry-with-badge ng-star-inserted">
+                            <span dir="auto" class="title-text gds-body-s">Bookmarks</span>
+                        </span>
+                    </span>
+                </span>
+                <div matlistitemmeta="" class="mat-mdc-list-item-meta mdc-list-item__end trailing-content gmat-override">
+                    <span class="trailing-text-container gds-body-s ag-bookmarks-nav-shortcut ng-star-inserted">${shortcutText}</span>
+                    <div class="trailing-slot-content ${badgeInfo.hasTrailing ? '' : 'no-trailing-content'} ng-star-inserted">
+                        ${badgeInfo.html}
+                    </div>
+                </div>
+                <div class="mat-focus-indicator"></div>
+            </a>
+        `;
+
+        const link = navItem.querySelector('a');
+        if (link) {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                e.stopImmediatePropagation();
+                AG.toggleBookmarksOverlay();
+            }, true);
+
+            link.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    e.stopImmediatePropagation();
+                    AG.toggleBookmarksOverlay();
+                }
+            }, true);
+        }
+
+        // Insert before More wrapper (= right under Students), or after Students
+        if (moreWrapper && moreWrapper.parentNode) {
+            moreWrapper.parentNode.insertBefore(navItem, moreWrapper);
+        } else if (studentsItem) {
+            studentsItem.insertAdjacentElement('afterend', navItem);
+        }
+
+        // Also ensure collapsed rail has Bookmarks button if in rail mode
+        AG.injectCollapsedBookmarkNav();
+    };
+
+    AG.injectCollapsedBookmarkNav = function () {
+        const collapsedNav = document.querySelector('mat-nav-list.top-nav-collapsed');
+        if (!collapsedNav) return;
+
+        const collapsedStudents = collapsedNav.querySelector('[data-test-id="learn-side-nav-entry-button"]');
+        if (!collapsedStudents) return;
+
+        const existingCollapsedBtn = document.getElementById('ag-bookmarks-collapsed-btn');
+        if (existingCollapsedBtn) {
+            if (existingCollapsedBtn.previousElementSibling === collapsedStudents) {
+                return;
+            }
+            existingCollapsedBtn.remove();
+        }
+
+        const colItem = document.createElement('gem-nav-list-item');
+        colItem.id = 'ag-bookmarks-collapsed-btn';
+        colItem.className = 'ng-star-inserted';
+        colItem.setAttribute('data-test-id', 'bookmarks-collapsed-nav-entry-button');
+        colItem.innerHTML = `
+            <div class="icon-button-badge-container menu-entry-with-badge ng-star-inserted">
+                <button class="mdc-icon-button mat-mdc-icon-button gmat-mdc-button-with-prefix" aria-label="Bookmarks" title="Bookmarks" role="button" tabindex="0" style="display:flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:50%;background:transparent;border:none;cursor:pointer;color:inherit;">
+                    <span class="ag-bookmarks-nav-icon" style="display:flex;align-items:center;justify-content:center;width:20px;height:20px;">
+                        ${MATERIAL_BOOKMARK_OUTLINE}
+                    </span>
+                </button>
+            </div>
+        `;
+
+        const btn = colItem.querySelector('button');
+        if (btn) {
+            btn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                e.stopImmediatePropagation();
+                AG.toggleBookmarksOverlay();
+            }, true);
+        }
+
+        collapsedStudents.insertAdjacentElement('afterend', colItem);
+    };
+
+    AG.updateSidebarBadge = function () {
+        const isMac = typeof navigator !== 'undefined' && /Mac|iPod|iPhone|iPad/.test(navigator.platform);
+        const shortcutText = isMac ? '⌘⇧B' : 'Ctrl+Shift+B';
+        const badgeInfo = getSidebarBadgeInfo();
 
         const navBtn = document.getElementById('ag-bookmarks-sidebar-btn');
         if (navBtn) {
             navBtn.removeAttribute('title');
-            let metaContainer = navBtn.querySelector('.mat-mdc-list-item-meta, .trailing-content');
+            let metaContainer = navBtn.querySelector('[matlistitemmeta], .mat-mdc-list-item-meta, .trailing-content');
             if (!metaContainer) {
                 metaContainer = document.createElement('div');
+                metaContainer.setAttribute('matlistitemmeta', '');
                 metaContainer.className = 'mat-mdc-list-item-meta mdc-list-item__end trailing-content gmat-override';
-                navBtn.appendChild(metaContainer);
+                const link = navBtn.querySelector('a') || navBtn;
+                link.appendChild(metaContainer);
             }
             metaContainer.innerHTML = `
                 <span class="trailing-text-container gds-body-s ag-bookmarks-nav-shortcut ng-star-inserted">${shortcutText}</span>
@@ -1363,6 +1374,25 @@ window.AskGemini = window.AskGemini || {};
                 </div>
             `;
         }
+
+        // Support any legacy Gems link if tagged
+        document.querySelectorAll('a[data-ag-nav="bookmarks"]:not(#ag-bookmarks-sidebar-btn a)').forEach(gemsLink => {
+            gemsLink.removeAttribute('title');
+            gemsLink.classList.add('mdc-list-item--with-trailing-meta', 'mat-mdc-list-item-both-leading-and-trailing');
+            let metaContainer = gemsLink.querySelector('[matlistitemmeta], .mat-mdc-list-item-meta, .trailing-content');
+            if (!metaContainer) {
+                metaContainer = document.createElement('div');
+                metaContainer.setAttribute('matlistitemmeta', '');
+                metaContainer.className = 'mat-mdc-list-item-meta mdc-list-item__end trailing-content gmat-override';
+                gemsLink.appendChild(metaContainer);
+            }
+            metaContainer.innerHTML = `
+                <span class="trailing-text-container gds-body-s ag-bookmarks-nav-shortcut ng-star-inserted">${shortcutText}</span>
+                <div class="trailing-slot-content ${badgeInfo.hasTrailing ? '' : 'no-trailing-content'} ng-star-inserted">
+                    ${badgeInfo.html}
+                </div>
+            `;
+        });
     };
 
     AG.restoreGemsLink = function () {
@@ -1448,7 +1478,11 @@ window.AskGemini = window.AskGemini || {};
                         </button>
                         <div class="ag-bookmarks-header-title">
                             <h2 class="ag-headline-m">Bookmarks</h2>
-                            <span class="ag-bookmarks-count-pill" id="ag-overlay-count-pill">0</span>
+                            <div class="ag-bookmarks-quota-info">
+                                <span class="ag-bookmarks-count-pill" id="ag-overlay-count-pill">0</span>
+                                <span class="ag-quota-limit-text" style="font-weight: 500;">/ ∞</span>
+                                <button type="button" class="ag-pro-preview-pill" id="ag-bm-header-pro-preview" data-ag-feature="bookmarks" title="Click to learn about Pro Preview">PRO PREVIEW</button>
+                            </div>
                             <div class="ag-bookmarks-brand-tag" title="Feature provided by Quote Reply for Gemini">
                                 ${iconUrl ? `<img src="${iconUrl}" class="ag-brand-mini-logo" alt="" />` : ''}
                                 <span>powered by Quote Reply for Gemini</span>
@@ -1481,7 +1515,10 @@ window.AskGemini = window.AskGemini || {};
                     <div class="ag-bookmarks-main">
                         <div class="ag-bookmarks-section-header">
                             <span class="ag-section-title">Saved responses</span>
-                            <span class="ag-bookmarks-section-badge">Quote Reply feature</span>
+                            <div class="ag-bookmarks-section-quota">
+                                <span class="ag-quota-limit-text">Unlimited in Preview (Free limit: 10)</span>
+                                <button type="button" class="ag-pro-preview-pill" id="ag-bm-section-pro-preview" data-ag-feature="bookmarks" title="Click to learn about Pro Preview">PRO PREVIEW</button>
+                            </div>
                         </div>
                         <div id="ag-bookmarks-list" class="ag-bookmarks-list"></div>
                         <div class="ag-bookmarks-footer-branding">
@@ -1534,6 +1571,9 @@ window.AskGemini = window.AskGemini || {};
                             <span class="google-symbols" style="font-size: 16px;" aria-hidden="true">open_in_new</span>
                             <span>Jump to chat</span>
                         </button>
+                        <button type="button" class="ag-native-icon-btn" id="ag-reader-report-btn" title="Issue with bookmark" aria-label="Issue with bookmark">
+                            <span class="google-symbols" style="font-size: 20px;" aria-hidden="true">report_problem</span>
+                        </button>
                         <button type="button" class="ag-native-icon-btn ag-btn-danger" id="ag-reader-delete-btn" title="Delete bookmark" aria-label="Delete bookmark">
                             <span class="google-symbols" style="font-size: 20px;" aria-hidden="true">delete</span>
                         </button>
@@ -1554,7 +1594,36 @@ window.AskGemini = window.AskGemini || {};
 
                         <div class="ag-bookmarks-footer-branding ag-reader-footer-branding">
                             ${iconUrl ? `<img src="${iconUrl}" class="ag-footer-brand-logo" alt="" />` : ''}
-                            <span>Saved Gemini response &bull; Quote Reply for Gemini</span>
+                            <span>Saved Gemini response &bull; Quote Reply for Gemini &bull; <button type="button" class="ag-reader-footer-report-btn" id="ag-reader-footer-report-btn">Issue with bookmark?</button></span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Bookmark Issue Report Inline Modal -->
+                <div id="ag-bookmark-report-modal" class="ag-report-modal-backdrop" style="display: none;">
+                    <div class="ag-report-modal-card" role="dialog" aria-labelledby="ag-report-title" aria-modal="true">
+                        <div class="ag-report-modal-header">
+                            <div class="ag-report-modal-title-row">
+                                <span class="google-symbols" style="font-size: 20px; color: #f28b82;" aria-hidden="true">report_problem</span>
+                                <h3 class="ag-report-modal-title" id="ag-report-title">Issue with bookmark</h3>
+                            </div>
+                            <button type="button" class="ag-report-close-x" id="ag-report-close-x" aria-label="Close dialog">
+                                <span class="google-symbols" style="font-size: 18px;" aria-hidden="true">close</span>
+                            </button>
+                        </div>
+                        <p class="ag-report-modal-desc">
+                            Tell us what's happening.
+                        </p>
+                        <textarea id="ag-report-issue-textarea" class="ag-report-issue-textarea" placeholder="What's happening?" rows="4" maxlength="2000"></textarea>
+                        <div class="ag-report-modal-footer">
+                            <span class="ag-report-privacy-note">Submits automatically to Google Forms</span>
+                            <div class="ag-report-modal-actions">
+                                <button type="button" class="ag-modal-btn ag-report-cancel-btn" id="ag-report-cancel-btn">Cancel</button>
+                                <button type="button" class="ag-modal-btn ag-report-submit-btn" id="ag-report-submit-btn">
+                                    <span class="google-symbols" style="font-size: 16px;" aria-hidden="true">send</span>
+                                    <span>Send Report</span>
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1620,6 +1689,8 @@ window.AskGemini = window.AskGemini || {};
     };
 
     AG.closeBookmarkReader = function () {
+        const reportModal = document.getElementById('ag-bookmark-report-modal');
+        if (reportModal) reportModal.style.display = 'none';
         const listView = document.getElementById('ag-bookmarks-list-view');
         const readerView = document.getElementById('ag-bookmarks-reader-view');
         if (readerView) readerView.style.display = 'none';
@@ -2220,6 +2291,124 @@ window.AskGemini = window.AskGemini || {};
             };
         }
 
+        // Report Issue button & inline modal handling
+        const reportBtn = document.getElementById('ag-reader-report-btn');
+        const reportModal = document.getElementById('ag-bookmark-report-modal');
+        const reportTextarea = document.getElementById('ag-report-issue-textarea');
+        const reportSubmitBtn = document.getElementById('ag-report-submit-btn');
+        const reportCancelBtn = document.getElementById('ag-report-cancel-btn');
+        const reportCloseX = document.getElementById('ag-report-close-x');
+
+        function openReportModal() {
+            if (!reportModal) return;
+            reportModal.style.display = 'flex';
+            if (reportTextarea) {
+                reportTextarea.value = '';
+                reportTextarea.style.borderColor = '';
+                setTimeout(() => reportTextarea.focus(), 50);
+            }
+            if (reportSubmitBtn) {
+                reportSubmitBtn.disabled = false;
+                reportSubmitBtn.innerHTML = `
+                    <span class="google-symbols" style="font-size: 16px;" aria-hidden="true">send</span>
+                    <span>Send Report</span>
+                `;
+            }
+        }
+
+        function closeReportModal() {
+            if (reportModal) {
+                reportModal.style.display = 'none';
+            }
+        }
+
+        if (reportBtn) {
+            reportBtn.onclick = (e) => {
+                e.stopPropagation();
+                openReportModal();
+            };
+        }
+        const footerReportBtn = document.getElementById('ag-reader-footer-report-btn');
+        if (footerReportBtn) {
+            footerReportBtn.onclick = (e) => {
+                e.stopPropagation();
+                openReportModal();
+            };
+        }
+        if (reportCancelBtn) {
+            reportCancelBtn.onclick = (e) => {
+                e.stopPropagation();
+                closeReportModal();
+            };
+        }
+        if (reportCloseX) {
+            reportCloseX.onclick = (e) => {
+                e.stopPropagation();
+                closeReportModal();
+            };
+        }
+        if (reportModal) {
+            reportModal.onclick = (e) => {
+                if (e.target === reportModal) {
+                    closeReportModal();
+                }
+            };
+        }
+        if (reportTextarea) {
+            reportTextarea.onkeydown = (e) => {
+                if (e.key === 'Escape') {
+                    e.stopPropagation();
+                    closeReportModal();
+                } else if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                    e.preventDefault();
+                    if (reportSubmitBtn && !reportSubmitBtn.disabled) {
+                        reportSubmitBtn.click();
+                    }
+                }
+            };
+        }
+
+        if (reportSubmitBtn) {
+            reportSubmitBtn.onclick = (e) => {
+                e.stopPropagation();
+                const feedbackText = reportTextarea ? reportTextarea.value.trim() : '';
+                if (!feedbackText) {
+                    if (reportTextarea) {
+                        reportTextarea.focus();
+                        reportTextarea.style.borderColor = '#f28b82';
+                        setTimeout(() => {
+                            if (reportTextarea) reportTextarea.style.borderColor = '';
+                        }, 1500);
+                    }
+                    return;
+                }
+
+                reportSubmitBtn.disabled = true;
+                reportSubmitBtn.innerHTML = `
+                    <span class="google-symbols" style="font-size: 16px;" aria-hidden="true">hourglass_empty</span>
+                    <span>Sending...</span>
+                `;
+
+                if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
+                    chrome.runtime.sendMessage({
+                        type: 'SUBMIT_BOOKMARK_REPORT',
+                        bookmark: bm,
+                        feedback: feedbackText
+                    }, (response) => {
+                        closeReportModal();
+                        if (response && response.success) {
+                            AG.showBookmarkToast('Report sent! Thank you for the feedback.');
+                        } else {
+                            AG.showBookmarkToast('Report submitted via background.');
+                        }
+                    });
+                } else {
+                    closeReportModal();
+                    AG.showBookmarkToast('Report sent!');
+                }
+            };
+        }
+
         // Delete bookmark button
         const deleteBtn = document.getElementById('ag-reader-delete-btn');
         if (deleteBtn) {
@@ -2254,6 +2443,28 @@ window.AskGemini = window.AskGemini || {};
 
         const totalCount = AG.bookmarksList.length;
         if (countPill) countPill.textContent = totalCount;
+
+        const headerPill = document.getElementById('ag-bm-header-pro-preview');
+        if (headerPill && !headerPill.dataset.hasListener) {
+            headerPill.dataset.hasListener = 'true';
+            headerPill.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (typeof AG.showProPreviewTooltip === 'function') {
+                    AG.showProPreviewTooltip(headerPill, 'bookmarks');
+                }
+            });
+        }
+
+        const sectionPill = document.getElementById('ag-bm-section-pro-preview');
+        if (sectionPill && !sectionPill.dataset.hasListener) {
+            sectionPill.dataset.hasListener = 'true';
+            sectionPill.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (typeof AG.showProPreviewTooltip === 'function') {
+                    AG.showProPreviewTooltip(sectionPill, 'bookmarks');
+                }
+            });
+        }
 
         // Clear all button visibility
         const clearBtn = document.getElementById('ag-bookmarks-clear-btn');

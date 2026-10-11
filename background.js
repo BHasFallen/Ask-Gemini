@@ -111,7 +111,11 @@ class AmplitudeWizard {
             'usage_limits_enabled',
             'bookmarks_enabled',
             'bookmarks_count',
-            'reply_count_lifetime'
+            'reply_count_lifetime',
+            'auto_mode_enabled',
+            'has_tapped_pro_preview',
+            'has_viewed_pro_tab',
+            'pro_waitlist_joined'
         ]);
         const userId = storageResult.user_email || null;
         const userName = storageResult.user_name || null;
@@ -145,7 +149,11 @@ class AmplitudeWizard {
                     usage_limits_enabled: storageResult.usage_limits_enabled !== false,
                     bookmarks_enabled: storageResult.bookmarks_enabled !== false,
                     bookmarks_count: storageResult.bookmarks_count || 0,
-                    reply_count_lifetime: storageResult.reply_count_lifetime || 0
+                    reply_count_lifetime: storageResult.reply_count_lifetime || 0,
+                    auto_mode_enabled: storageResult.auto_mode_enabled !== false,
+                    has_tapped_pro_preview: !!storageResult.has_tapped_pro_preview,
+                    has_viewed_pro_tab: !!storageResult.has_viewed_pro_tab,
+                    pro_waitlist_joined: !!storageResult.pro_waitlist_joined
                 }
             }
         };
@@ -187,6 +195,42 @@ class AmplitudeWizard {
             }
         } catch (error) {
             console.error('🏰 [Amplitude] Network Error', error);
+        }
+    }
+
+    /**
+     * Set user properties on Amplitude (fires a $identify event)
+     */
+    static async setUserProperties(properties = {}) {
+        const isUnpacked = !('update_url' in chrome.runtime.getManifest());
+        if (isUnpacked) {
+            console.log('🏰 [Amplitude] [Dev Mode] setUserProperties suppressed', properties);
+            return;
+        }
+        const result = await chrome.storage.local.get(['disableTelemetry', 'developerMode']);
+        if (result.disableTelemetry || result.developerMode) return;
+
+        const deviceId = await this.getDeviceId();
+        const eventBody = {
+            api_key: this.API_KEY,
+            events: [{
+                device_id: deviceId,
+                event_type: '$identify',
+                time: Date.now(),
+                insert_id: this.generateInsertId(),
+                user_properties: { $set: properties }
+            }]
+        };
+        try {
+            const response = await fetch(this.ENDPOINT, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(eventBody)
+            });
+            if (!response.ok) console.warn('🏰 [Amplitude] setUserProperties error:', response.status);
+            else console.log('🏰 [Amplitude] User properties set', properties);
+        } catch (e) {
+            console.error('🏰 [Amplitude] setUserProperties network error', e);
         }
     }
 }
@@ -751,6 +795,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                 sendResponse({ success: true });
                 break;
 
+            case 'SET_USER_PROPERTY':
+                AmplitudeWizard.setUserProperties(message.properties || {});
+                sendResponse({ success: true });
+                break;
+
             case 'SET_RATING_STATUS':
                 RatingManager.setStatus(message.status, message.source || 'rating_banner');
                 sendResponse({ success: true });
@@ -760,6 +809,69 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                 const reviewUrl = `https://chromewebstore.google.com/detail/jhkodgigeemnmdmdikdkpcbmgbbopgni/reviews`;
                 chrome.tabs.create({ url: reviewUrl, active: true });
                 sendResponse({ success: true });
+                break;
+
+            case 'SUBMIT_BOOKMARK_REPORT':
+                (async () => {
+                    try {
+                        const deviceId = await AmplitudeWizard.getDeviceId();
+                        const manifest = chrome.runtime.getManifest();
+                        const storageResult = await chrome.storage.local.get(['user_email']);
+                        const userEmail = storageResult.user_email || message.userEmail || '';
+                        const bm = message.bookmark || {};
+                        const userFeedback = message.feedback || 'No feedback provided';
+
+                        const details = [
+                            `[ASK GEMINI - BOOKMARK DEBUG REPORT]`,
+                            `Timestamp: ${new Date().toISOString()}`,
+                            `Extension Version: ${manifest.version}`,
+                            `Bookmark ID: ${bm.id || 'N/A'}`,
+                            `Bookmark Title: ${bm.customTitle || bm.title || 'N/A'}`,
+                            `Model Name: ${bm.modelName || 'N/A'}`,
+                            `Created At: ${bm.createdAt ? new Date(bm.createdAt).toISOString() : 'N/A'}`,
+                            `Origin URL: ${bm.url || sender.tab?.url || 'N/A'}`,
+                            `User Feedback Message:\n${userFeedback}`,
+                            `\nAssociated Prompt:\n${bm.promptText || 'N/A'}`,
+                            `\n--- RAW BOOKMARK CONTENT ---\n${bm.responseText || bm.text || 'N/A'}`
+                        ].join('\n\n');
+
+                        const formBody = new URLSearchParams();
+                        formBody.append('entry.648517234', deviceId || 'anonymous');
+                        formBody.append('entry.2143395809', 'Other');
+                        formBody.append('entry.854299622', details);
+                        if (userEmail) {
+                            formBody.append('entry.1512768788', userEmail);
+                        }
+
+                        const formUrl = 'https://docs.google.com/forms/d/e/1FAIpQLSfr82mMdRgwSPY9ZsQkdRp_HXKKwmVuWO7GmjeZ3fS9XHpqsA/formResponse';
+                        await fetch(formUrl, {
+                            method: 'POST',
+                            mode: 'no-cors',
+                            headers: {
+                                'Content-Type': 'application/x-www-form-urlencoded'
+                            },
+                            body: formBody.toString()
+                        });
+
+                        AmplitudeWizard.trackEvent('bookmark_issue_reported', {
+                            bookmark_id: bm.id,
+                            feedback_length: userFeedback.length,
+                            response_length: (bm.responseText || '').length,
+                            has_code: !!((bm.responseText || '').includes('```'))
+                        });
+
+                        logBackgroundEvent('BOOKMARK_ISSUE_REPORT_SENT', {
+                            bookmarkId: bm.id,
+                            feedbackLength: userFeedback.length
+                        });
+
+                        sendResponse({ success: true });
+                    } catch (err) {
+                        console.error('Failed to submit bookmark debug report:', err);
+                        logBackgroundEvent('BOOKMARK_REPORT_FAILED', { error: err.message }, 'ERROR');
+                        sendResponse({ success: false, error: err.message });
+                    }
+                })();
                 break;
 
             default:

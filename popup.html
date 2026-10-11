@@ -5,18 +5,21 @@
   <title>Quote Reply for Gemini</title>
   <style>
     :root {
-      --bg: #111215;
-      --surface: #18191e;
-      --surface-subtle: #202228;
-      --surface-hover: #262830;
-      --border: rgba(255, 255, 255, 0.07);
-      --border-focus: rgba(61, 90, 254, 0.4);
-      --text: #f0f1f4;
-      --text-dim: #9aa0a6;
-      --text-muted: #656a73;
-      --primary: #3d5afe;
-      --primary-hover: #536dfe;
-      --success: #34d399;
+      --bg: #0d0e12;
+      --surface: #14161c;
+      --surface-card: #1a1d24;
+      --surface-subtle: #222530;
+      --surface-hover: #262936;
+      --border: rgba(255, 255, 255, 0.08);
+      --border-focus: rgba(99, 102, 241, 0.5);
+      --text: #f3f4f6;
+      --text-dim: #9ca3af;
+      --text-muted: #6b7280;
+      --primary: #4f46e5;
+      --primary-hover: #6366f1;
+      --success: #10b981;
+      --pro-accent: #ffffff;
+      --pro-muted: rgba(255,255,255,0.35);
     }
 
     * {
@@ -26,7 +29,7 @@
     }
 
     html, body {
-      width: 330px;
+      width: 350px;
       margin: 0;
       padding: 0;
       background-color: var(--bg);
@@ -36,7 +39,8 @@
       user-select: none;
       -webkit-font-smoothing: antialiased;
       overflow-x: hidden;
-      overflow-y: hidden;
+      overflow-y: auto;
+      max-height: 590px;
       scrollbar-width: none;
       -ms-overflow-style: none;
     }
@@ -51,7 +55,7 @@
       padding: 14px 16px;
       display: flex;
       flex-direction: column;
-      gap: 10px;
+      gap: 12px;
       box-sizing: border-box;
     }
 
@@ -71,10 +75,11 @@
     }
 
     .brand-icon {
-      width: 30px;
-      height: 30px;
+      width: 32px;
+      height: 32px;
       display: block;
-      border-radius: 6px;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
     }
 
     .brand-info {
@@ -104,6 +109,13 @@
       height: 5px;
       border-radius: 50%;
       background-color: var(--success);
+      box-shadow: 0 0 6px rgba(16, 185, 129, 0.6);
+      animation: status-pulse 2s infinite;
+    }
+
+    @keyframes status-pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.6; transform: scale(1.15); }
     }
 
     .version-pill {
@@ -113,47 +125,93 @@
       background: var(--surface);
       border: 1px solid var(--border);
       border-radius: 99px;
-      padding: 2px 7px;
+      padding: 2px 8px;
     }
 
-    /* ── Value Dashboard (Stats) ───────────────────────────── */
-    .value-dashboard {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 8px;
-    }
-
-    .stat-card {
+    /* ── Top Navigation Tabs ────────────────────────────────── */
+    .popup-tabs {
+      display: flex;
       background: var(--surface);
       border: 1px solid var(--border);
       border-radius: 10px;
-      padding: 8px 10px;
-      display: flex;
-      flex-direction: column;
-      gap: 2px;
+      padding: 3px;
+      gap: 3px;
     }
 
-    .stat-header {
+    .tab-btn {
+      flex: 1;
       display: flex;
       align-items: center;
-      gap: 5px;
-      font-size: 9px;
-      font-weight: 600;
-      color: var(--text-muted);
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
+      justify-content: center;
+      gap: 6px;
+      padding: 7px 10px;
+      background: transparent;
+      border: none;
+      border-radius: 7px;
+      color: var(--text-dim);
+      font-family: inherit;
+      font-size: 11.5px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
     }
 
-    .stat-header svg {
-      color: var(--primary);
+    .tab-btn:hover {
+      color: var(--text);
+      background: rgba(255, 255, 255, 0.03);
     }
 
-    .stat-value {
-      font-size: 17px;
-      font-weight: 700;
+    .tab-btn.active {
+      background: var(--surface-card);
       color: #ffffff;
-      letter-spacing: -0.3px;
+      font-weight: 600;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+      border: 1px solid rgba(255, 255, 255, 0.06);
     }
+
+    .tab-btn.active svg {
+      color: var(--primary-hover);
+    }
+
+    .pro-tab-btn.active {
+      background: var(--surface-card);
+      border-color: rgba(255, 255, 255, 0.1);
+      color: #ffffff;
+    }
+
+    .pro-tab-sparkle {
+      font-size: 12px;
+      color: var(--text-dim);
+      line-height: 1;
+    }
+
+    .pro-tab-pill {
+      font-size: 8.5px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+      padding: 1.5px 5.5px;
+      border-radius: 99px;
+      background: var(--surface-subtle);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      margin-left: 2px;
+    }
+
+    /* ── Tab Panels ────────────────────────────────────────── */
+    .tab-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      animation: tab-fade-in 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    @keyframes tab-fade-in {
+      from { opacity: 0; transform: translateY(3px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ── Value Dashboard (Stats) — removed ──────────────────────── */
 
     /* ── Settings Card ─────────────────────────────────────── */
     .settings-card {
@@ -163,7 +221,7 @@
       overflow: hidden;
     }
 
-    .setting-item {
+    .setting-item, .setting-row {
       padding: 9px 12px;
       display: flex;
       align-items: center;
@@ -171,7 +229,10 @@
       gap: 10px;
     }
 
-    .setting-item + .setting-item {
+    .setting-item + .setting-item,
+    .setting-item + .setting-row,
+    .setting-row + .setting-item,
+    .setting-row + .setting-row {
       border-top: 1px solid var(--border);
     }
 
@@ -182,9 +243,9 @@
     }
 
     .setting-title {
-      font-size: 12.5px;
-      font-weight: 500;
-      color: var(--text);
+      font-size: 12px;
+      font-weight: 600;
+      color: #ffffff;
       display: flex;
       align-items: center;
       gap: 7px;
@@ -217,7 +278,7 @@
       pointer-events: none;
     }
 
-    /* Nested Sub-Sub-Setting Row (deeper indent for format options) */
+    /* Nested Sub-Sub-Setting Row */
     .setting-sub-sub-row {
       background: rgba(0, 0, 0, 0.35);
       padding: 7px 12px 7px 48px;
@@ -322,27 +383,29 @@
       background-color: #ffffff;
     }
 
-    /* ── Solid Rate Extension Button ───────────────────────── */
+    /* ── Rate CTA Button ───────────────────────────────────── */
     .ag-popup-rate-btn {
       width: 100%;
       padding: 8px 12px;
-      background: var(--primary) !important;
-      border: none !important;
-      border-radius: 8px;
-      color: #ffffff !important;
+      background: var(--surface) !important;
+      border: 1px solid var(--border) !important;
+      border-radius: 9px;
+      color: var(--text) !important;
       font-family: inherit;
-      font-size: 12px;
-      font-weight: 600;
+      font-size: 11.5px;
+      font-weight: 500;
       cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 6px;
-      transition: background-color 0.15s ease, transform 0.1s ease;
+      gap: 7px;
+      transition: all 0.18s ease;
     }
 
     .ag-popup-rate-btn:hover {
-      background: var(--primary-hover) !important;
+      background: var(--surface-hover) !important;
+      border-color: rgba(255, 255, 255, 0.15) !important;
+      color: #ffffff !important;
     }
 
     .ag-popup-rate-btn:active {
@@ -350,14 +413,14 @@
     }
 
     .ag-popup-rate-btn svg {
-      color: #ffffff;
+      color: #fbbf24;
     }
 
     /* ── How to Use Accordion ──────────────────────────────── */
     .guide-accordion {
       background: var(--surface);
       border: 1px solid var(--border);
-      border-radius: 8px;
+      border-radius: 9px;
       overflow: hidden;
     }
 
@@ -368,7 +431,7 @@
       border: none;
       color: var(--text-dim);
       font-family: inherit;
-      font-size: 11.5px;
+      font-size: 11px;
       font-weight: 500;
       display: flex;
       align-items: center;
@@ -410,7 +473,7 @@
     .step {
       display: flex;
       gap: 7px;
-      font-size: 11.5px;
+      font-size: 11px;
       color: var(--text-dim);
       line-height: 1.35;
     }
@@ -422,7 +485,7 @@
       background: var(--surface-subtle);
       border: 1px solid var(--border);
       color: var(--text-dim);
-      font-size: 9.5px;
+      font-size: 9px;
       font-weight: 600;
       display: flex;
       align-items: center;
@@ -436,6 +499,191 @@
       font-weight: 500;
     }
 
+    /* ══════════════════════════════════════════════════════════
+       ── PRO TAB STYLES ──────────────────────────────────────
+       ══════════════════════════════════════════════════════════ */
+    .pro-header {
+      padding: 4px 2px 2px;
+    }
+
+    .pro-label {
+      font-size: 9px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+    }
+
+    .pro-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: #ffffff;
+      letter-spacing: -0.3px;
+      line-height: 1.2;
+    }
+
+    .pro-subtitle {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 3px;
+      line-height: 1.4;
+    }
+
+    /* Pro Feature List */
+    .pro-features-list {
+      display: flex;
+      flex-direction: column;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+
+    .pro-feature-row {
+      padding: 9px 12px;
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .pro-feature-row:last-child {
+      border-bottom: none;
+    }
+
+    .pro-feature-icon {
+      width: 22px;
+      height: 22px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      margin-top: 1px;
+      color: var(--text-dim);
+    }
+
+    .pro-feature-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 1px;
+    }
+
+    .pro-feature-name {
+      font-size: 12px;
+      font-weight: 600;
+      color: #ffffff;
+    }
+
+    .pro-feature-desc {
+      font-size: 10.5px;
+      color: var(--text-muted);
+      line-height: 1.4;
+    }
+
+    .pro-preview-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 1px 5px;
+      font-size: 8.5px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      color: #c4c7c5;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 3px;
+      margin-left: 6px;
+      vertical-align: middle;
+      line-height: 1.2;
+    }
+
+    /* Waitlist / Email Capture */
+    .pro-waitlist-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .pro-waitlist-title {
+      font-size: 12px;
+      font-weight: 600;
+      color: #ffffff;
+    }
+
+    .pro-waitlist-desc {
+      font-size: 10.5px;
+      color: var(--text-muted);
+      line-height: 1.35;
+    }
+
+    .pro-email-row {
+      display: flex;
+      gap: 6px;
+    }
+
+    .pro-email-input {
+      flex: 1;
+      padding: 7px 10px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      color: var(--text);
+      font-family: inherit;
+      font-size: 11.5px;
+      outline: none;
+      transition: border-color 0.15s;
+      min-width: 0;
+    }
+
+    .pro-email-input::placeholder {
+      color: var(--text-muted);
+    }
+
+    .pro-email-input:focus {
+      border-color: rgba(255, 255, 255, 0.25);
+    }
+
+    .pro-email-submit {
+      padding: 7px 12px;
+      background: #ffffff;
+      border: none;
+      border-radius: 7px;
+      color: #0d0e12;
+      font-family: inherit;
+      font-size: 11.5px;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+      flex-shrink: 0;
+      transition: opacity 0.15s;
+    }
+
+    .pro-email-submit:hover {
+      opacity: 0.88;
+    }
+
+    .pro-email-submit:disabled {
+      opacity: 0.4;
+      cursor: default;
+    }
+
+    .pro-waitlist-success {
+      display: none;
+      font-size: 11px;
+      color: var(--success);
+      font-weight: 500;
+    }
+
+    .pro-waitlist-success.visible {
+      display: block;
+    }
+
     /* ── Footer ────────────────────────────────────────────── */
     .footer {
       display: flex;
@@ -444,7 +692,8 @@
       gap: 12px;
       font-size: 10.5px;
       color: var(--text-muted);
-      padding-top: 2px;
+      padding-top: 4px;
+      border-top: 1px solid var(--border);
     }
 
     .footer a {
@@ -482,169 +731,257 @@
       <span class="version-pill" id="version-badge">v2.8.0</span>
     </div>
 
-    <!-- Value Dashboard -->
-    <div class="value-dashboard">
-      <div class="stat-card">
-        <div class="stat-header">
-          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
-          <span>Time Saved</span>
-        </div>
-        <span class="stat-value" id="time-saved">0 mins</span>
-      </div>
-      <div class="stat-card">
-        <div class="stat-header">
-          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
-          <span>Words Processed</span>
-        </div>
-        <span class="stat-value" id="words-analyzed">0 words</span>
-      </div>
-    </div>
-
-    <!-- Features & Settings Card -->
-    <div class="settings-card">
-
-      <!-- 1. Quote Reply Master Toggle -->
-      <div class="setting-item">
-        <div class="setting-info">
-          <span class="setting-title">
-            <svg class="setting-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
-            Quote Reply
-          </span>
-          <span class="setting-desc">Floating button on text selection</span>
-        </div>
-        <label class="switch" aria-label="Toggle Quote Reply">
-          <input type="checkbox" id="switch-qr" checked />
-          <span class="slider"></span>
-        </label>
-      </div>
-
-      <!-- 1b. Multi Quote sub-toggle -->
-      <div class="setting-sub-row" id="sub-row-mq">
-        <span class="setting-title" style="font-size:11.5px;gap:6px;">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text-dim);flex-shrink:0"><path d="M8 9h.01"></path><path d="M12 9h.01"></path><path d="M16 9h.01"></path><rect x="3" y="3" width="18" height="18" rx="2"></rect></svg>
-          <span style="color:var(--text-dim)">Multi Quote</span>
-        </span>
-        <label class="switch" aria-label="Toggle Multi Quote">
-          <input type="checkbox" id="switch-mq" checked />
-          <span class="slider"></span>
-        </label>
-      </div>
-
-      <!-- 1c. Multi-Quote Format sub-sub-row -->
-      <div class="setting-sub-sub-row" id="sub-row-mq-style">
-        <span class="sub-label">Format:</span>
-        <div class="segmented-control">
-          <button type="button" class="toggle-opt" id="toggle-compact">Compact</button>
-          <button type="button" class="toggle-opt" id="toggle-expanded">Expanded</button>
-        </div>
-      </div>
-
-      <!-- 2. Smart Paste (Large Text) -->
-      <div class="setting-item">
-        <div class="setting-info">
-          <span class="setting-title">
-            <svg class="setting-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect><path d="M13 11l-3 4h4l-2 4"></path></svg>
-            Smart Paste
-          </span>
-          <span class="setting-desc">Auto-upload for large text</span>
-        </div>
-        <div class="segmented-control">
-          <button type="button" class="toggle-opt" id="toggle-sp-auto">Auto</button>
-          <button type="button" class="toggle-opt" id="toggle-sp-ask">Ask</button>
-          <button type="button" class="toggle-opt" id="toggle-sp-off">Off</button>
-        </div>
-      </div>
-
-      <!-- 3. Table of Contents -->
-      <div class="setting-item">
-        <div class="setting-info">
-          <span class="setting-title">
-            <svg class="setting-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
-            Table of Contents
-          </span>
-          <span class="setting-desc">Floating chat navigation bar</span>
-        </div>
-        <label class="switch" aria-label="Toggle Table of Contents">
-          <input type="checkbox" id="switch-toc" checked />
-          <span class="slider"></span>
-        </label>
-      </div>
-
-      <!-- 4. Usage Limits Card -->
-      <div class="setting-item">
-        <div class="setting-info">
-          <span class="setting-title">
-            <svg class="setting-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg>
-            Quota Limits
-          </span>
-          <span class="setting-desc">Display quota in sidebar</span>
-        </div>
-        <label class="switch" aria-label="Toggle Quota Limits">
-          <input type="checkbox" id="switch-limits" checked />
-          <span class="slider"></span>
-        </label>
-      </div>
-
-      <!-- 5. Bookmarks -->
-      <div class="setting-item">
-        <div class="setting-info">
-          <span class="setting-title">
-            <svg class="setting-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/></svg>
-            Bookmarks
-          </span>
-          <span class="setting-desc">Save and revisit responses</span>
-        </div>
-        <label class="switch" aria-label="Toggle Bookmarks">
-          <input type="checkbox" id="switch-bookmarks" checked />
-          <span class="slider"></span>
-        </label>
-      </div>
-
-      <!-- Auto Mode (Smart Routing) -->
-      <div class="setting-row">
-        <div class="setting-info">
-          <span class="setting-title">
-            <svg class="setting-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
-            Auto Mode
-          </span>
-          <span class="setting-desc">Unlocks Google's Auto model on Gemini</span>
-        </div>
-        <label class="switch" aria-label="Toggle Auto Mode">
-          <input type="checkbox" id="switch-auto-mode" checked />
-          <span class="slider"></span>
-        </label>
-      </div>
-    </div>
-
-    <!-- Solid Rate CTA Button -->
-    <button type="button" id="rate-extension-btn" class="ag-popup-rate-btn">
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
-      <span>Rate on Chrome Web Store</span>
-    </button>
-
-    <!-- Collapsible How To Use Guide -->
-    <div class="guide-accordion">
-      <button type="button" class="guide-trigger" id="toggle-guide-btn" aria-expanded="false">
-        <div class="guide-trigger-left">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
-          <span>How to use</span>
-        </div>
-        <svg class="chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+    <!-- Navigation Tabs -->
+    <div class="popup-tabs" role="tablist">
+      <button type="button" class="tab-btn active" id="tab-btn-features" role="tab" aria-selected="true" aria-controls="tab-panel-features">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+        <span>Features</span>
       </button>
-      <div class="guide-body" id="guide-body">
-        <div class="step">
-          <span class="step-num">1</span>
-          <span><b>Highlight</b> response text on Gemini.</span>
+      <button type="button" class="tab-btn pro-tab-btn" id="tab-btn-pro" role="tab" aria-selected="false" aria-controls="tab-panel-pro">
+        <span class="pro-tab-sparkle">✦</span>
+        <span class="pro-tab-label">Pro</span>
+        <span class="pro-tab-pill">Coming Soon</span>
+      </button>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════
+         TAB PANEL 1: FEATURES & CONTROLS
+         ══════════════════════════════════════════════════════════ -->
+    <div class="tab-panel" id="tab-panel-features" role="tabpanel">
+
+      <!-- Features & Settings Card -->
+      <div class="settings-card">
+
+        <!-- 1. Quote Reply Master Toggle -->
+        <div class="setting-item">
+          <div class="setting-info">
+            <span class="setting-title">
+              <svg class="setting-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+              Quote Reply
+            </span>
+            <span class="setting-desc">Floating button on text selection</span>
+          </div>
+          <label class="switch" aria-label="Toggle Quote Reply">
+            <input type="checkbox" id="switch-qr" checked />
+            <span class="slider"></span>
+          </label>
         </div>
-        <div class="step">
-          <span class="step-num">2</span>
-          <span>Click the floating <b>Ask Gemini</b> button.</span>
+
+        <!-- 1b. Multi Quote sub-toggle -->
+        <div class="setting-sub-row" id="sub-row-mq">
+          <span class="setting-title" style="font-size:11.5px;gap:6px;">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text-dim);flex-shrink:0"><path d="M8 9h.01"></path><path d="M12 9h.01"></path><path d="M16 9h.01"></path><rect x="3" y="3" width="18" height="18" rx="2"></rect></svg>
+            <span style="color:var(--text-dim)">Multi Quote</span>
+          </span>
+          <label class="switch" aria-label="Toggle Multi Quote">
+            <input type="checkbox" id="switch-mq" checked />
+            <span class="slider"></span>
+          </label>
         </div>
-        <div class="step">
-          <span class="step-num">3</span>
-          <span>Type your reply and press <b>Enter</b>.</span>
+
+        <!-- 1c. Multi-Quote Format sub-sub-row -->
+        <div class="setting-sub-sub-row" id="sub-row-mq-style">
+          <span class="sub-label">Format:</span>
+          <div class="segmented-control">
+            <button type="button" class="toggle-opt" id="toggle-compact">Compact</button>
+            <button type="button" class="toggle-opt" id="toggle-expanded">Expanded</button>
+          </div>
+        </div>
+
+        <!-- 2. Smart Paste (Large Text) -->
+        <div class="setting-item">
+          <div class="setting-info">
+            <span class="setting-title">
+              <svg class="setting-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect><path d="M13 11l-3 4h4l-2 4"></path></svg>
+              Smart Paste
+            </span>
+            <span class="setting-desc">Auto-upload for large text</span>
+          </div>
+          <div class="segmented-control">
+            <button type="button" class="toggle-opt" id="toggle-sp-auto">Auto</button>
+            <button type="button" class="toggle-opt" id="toggle-sp-ask">Ask</button>
+            <button type="button" class="toggle-opt" id="toggle-sp-off">Off</button>
+          </div>
+        </div>
+
+        <!-- 3. Table of Contents -->
+        <div class="setting-item">
+          <div class="setting-info">
+            <span class="setting-title">
+              <svg class="setting-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
+              Table of Contents
+            </span>
+            <span class="setting-desc">Floating chat navigation bar</span>
+          </div>
+          <label class="switch" aria-label="Toggle Table of Contents">
+            <input type="checkbox" id="switch-toc" checked />
+            <span class="slider"></span>
+          </label>
+        </div>
+
+        <!-- 4. Usage Limits Card -->
+        <div class="setting-item">
+          <div class="setting-info">
+            <span class="setting-title">
+              <svg class="setting-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg>
+              Quota Limits
+            </span>
+            <span class="setting-desc">Display quota in sidebar</span>
+          </div>
+          <label class="switch" aria-label="Toggle Quota Limits">
+            <input type="checkbox" id="switch-limits" checked />
+            <span class="slider"></span>
+          </label>
+        </div>
+
+        <!-- 5. Bookmarks -->
+        <div class="setting-item">
+          <div class="setting-info">
+            <span class="setting-title">
+              <svg class="setting-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/></svg>
+              Bookmarks
+              <span class="pro-preview-badge">PRO PREVIEW</span>
+            </span>
+            <span class="setting-desc">Save responses (Unlimited in preview • Free tier limit: 10)</span>
+          </div>
+          <label class="switch" aria-label="Toggle Bookmarks">
+            <input type="checkbox" id="switch-bookmarks" checked />
+            <span class="slider"></span>
+          </label>
+        </div>
+
+        <!-- 6. Auto Mode (Smart Routing) -->
+        <div class="setting-row">
+          <div class="setting-info">
+            <span class="setting-title">
+              <svg class="setting-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+              Auto Mode
+              <span class="pro-preview-badge">PRO PREVIEW</span>
+            </span>
+            <span class="setting-desc">Automatic model switching (Free preview • Pro at launch)</span>
+          </div>
+          <label class="switch" aria-label="Toggle Auto Mode">
+            <input type="checkbox" id="switch-auto-mode" checked />
+            <span class="slider"></span>
+          </label>
         </div>
       </div>
+
+      <!-- Rate CTA Button -->
+      <button type="button" id="rate-extension-btn" class="ag-popup-rate-btn">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+        <span>Rate on Chrome Web Store</span>
+      </button>
+
+      <!-- Collapsible How To Use Guide -->
+      <div class="guide-accordion">
+        <button type="button" class="guide-trigger" id="toggle-guide-btn" aria-expanded="false">
+          <div class="guide-trigger-left">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+            <span>How to use</span>
+          </div>
+          <svg class="chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+        </button>
+        <div class="guide-body" id="guide-body">
+          <div class="step">
+            <span class="step-num">1</span>
+            <span><b>Highlight</b> AI response text on Gemini.</span>
+          </div>
+          <div class="step">
+            <span class="step-num">2</span>
+            <span>Click the floating <b>Ask Gemini</b> button.</span>
+          </div>
+          <div class="step">
+            <span class="step-num">3</span>
+            <span>Type your follow-up reply and press <b>Enter</b>.</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════
+         TAB PANEL 2: PRO (COMING SOON)
+         ══════════════════════════════════════════════════════════ -->
+    <div class="tab-panel" id="tab-panel-pro" role="tabpanel" style="display: none;">
+
+      <!-- Header -->
+      <div class="pro-header">
+        <div class="pro-label">Coming Soon</div>
+        <div class="pro-title">Quote Reply Pro</div>
+        <div class="pro-subtitle">Unlimited bookmarks, export to Markdown &amp; PDF, jump to chat, and more.</div>
+      </div>
+
+      <!-- Feature List -->
+      <div class="pro-features-list">
+
+        <!-- 1. Unlimited Bookmarks -->
+        <div class="pro-feature-row">
+          <div class="pro-feature-icon">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/></svg>
+          </div>
+          <div class="pro-feature-content">
+            <span class="pro-feature-name">Unlimited Bookmarks</span>
+            <span class="pro-feature-desc">Save as many responses as you want — no caps, no limits.</span>
+          </div>
+        </div>
+
+        <!-- 2. Jump to Chat -->
+        <div class="pro-feature-row">
+          <div class="pro-feature-icon">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+          </div>
+          <div class="pro-feature-content">
+            <span class="pro-feature-name">Jump to Chat</span>
+            <span class="pro-feature-desc">Open the original Gemini conversation from any bookmark in one click.</span>
+          </div>
+        </div>
+
+        <!-- 3. Unlimited Exports -->
+        <div class="pro-feature-row">
+          <div class="pro-feature-icon">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+          </div>
+          <div class="pro-feature-content">
+            <span class="pro-feature-name">Unlimited Exports</span>
+            <span class="pro-feature-desc">Export your bookmarks to Markdown, JSON, or PDF anytime.</span>
+          </div>
+        </div>
+
+        <!-- 4. Auto Mode -->
+        <div class="pro-feature-row">
+          <div class="pro-feature-icon">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+          </div>
+          <div class="pro-feature-content">
+            <span class="pro-feature-name">Auto Mode</span>
+            <span class="pro-feature-desc">Automatically switch between Gemini models (Flash and Pro) based on the task given.</span>
+          </div>
+        </div>
+
+        <!-- More coming soon -->
+        <div class="pro-feature-row" style="opacity: 0.45;">
+          <div class="pro-feature-icon">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
+          </div>
+          <div class="pro-feature-content">
+            <span class="pro-feature-name">And more coming soon</span>
+            <span class="pro-feature-desc">More features are in the works.</span>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Waitlist / Email Capture -->
+      <div class="pro-waitlist-card">
+        <span class="pro-waitlist-title">Get notified when Pro launches</span>
+        <div class="pro-email-row" id="waitlist-form-row">
+          <input type="email" id="waitlist-email-input" class="pro-email-input" placeholder="your@email.com" autocomplete="email" />
+          <button type="button" id="join-waitlist-btn" class="pro-email-submit">Notify me</button>
+        </div>
+        <span class="pro-waitlist-success" id="waitlist-success-msg">✓ You're on the list — we'll reach out when Pro is ready.</span>
+      </div>
+
     </div>
 
     <!-- Minimalist Footer -->
@@ -655,7 +992,7 @@
       </a>
       <span class="footer-dot">•</span>
       <a href="#" id="report-problem">
-        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
         <span>Report a Problem</span>
       </a>
       <span class="footer-dot">•</span>

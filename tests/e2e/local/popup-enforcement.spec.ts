@@ -100,20 +100,70 @@ test.describe('Popup Settings & Live Enforcement Suite', () => {
     await selectTextInElement(page, '#gemini-response-p1');
     await expect(floatBtn).toBeVisible({ timeout: 5000 });
 
-    // ─── 5. Value Dashboard Metrics ───
-    await popupPage.bringToFront();
-    await popupPage.evaluate(async () => {
-      await chrome.storage.local.set({
-        rating_state: {
-          totalWords: 2500,
-          replyCount: 17,
-        },
-      });
-    });
-    await popupPage.reload();
+    // ─── 5. Cleanup ───
+    await popupPage.close();
+  });
 
-    await expect(popupPage.locator('#time-saved')).toContainText('42 mins');
-    await expect(popupPage.locator('#words-analyzed')).toContainText('2.5k words');
+  test('verifies Pro tab displays Coming Soon, showcase features (unlimited bookmarks, jump to chat, unlimited exports, auto mode), and waitlist interaction', async ({ context, extensionId }) => {
+    const popupPage = await context.newPage();
+    await popupPage.goto(`chrome-extension://${extensionId}/popup.html`);
+
+    // 1. Initial view: Features tab is active, Pro tab is inactive
+    const featuresTabBtn = popupPage.locator('#tab-btn-features');
+    const proTabBtn = popupPage.locator('#tab-btn-pro');
+    const featuresPanel = popupPage.locator('#tab-panel-features');
+    const proPanel = popupPage.locator('#tab-panel-pro');
+
+    await expect(featuresTabBtn).toHaveClass(/active/);
+    await expect(featuresPanel).toBeVisible();
+    await expect(proPanel).not.toBeVisible();
+
+    // 2. Click Pro tab to switch view
+    await proTabBtn.click();
+    await expect(proTabBtn).toHaveClass(/active/);
+    await expect(proPanel).toBeVisible();
+    await expect(featuresPanel).not.toBeVisible();
+
+    // Verify pro tab tracking was persisted in storage
+    const hasViewedProTab = await popupPage.evaluate(async () => {
+      const res = await chrome.storage.local.get(['has_viewed_pro_tab']);
+      return res.has_viewed_pro_tab;
+    });
+    expect(hasViewedProTab).toBe(true);
+
+    // 3. Verify Pro Coming Soon badge & headline
+    await expect(proPanel.locator('.pro-label')).toContainText('Coming Soon');
+    await expect(proPanel.locator('.pro-title')).toContainText('Quote Reply Pro');
+
+    // 4. Verify all 4 required features are rendered
+    await expect(proPanel).toContainText('Unlimited Bookmarks');
+    await expect(proPanel).toContainText('Jump to Chat');
+    await expect(proPanel).toContainText('Unlimited Exports');
+    await expect(proPanel).toContainText('Auto Mode');
+
+    // 5. Test Waitlist interaction with email input
+    const emailInput = popupPage.locator('#waitlist-email-input');
+    const notifyBtn = popupPage.locator('#join-waitlist-btn');
+    const successMsg = popupPage.locator('#waitlist-success-msg');
+
+    await expect(emailInput).toBeVisible();
+    await expect(notifyBtn).toBeVisible();
+
+    await emailInput.fill('tester@example.com');
+    await notifyBtn.click();
+
+    await expect(successMsg).toBeVisible();
+    await expect(successMsg).toContainText("You're on the list");
+
+    // 6. Reload popup and verify waitlist state persists
+    await popupPage.reload();
+    await proTabBtn.click();
+    await expect(popupPage.locator('#waitlist-success-msg')).toBeVisible();
+
+    // 7. Switch back to Features tab
+    await featuresTabBtn.click();
+    await expect(featuresPanel).toBeVisible();
+    await expect(proPanel).not.toBeVisible();
 
     await popupPage.close();
   });
