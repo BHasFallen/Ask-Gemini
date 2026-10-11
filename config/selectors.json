@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "updatedAt": "2026-10-11T13:25:00Z",
+  "selectors": {
+    "sidebarExpandedNav": "mat-nav-list.top-nav-expanded, mat-nav-list.top-action-list-scrollable",
+    "sidebarCollapsedNav": "mat-nav-list.top-nav-collapsed",
+    "sidebarStudentsItem": "[data-test-id=\"learn-side-nav-entry-button\"]",
+    "sidebarMoreItem": "[data-test-id=\"overflow-side-nav-entry-button\"]",
+    "sidebarGemsItem": "[data-test-id=\"gems-side-nav-entry-button\"], a[href=\"/gems/view\"]",
+    "composerInputArea": "div.input-area-container, fieldset.input-area-container",
+    "composerTextArea": "rich-textarea, div[contenteditable=\"true\"]",
+    "modelResponse": "model-response, .model-response, message-content",
+    "userQuery": "user-query",
+    "scroller": "infinite-scroller"
+  }
+}

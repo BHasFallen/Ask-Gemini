@@ -69,15 +69,7 @@ class PopupController {
         this.timeSavedEl = document.getElementById('time-saved');
         this.wordsAnalyzedEl = document.getElementById('words-analyzed');
 
-        // Tab controls
-        this.tabBtnFeatures = document.getElementById('tab-btn-features');
-        this.tabBtnPro = document.getElementById('tab-btn-pro');
-        this.tabPanelFeatures = document.getElementById('tab-panel-features');
-        this.tabPanelPro = document.getElementById('tab-panel-pro');
-        this.waitlistBtn = document.getElementById('join-waitlist-btn');
-        this.waitlistEmailInput = document.getElementById('waitlist-email-input');
-        this.waitlistFormRow = document.getElementById('waitlist-form-row');
-        this.waitlistSuccessMsg = document.getElementById('waitlist-success-msg');
+
 
         // Form & switch controls
         this.switchQr = document.getElementById('switch-qr');         // Master: Quote Reply
@@ -120,11 +112,9 @@ class PopupController {
     }
 
     async init() {
-        this.setupTabs();
         this.loadVersion();
         this.loadStats();
         await this.loadSettings();
-        await this.loadWaitlistState();
         this.setupEventListeners();
 
         // Track Popup View
@@ -178,102 +168,7 @@ class PopupController {
         }
     }
 
-    setupTabs() {
-        if (!this.tabBtnFeatures || !this.tabBtnPro) return;
 
-        const switchTab = (tabName) => {
-            const isPro = tabName === 'pro';
-            this.tabBtnFeatures.classList.toggle('active', !isPro);
-            this.tabBtnPro.classList.toggle('active', isPro);
-            this.tabBtnFeatures.setAttribute('aria-selected', !isPro ? 'true' : 'false');
-            this.tabBtnPro.setAttribute('aria-selected', isPro ? 'true' : 'false');
-
-            if (this.tabPanelFeatures) this.tabPanelFeatures.style.display = !isPro ? 'flex' : 'none';
-            if (this.tabPanelPro) this.tabPanelPro.style.display = isPro ? 'flex' : 'none';
-
-            if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
-                chrome.runtime.sendMessage({
-                    type: 'TRACK_EVENT',
-                    name: 'popup_tab_switched',
-                    params: { tab: tabName }
-                });
-            }
-        };
-
-        this.tabBtnFeatures.addEventListener('click', () => switchTab('features'));
-        this.tabBtnPro.addEventListener('click', () => {
-            if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-                chrome.storage.local.set({ has_viewed_pro_tab: true });
-            }
-            if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
-                chrome.runtime.sendMessage({
-                    type: 'TRACK_EVENT',
-                    name: 'pro_tab_tapped',
-                    params: { source: 'popup_tab_header' }
-                });
-                chrome.runtime.sendMessage({
-                    type: 'SET_USER_PROPERTY',
-                    properties: { viewed_pro_tab: true }
-                });
-            }
-            switchTab('pro');
-        });
-
-        // Interactive pro-preview badges in popup settings navigate to Pro tab and track
-        document.querySelectorAll('.pro-preview-badge').forEach(badge => {
-            badge.style.cursor = 'pointer';
-            badge.setAttribute('title', 'Click to view Pro features');
-            badge.addEventListener('click', (e) => {
-                e.stopPropagation();
-                const featureRow = badge.closest('.setting-item');
-                const featureTitle = featureRow ? (featureRow.querySelector('.setting-title')?.textContent?.trim() || 'feature') : 'feature';
-                const featureKey = featureTitle.toLowerCase().includes('auto') ? 'auto' : 'bookmarks';
-
-                if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-                    chrome.storage.local.set({ has_tapped_pro_preview: true, has_viewed_pro_tab: true });
-                }
-                if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
-                    chrome.runtime.sendMessage({
-                        type: 'TRACK_EVENT',
-                        name: 'pro_preview_tapped',
-                        params: { feature: featureKey, location: 'popup_settings_badge' }
-                    });
-                    chrome.runtime.sendMessage({
-                        type: 'TRACK_EVENT',
-                        name: 'pro_tab_tapped',
-                        params: { source: 'popup_settings_badge' }
-                    });
-                    chrome.runtime.sendMessage({
-                        type: 'SET_USER_PROPERTY',
-                        properties: {
-                            tapped_pro_preview: true,
-                            viewed_pro_tab: true,
-                            last_pro_preview_feature: featureKey
-                        }
-                    });
-                }
-                switchTab('pro');
-            });
-        });
-    }
-
-    async loadWaitlistState() {
-        if (!this.waitlistBtn) return;
-        try {
-            const res = await chrome.storage.local.get(['pro_waitlist_joined']);
-            if (res.pro_waitlist_joined) {
-                this.setWaitlistJoinedUI();
-            }
-        } catch (e) {
-            console.error('Failed to load waitlist state:', e);
-        }
-    }
-
-    setWaitlistJoinedUI() {
-        if (this.waitlistFormRow) this.waitlistFormRow.style.display = 'none';
-        if (this.waitlistSuccessMsg) this.waitlistSuccessMsg.classList.add('visible');
-        if (this.waitlistBtn) this.waitlistBtn.disabled = true;
-    }
 
     async loadSettings() {
         try {
@@ -324,16 +219,11 @@ class PopupController {
     }
 
     /**
-     * Hide the Quota Limits toggle row when the user is on a free Gemini plan.
-     * quota_limits is set by the background QuotaManager after its first successful
-     * fetch. We only hide if isProUser is *explicitly* false — if it's undefined
-     * (never fetched yet) we leave the row visible so it doesn't vanish on new installs.
+     * Quota limits toggle is unrestricted and visible for all users.
      */
     applyProVisibility(quotaLimits) {
         if (!this.limitsSettingRow) return;
-        // Only hide when we have a confirmed non-pro signal
-        const isConfirmedFree = quotaLimits && quotaLimits.isProUser === false;
-        this.limitsSettingRow.style.display = isConfirmedFree ? 'none' : '';
+        this.limitsSettingRow.style.display = '';
     }
 
     /**
@@ -595,50 +485,7 @@ class PopupController {
             });
         }
 
-        // Pro Waitlist Button
-        if (this.waitlistBtn) {
-            this.waitlistBtn.addEventListener('click', async () => {
-                const email = this.waitlistEmailInput ? this.waitlistEmailInput.value.trim() : '';
-                const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-                if (!emailRegex.test(email)) {
-                    if (this.waitlistEmailInput) {
-                        this.waitlistEmailInput.style.borderColor = 'rgba(239,68,68,0.6)';
-                        setTimeout(() => {
-                            if (this.waitlistEmailInput) this.waitlistEmailInput.style.borderColor = '';
-                        }, 1800);
-                    }
-                    return;
-                }
-
-                if (this.waitlistBtn) this.waitlistBtn.disabled = true;
-
-                try {
-                    await chrome.storage.local.set({ pro_waitlist_joined: true, pro_waitlist_email: email });
-                    this.setWaitlistJoinedUI();
-
-                    if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
-                        // Track event
-                        chrome.runtime.sendMessage({
-                            type: 'TRACK_EVENT',
-                            name: 'pro_waitlist_joined',
-                            params: { email }
-                        });
-                        // Set user property so Amplitude logs the email
-                        chrome.runtime.sendMessage({
-                            type: 'SET_USER_PROPERTY',
-                            properties: {
-                                pro_waitlist_email: email,
-                                pro_waitlist_joined: true
-                            }
-                        });
-                    }
-                } catch (e) {
-                    console.error('Failed to join waitlist:', e);
-                    if (this.waitlistBtn) this.waitlistBtn.disabled = false;
-                }
-            });
-        }
     }
 
     async copyDebugReport() {

@@ -1148,15 +1148,19 @@ window.AskGemini = window.AskGemini || {};
         if (!AG.bookmarksEnabled) return;
 
         // 1. Target modern Gemini DOM: expanded actions list with More/Students
-        const expandedNav = document.querySelector('mat-nav-list.top-nav-expanded') ||
-                            document.querySelector('mat-nav-list.top-action-list-scrollable') ||
+        const expandedNavSel = (AG.selectors && AG.selectors.get('sidebarExpandedNav')) || 'mat-nav-list.top-nav-expanded, mat-nav-list.top-action-list-scrollable';
+        const moreItemSel = (AG.selectors && AG.selectors.get('sidebarMoreItem')) || '[data-test-id="overflow-side-nav-entry-button"]';
+        const studentsItemSel = (AG.selectors && AG.selectors.get('sidebarStudentsItem')) || '[data-test-id="learn-side-nav-entry-button"]';
+        const gemsItemSel = (AG.selectors && AG.selectors.get('sidebarGemsItem')) || '[data-test-id="gems-side-nav-entry-button"], a[href="/gems/view"]';
+
+        const expandedNav = document.querySelector(expandedNavSel) ||
                             Array.from(document.querySelectorAll('mat-nav-list')).find(nl =>
-                                nl.querySelector('[data-test-id="overflow-side-nav-entry-button"]') ||
-                                nl.querySelector('[data-test-id="learn-side-nav-entry-button"]')
+                                nl.querySelector(moreItemSel) ||
+                                nl.querySelector(studentsItemSel)
                             );
 
         // Find More button wrapper (direct child of expandedNav)
-        const moreItem = expandedNav ? expandedNav.querySelector('[data-test-id="overflow-side-nav-entry-button"]') : null;
+        const moreItem = expandedNav ? expandedNav.querySelector(moreItemSel) : null;
         let moreWrapper = moreItem;
         if (moreWrapper && expandedNav) {
             while (moreWrapper && moreWrapper.parentElement !== expandedNav) {
@@ -1165,13 +1169,13 @@ window.AskGemini = window.AskGemini || {};
         }
 
         // Find Students item in expandedNav
-        const studentsItem = expandedNav ? expandedNav.querySelector('[data-test-id="learn-side-nav-entry-button"]') : null;
+        const studentsItem = expandedNav ? expandedNav.querySelector(studentsItemSel) : null;
 
         const hasModernNav = expandedNav && (moreWrapper || studentsItem);
 
         if (!hasModernNav) {
             // 2. Fallback: check for direct Gems nav item in sidebar (legacy / test mock DOM)
-            const directGems = document.querySelector('bard-sidenav [data-test-id="gems-side-nav-entry-button"], .side-nav-container [data-test-id="gems-side-nav-entry-button"], a[href="/gems/view"]');
+            const directGems = document.querySelector(`bard-sidenav ${gemsItemSel}, .side-nav-container ${gemsItemSel}, ${gemsItemSel}`);
             if (directGems && !directGems.closest('gem-popover, .overflow-nav-item, [data-test-id="overflow-side-nav-entry-button"]')) {
                 const gemsLink = directGems.matches('a') ? directGems : (directGems.querySelector('a') || directGems);
                 gemsLink.setAttribute('aria-label', 'Bookmarks');
@@ -1310,10 +1314,12 @@ window.AskGemini = window.AskGemini || {};
     };
 
     AG.injectCollapsedBookmarkNav = function () {
-        const collapsedNav = document.querySelector('mat-nav-list.top-nav-collapsed');
+        const collapsedNavSel = (AG.selectors && AG.selectors.get('sidebarCollapsedNav')) || 'mat-nav-list.top-nav-collapsed';
+        const collapsedNav = document.querySelector(collapsedNavSel);
         if (!collapsedNav) return;
 
-        const collapsedStudents = collapsedNav.querySelector('[data-test-id="learn-side-nav-entry-button"]');
+        const studentsItemSel = (AG.selectors && AG.selectors.get('sidebarStudentsItem')) || '[data-test-id="learn-side-nav-entry-button"]';
+        const collapsedStudents = collapsedNav.querySelector(studentsItemSel);
         if (!collapsedStudents) return;
 
         const existingCollapsedBtn = document.getElementById('ag-bookmarks-collapsed-btn');
@@ -1480,8 +1486,6 @@ window.AskGemini = window.AskGemini || {};
                             <h2 class="ag-headline-m">Bookmarks</h2>
                             <div class="ag-bookmarks-quota-info">
                                 <span class="ag-bookmarks-count-pill" id="ag-overlay-count-pill">0</span>
-                                <span class="ag-quota-limit-text" style="font-weight: 500;">/ ∞</span>
-                                <button type="button" class="ag-pro-preview-pill" id="ag-bm-header-pro-preview" data-ag-feature="bookmarks" title="Click to learn about Pro Preview">PRO PREVIEW</button>
                             </div>
                             <div class="ag-bookmarks-brand-tag" title="Feature provided by Quote Reply for Gemini">
                                 ${iconUrl ? `<img src="${iconUrl}" class="ag-brand-mini-logo" alt="" />` : ''}
@@ -1515,10 +1519,6 @@ window.AskGemini = window.AskGemini || {};
                     <div class="ag-bookmarks-main">
                         <div class="ag-bookmarks-section-header">
                             <span class="ag-section-title">Saved responses</span>
-                            <div class="ag-bookmarks-section-quota">
-                                <span class="ag-quota-limit-text">Unlimited in Preview (Free limit: 10)</span>
-                                <button type="button" class="ag-pro-preview-pill" id="ag-bm-section-pro-preview" data-ag-feature="bookmarks" title="Click to learn about Pro Preview">PRO PREVIEW</button>
-                            </div>
                         </div>
                         <div id="ag-bookmarks-list" class="ag-bookmarks-list"></div>
                         <div class="ag-bookmarks-footer-branding">
@@ -2444,27 +2444,7 @@ window.AskGemini = window.AskGemini || {};
         const totalCount = AG.bookmarksList.length;
         if (countPill) countPill.textContent = totalCount;
 
-        const headerPill = document.getElementById('ag-bm-header-pro-preview');
-        if (headerPill && !headerPill.dataset.hasListener) {
-            headerPill.dataset.hasListener = 'true';
-            headerPill.addEventListener('click', (e) => {
-                e.stopPropagation();
-                if (typeof AG.showProPreviewTooltip === 'function') {
-                    AG.showProPreviewTooltip(headerPill, 'bookmarks');
-                }
-            });
-        }
 
-        const sectionPill = document.getElementById('ag-bm-section-pro-preview');
-        if (sectionPill && !sectionPill.dataset.hasListener) {
-            sectionPill.dataset.hasListener = 'true';
-            sectionPill.addEventListener('click', (e) => {
-                e.stopPropagation();
-                if (typeof AG.showProPreviewTooltip === 'function') {
-                    AG.showProPreviewTooltip(sectionPill, 'bookmarks');
-                }
-            });
-        }
 
         // Clear all button visibility
         const clearBtn = document.getElementById('ag-bookmarks-clear-btn');

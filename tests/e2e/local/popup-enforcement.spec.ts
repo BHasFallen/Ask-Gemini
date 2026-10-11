@@ -104,66 +104,50 @@ test.describe('Popup Settings & Live Enforcement Suite', () => {
     await popupPage.close();
   });
 
-  test('verifies Pro tab displays Coming Soon, showcase features (unlimited bookmarks, jump to chat, unlimited exports, auto mode), and waitlist interaction', async ({ context, extensionId }) => {
+  test('verifies popup is completely demonetized, free, and unrestricted with no Pro badges, tabs, or waitlist', async ({ context, extensionId }) => {
     const popupPage = await context.newPage();
     await popupPage.goto(`chrome-extension://${extensionId}/popup.html`);
 
-    // 1. Initial view: Features tab is active, Pro tab is inactive
-    const featuresTabBtn = popupPage.locator('#tab-btn-features');
+    // 1. Verify NO Pro tab or Pro panel exists
     const proTabBtn = popupPage.locator('#tab-btn-pro');
-    const featuresPanel = popupPage.locator('#tab-panel-features');
     const proPanel = popupPage.locator('#tab-panel-pro');
+    await expect(proTabBtn).not.toBeAttached();
+    await expect(proPanel).not.toBeAttached();
 
-    await expect(featuresTabBtn).toHaveClass(/active/);
-    await expect(featuresPanel).toBeVisible();
-    await expect(proPanel).not.toBeVisible();
-
-    // 2. Click Pro tab to switch view
-    await proTabBtn.click();
-    await expect(proTabBtn).toHaveClass(/active/);
-    await expect(proPanel).toBeVisible();
-    await expect(featuresPanel).not.toBeVisible();
-
-    // Verify pro tab tracking was persisted in storage
-    const hasViewedProTab = await popupPage.evaluate(async () => {
-      const res = await chrome.storage.local.get(['has_viewed_pro_tab']);
-      return res.has_viewed_pro_tab;
-    });
-    expect(hasViewedProTab).toBe(true);
-
-    // 3. Verify Pro Coming Soon badge & headline
-    await expect(proPanel.locator('.pro-label')).toContainText('Coming Soon');
-    await expect(proPanel.locator('.pro-title')).toContainText('Quote Reply Pro');
-
-    // 4. Verify all 4 required features are rendered
-    await expect(proPanel).toContainText('Unlimited Bookmarks');
-    await expect(proPanel).toContainText('Jump to Chat');
-    await expect(proPanel).toContainText('Unlimited Exports');
-    await expect(proPanel).toContainText('Auto Mode');
-
-    // 5. Test Waitlist interaction with email input
+    // 2. Verify NO Waitlist email input exists
     const emailInput = popupPage.locator('#waitlist-email-input');
-    const notifyBtn = popupPage.locator('#join-waitlist-btn');
-    const successMsg = popupPage.locator('#waitlist-success-msg');
+    await expect(emailInput).not.toBeAttached();
 
-    await expect(emailInput).toBeVisible();
-    await expect(notifyBtn).toBeVisible();
+    // 3. Verify NO Pro preview badges exist anywhere
+    const proBadges = popupPage.locator('.pro-preview-badge');
+    expect(await proBadges.count()).toBe(0);
 
-    await emailInput.fill('tester@example.com');
-    await notifyBtn.click();
+    // 4. Verify all core switches are visible, functional, and unrestricted
+    const switchAuto = popupPage.locator('#switch-auto-mode');
+    const switchBm = popupPage.locator('#switch-bookmarks');
+    const switchQr = popupPage.locator('#switch-qr');
+    const switchMq = popupPage.locator('#switch-mq');
+    const switchToc = popupPage.locator('#switch-toc');
 
-    await expect(successMsg).toBeVisible();
-    await expect(successMsg).toContainText("You're on the list");
+    await expect(popupPage.locator('label:has(#switch-auto-mode)')).toBeVisible();
+    await expect(switchAuto).toBeAttached();
+    await expect(switchAuto).toBeChecked();
 
-    // 6. Reload popup and verify waitlist state persists
-    await popupPage.reload();
-    await proTabBtn.click();
-    await expect(popupPage.locator('#waitlist-success-msg')).toBeVisible();
+    await expect(popupPage.locator('label:has(#switch-bookmarks)')).toBeVisible();
+    await expect(switchBm).toBeAttached();
+    await expect(switchBm).toBeChecked();
 
-    // 7. Switch back to Features tab
-    await featuresTabBtn.click();
-    await expect(featuresPanel).toBeVisible();
-    await expect(proPanel).not.toBeVisible();
+    await expect(popupPage.locator('label:has(#switch-qr)')).toBeVisible();
+    await expect(switchQr).toBeAttached();
+    await expect(switchQr).toBeChecked();
+
+    await expect(popupPage.locator('label:has(#switch-mq)')).toBeVisible();
+    await expect(switchMq).toBeAttached();
+    await expect(switchMq).toBeChecked();
+
+    await expect(popupPage.locator('label:has(#switch-toc)')).toBeVisible();
+    await expect(switchToc).toBeAttached();
+    await expect(switchToc).toBeChecked();
 
     await popupPage.close();
   });

@@ -26,6 +26,8 @@ const filesToCopy = [
     'background.js',
     'content.js',
     'debug-bridge.js',
+    'selectors.js',
+    'rpc-client.js',
     'quote-reply.js',
     'smart-paste.js',
     'paste-stats.js',
@@ -75,7 +77,24 @@ if (fs.existsSync(srcIcons)) {
     }
 }
 
-// 4. Ensure manifest.json version is 2.8.0
+// 4. Copy config directory
+const srcConfig = path.join(rootDir, 'config');
+const destConfig = path.join(distDir, 'config');
+if (fs.existsSync(srcConfig)) {
+    fs.mkdirSync(destConfig, { recursive: true });
+    const configFiles = fs.readdirSync(srcConfig);
+    for (const cfgFile of configFiles) {
+        const srcCfg = path.join(srcConfig, cfgFile);
+        const destCfg = path.join(destConfig, cfgFile);
+        if (fs.statSync(srcCfg).isFile()) {
+            fs.copyFileSync(srcCfg, destCfg);
+            totalBytes += fs.statSync(destCfg).size;
+            fileCount++;
+        }
+    }
+}
+
+// 5. Ensure manifest.json version is 2.8.0
 const manifestPath = path.join(distDir, 'manifest.json');
 if (fs.existsSync(manifestPath)) {
     const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));

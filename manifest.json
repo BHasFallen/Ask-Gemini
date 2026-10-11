@@ -25,6 +25,8 @@
         "https://gemini.google.com/*"
       ],
       "js": [
+        "selectors.js",
+        "rpc-client.js",
         "quote-reply.js",
         "smart-paste.js",
         "toc.js",

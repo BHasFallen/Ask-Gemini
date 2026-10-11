@@ -112,10 +112,7 @@ class AmplitudeWizard {
             'bookmarks_enabled',
             'bookmarks_count',
             'reply_count_lifetime',
-            'auto_mode_enabled',
-            'has_tapped_pro_preview',
-            'has_viewed_pro_tab',
-            'pro_waitlist_joined'
+            'auto_mode_enabled'
         ]);
         const userId = storageResult.user_email || null;
         const userName = storageResult.user_name || null;
@@ -150,10 +147,7 @@ class AmplitudeWizard {
                     bookmarks_enabled: storageResult.bookmarks_enabled !== false,
                     bookmarks_count: storageResult.bookmarks_count || 0,
                     reply_count_lifetime: storageResult.reply_count_lifetime || 0,
-                    auto_mode_enabled: storageResult.auto_mode_enabled !== false,
-                    has_tapped_pro_preview: !!storageResult.has_tapped_pro_preview,
-                    has_viewed_pro_tab: !!storageResult.has_viewed_pro_tab,
-                    pro_waitlist_joined: !!storageResult.pro_waitlist_joined
+                    auto_mode_enabled: storageResult.auto_mode_enabled !== false
                 }
             }
         };
