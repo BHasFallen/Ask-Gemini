@@ -293,7 +293,7 @@ window.AskGemini.isSelectionInsideAiResponse = function isSelectionInsideAiRespo
         'bard-sidenav', 'mat-sidenav', '.side-nav-container', 'header', 'nav',
         '.response-container-footer', '.response-actions', '.action-btn', 'button', 'mat-icon',
         '#ag-bookmarks-overlay', '#ag-bookmarks-view-panel', '#ag-quota-sidebar',
-        '#ask-gemini-float-btn', '#ask-gemini-context-box', '.ag-feature-banner',
+        '#ask-gemini-float-btn', '#ask-gemini-snippet-bm-btn', '#ask-gemini-context-box', '.ag-feature-banner',
         '.ag-rating-modal', '#ag-tour-overlay', '.ag-bookmark-btn'
     ].join(', ');
 
@@ -320,6 +320,8 @@ window.AskGemini.isSelectionInsideAiResponse = function isSelectionInsideAiRespo
         }
         return el.closest(FALLBACK_RESPONSE_SELECTOR);
     }
+
+    window.AskGemini.findTopModelResponse = findTopModelResponse;
 
     const startContainer = findTopModelResponse(startEl);
     const endContainer = findTopModelResponse(endEl);
@@ -417,33 +419,47 @@ window.AskGemini.isNativeQuoteReplyActive = function isNativeQuoteReplyActive() 
 // ─── handleSelection ──────────────────────────────────────────────────────────
 window.AskGemini.handleSelection = function handleSelection() {
     var AG = window.AskGemini;
-    if (!AG.quoteReplyEnabled) return; // master toggle off
+    if (!AG.quoteReplyEnabled && !AG.bookmarksEnabled) return; // master toggles off
 
     const selection = window.getSelection();
     if (!selection || selection.rangeCount === 0 || selection.isCollapsed) {
         AG.hideFloatButton();
+        AG.hideSnippetBookmarkButton();
         return;
     }
 
     const text = selection.toString().trim();
     if (text.length === 0 || text.length >= 5000) {
         AG.hideFloatButton();
+        AG.hideSnippetBookmarkButton();
         return;
     }
 
     // Only show button if selection is strictly inside an AI response
     if (!AG.isSelectionInsideAiResponse(selection)) {
         AG.hideFloatButton();
+        AG.hideSnippetBookmarkButton();
         return;
     }
 
-    // If Google's native quote reply is active on this account/page, yield gracefully to prevent double-button collisions
-    if (AG.isNativeQuoteReplyActive()) {
+    const anchorEl = selection.anchorNode ? (selection.anchorNode.parentElement || selection.anchorNode) : null;
+    const responseEl = AG.findTopModelResponse ? AG.findTopModelResponse(anchorEl) : null;
+    const isNative = AG.isNativeQuoteReplyActive && AG.isNativeQuoteReplyActive();
+
+    // If Google's native quote reply is active or quote reply disabled, hide our quote button
+    if (isNative || !AG.quoteReplyEnabled) {
         AG.hideFloatButton();
-        return;
+    } else {
+        AG.showFloatButton(selection);
     }
 
-    AG.showFloatButton(selection);
+    // Show snippet bookmark button next to the floating pill (native or extension)
+    if (AG.bookmarksEnabled !== false) {
+        AG.showSnippetBookmarkButton(selection, text, responseEl, isNative);
+    } else {
+        AG.hideSnippetBookmarkButton();
+    }
+
     AG.isTipTemporarilyDismissed = true;
     AG.evaluateRetentionTip().catch(console.error);
 };
@@ -474,6 +490,7 @@ window.AskGemini.showFloatButton = function showFloatButton(selection) {
             AG.renderContextBox();
             AG.evaluateRetentionTip().catch(console.error);
             AG.hideFloatButton();
+            AG.hideSnippetBookmarkButton();
         };
         AG.floatButton.style.left = `${centerX - 75}px`;
     } else {
@@ -483,6 +500,7 @@ window.AskGemini.showFloatButton = function showFloatButton(selection) {
             e.preventDefault();
             AG.activateContext(text);
             AG.hideFloatButton();
+            AG.hideSnippetBookmarkButton();
         };
         AG.floatButton.style.left = `${centerX - 60}px`;
     }
@@ -495,6 +513,103 @@ window.AskGemini.showFloatButton = function showFloatButton(selection) {
 window.AskGemini.hideFloatButton = function hideFloatButton() {
     if (window.AskGemini.floatButton) window.AskGemini.floatButton.style.display = 'none';
 };
+
+// ─── Snippet Bookmark Button ─────────────────────────────────────────────────
+window.AskGemini.snippetBookmarkBtn = null;
+
+window.AskGemini.showSnippetBookmarkButton = function showSnippetBookmarkButton(selection, text, responseEl, isNative) {
+    var AG = window.AskGemini;
+    if (AG.bookmarksEnabled === false) return;
+    if (!selection || selection.rangeCount === 0) return;
+
+    if (!AG.snippetBookmarkBtn) {
+        AG.snippetBookmarkBtn = document.createElement('button');
+        AG.snippetBookmarkBtn.id = 'ask-gemini-snippet-bm-btn';
+        AG.snippetBookmarkBtn.setAttribute('type', 'button');
+        AG.snippetBookmarkBtn.setAttribute('aria-label', 'Bookmark selected text');
+        document.body.appendChild(AG.snippetBookmarkBtn);
+    }
+
+    const bmOutline = (AG.ICONS && (AG.ICONS.bookmarkOutline || AG.ICONS.bookmark_outline)) ||
+        '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M17 3H7c-1.1 0-2 .9-2 2v14.55c0 .91 1.01 1.44 1.77.96L12 17.29l5.23 3.22c.76.47 1.77-.05 1.77-.96V5c0-1.1-.9-2-2-2zm0 13.97-4.46-2.75c-.33-.2-.75-.2-1.08 0L7 16.97V5h10v11.97z"/></svg>';
+    const bmFilled = (AG.ICONS && (AG.ICONS.bookmarkFilled || AG.ICONS.bookmark_filled)) ||
+        '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M17 3H7c-1.1 0-2 .9-2 2v14.55c0 .91 1.01 1.44 1.77.96L12 17.29l5.23 3.22c.76.47 1.77-.05 1.77-.96V5c0-1.1-.9-2-2-2z"/></svg>';
+
+    AG.snippetBookmarkBtn.innerHTML = `
+        <span class="ag-snippet-bm-icon">${bmOutline}</span>
+        <span class="ag-snippet-bm-label">Bookmark</span>
+    `;
+
+    AG.snippetBookmarkBtn.onclick = function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+
+        AG.snippetBookmarkBtn.innerHTML = `
+            <span class="ag-snippet-bm-icon" style="color: #8ab4f8;">${bmFilled}</span>
+            <span class="ag-snippet-bm-label" style="color: #8ab4f8;">Bookmarked!</span>
+        `;
+
+        if (AG.BookmarkManager && AG.BookmarkManager.addSnippetBookmark) {
+            Promise.resolve(AG.BookmarkManager.addSnippetBookmark(text, responseEl)).catch(console.error);
+        }
+
+        setTimeout(function() {
+            AG.hideSnippetBookmarkButton();
+        }, 1200);
+    };
+
+    const range = selection.getRangeAt(0);
+    const rect = range.getBoundingClientRect();
+    const centerX = rect.left + window.scrollX + (rect.width / 2);
+    const topY = rect.top + window.scrollY - 45;
+
+    let targetLeft, targetTop;
+
+    if (isNative) {
+        // Look for Google's native quote suggestion button in the DOM
+        const btnSelector = (AG.getSelector && AG.getSelector('nativeQuoteButton')) || '[fonticonname="prompt_suggestion"], [aria-label*="quote" i]';
+        const nativeIcon = document.querySelector(btnSelector);
+        const nativeBtn = nativeIcon ? (nativeIcon.closest('button, .prompt-suggestion-button, [role="button"]') || nativeIcon) : null;
+
+        if (nativeBtn && nativeBtn.getBoundingClientRect().width > 0) {
+            const nRect = nativeBtn.getBoundingClientRect();
+            targetLeft = nRect.right + window.scrollX + 8;
+            targetTop = nRect.top + window.scrollY;
+        } else {
+            targetLeft = centerX + 40;
+            targetTop = topY;
+        }
+    } else {
+        // Place right next to Ask Gemini floating pill
+        targetLeft = centerX + 65;
+        targetTop = topY;
+    }
+
+    if (targetTop < window.scrollY + 10) {
+        targetTop = rect.bottom + window.scrollY + 10;
+    }
+
+    AG.snippetBookmarkBtn.style.left = `${Math.max(10, targetLeft)}px`;
+    AG.snippetBookmarkBtn.style.top = `${Math.max(10, targetTop)}px`;
+    AG.snippetBookmarkBtn.style.display = 'inline-flex';
+};
+
+// ─── hideSnippetBookmarkButton ───────────────────────────────────────────────
+window.AskGemini.hideSnippetBookmarkButton = function hideSnippetBookmarkButton() {
+    if (window.AskGemini.snippetBookmarkBtn) {
+        window.AskGemini.snippetBookmarkBtn.style.display = 'none';
+    }
+};
+
+document.addEventListener('mousedown', function(e) {
+    var AG = window.AskGemini;
+    if (!AG) return;
+    if (e.target.closest && e.target.closest('#ask-gemini-float-btn, #ask-gemini-snippet-bm-btn')) {
+        return;
+    }
+    if (AG.hideFloatButton) AG.hideFloatButton();
+    if (AG.hideSnippetBookmarkButton) AG.hideSnippetBookmarkButton();
+}, true);
 
 // ─── activateContext ──────────────────────────────────────────────────────────
 window.AskGemini.activateContext = function activateContext(text) {
@@ -597,7 +712,7 @@ window.AskGemini.scrollToAndHighlightText = function scrollToAndHighlightText(te
         if (!el || !(el instanceof Element)) return false;
         return Boolean(
             el.closest(
-                '.ask-gemini-transformed-proxy, #ask-gemini-context-box, .ask-gemini-reply-preview, #ask-gemini-float-btn, [data-ag-processed="true"], .ag-text-highlight-blink'
+                '.ask-gemini-transformed-proxy, #ask-gemini-context-box, .ask-gemini-reply-preview, #ask-gemini-float-btn, #ask-gemini-snippet-bm-btn, [data-ag-processed="true"], .ag-text-highlight-blink'
             )
         );
     }

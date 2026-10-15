@@ -131,4 +131,61 @@ describe('Native Quote Reply Coexistence & Detection', () => {
         AG.isNativeQuoteReplyActive();
         expect(sendMsgSpy.mock.calls.length).toBe(callsCount);
     });
+
+    it('creates and positions snippet bookmark button when text is selected', () => {
+        const AG = (globalThis as any).AskGemini;
+        AG.bookmarksEnabled = true;
+
+        const mockRange = {
+            getBoundingClientRect: () => ({ left: 100, right: 200, top: 300, bottom: 320, width: 100, height: 20 })
+        };
+        const mockSelection = {
+            rangeCount: 1,
+            getRangeAt: () => mockRange
+        };
+
+        const responseEl = document.createElement('model-response');
+        document.body.appendChild(responseEl);
+
+        AG.showSnippetBookmarkButton(mockSelection, 'Important insight', responseEl, true);
+
+        const btn = document.querySelector('#ask-gemini-snippet-bm-btn') as HTMLElement;
+        expect(btn).not.toBeNull();
+        expect(btn.style.display).toBe('inline-flex');
+        expect(btn.textContent).toContain('Bookmark');
+
+        // Test hiding
+        AG.hideSnippetBookmarkButton();
+        expect(btn.style.display).toBe('none');
+    });
+
+    it('saves snippet bookmark via BookmarkManager on click', async () => {
+        const AG = (globalThis as any).AskGemini;
+        AG.bookmarksEnabled = true;
+
+        const addSnippetSpy = vi.fn().mockResolvedValue({ id: 'bm_123', isSnippet: true });
+        AG.BookmarkManager = {
+            addSnippetBookmark: addSnippetSpy
+        };
+
+        const mockRange = {
+            getBoundingClientRect: () => ({ left: 100, right: 200, top: 300, bottom: 320, width: 100, height: 20 })
+        };
+        const mockSelection = {
+            rangeCount: 1,
+            getRangeAt: () => mockRange
+        };
+
+        const responseEl = document.createElement('model-response');
+        document.body.appendChild(responseEl);
+
+        AG.showSnippetBookmarkButton(mockSelection, 'Key quote excerpt', responseEl, false);
+        const btn = document.querySelector('#ask-gemini-snippet-bm-btn') as HTMLElement;
+        expect(btn).not.toBeNull();
+
+        // Click the snippet bookmark button
+        btn.click();
+        expect(addSnippetSpy).toHaveBeenCalledWith('Key quote excerpt', responseEl);
+        expect(btn.textContent).toContain('Bookmarked!');
+    });
 });

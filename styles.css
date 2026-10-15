@@ -56,6 +56,67 @@
   color: var(--ask-gemini-primary);
 }
 
+#ask-gemini-snippet-bm-btn {
+  position: absolute;
+  z-index: 9999;
+  display: none;
+  align-items: center;
+  gap: 6px;
+  background-color: var(--ask-gemini-bg, #1E1F20);
+  color: var(--ask-gemini-text, #E3E3E3);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 99px;
+  padding: 0 14px;
+  height: 36px;
+  box-sizing: border-box;
+  font-family: 'Google Sans', 'Roboto', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  transition: transform 0.2s ease, background-color 0.2s ease, opacity 0.2s ease, color 0.2s ease;
+  animation: ask-gemini-fade-in 0.2s ease-out;
+  user-select: none;
+}
+
+#ask-gemini-snippet-bm-btn:hover {
+  background-color: #333333;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+}
+
+#ask-gemini-snippet-bm-btn:active {
+  transform: translateY(0);
+}
+
+.ag-snippet-bm-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ask-gemini-primary, #8ab4f8);
+}
+
+.ag-snippet-bm-icon svg {
+  width: 18px;
+  height: 18px;
+}
+
+.ag-snippet-bm-label {
+  line-height: 1;
+}
+
+.ag-bookmark-snippet-tag {
+  background: rgba(138, 180, 248, 0.15) !important;
+  color: #8ab4f8 !important;
+  border: 1px solid rgba(138, 180, 248, 0.3) !important;
+  border-radius: 6px !important;
+  padding: 1px 6px !important;
+  font-size: 10px !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.5px !important;
+}
+
 @keyframes ask-gemini-fade-in {
   from {
     opacity: 0;

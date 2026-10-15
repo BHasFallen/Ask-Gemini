@@ -509,7 +509,7 @@ const observer = new MutationObserver((mutations) => {
         return t && t.closest && t.closest(
             '#ag-toc-widget, #ag-bookmarks-overlay, #ag-bookmark-toast, .ag-bookmark-btn, ' +
             '.ask-gemini-transformed-proxy, #ag-quota-sidebar, #ag-sp-toast, #ag-tour-overlay, ' +
-            '#ask-gemini-float-btn, #ask-gemini-context-box, .ag-bookmark-first-banner'
+            '#ask-gemini-float-btn, #ask-gemini-snippet-bm-btn, #ask-gemini-context-box, .ag-bookmark-first-banner'
         );
     });
     if (isSelfMutation) return;

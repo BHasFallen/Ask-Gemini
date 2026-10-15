@@ -752,6 +752,63 @@ window.AskGemini = window.AskGemini || {};
             return bookmark;
         },
 
+        async addSnippetBookmark(snippetText, responseEl, snippetHtml) {
+            if (!snippetText) return null;
+
+            const promptText = (responseEl ? findPrecedingUserPrompt(responseEl) : '') || 'Saved Gemini snippet';
+            const cleanText = snippetText.trim().slice(0, 50000);
+            const currentUrl = window.location.href;
+            const conversationId = extractConversationId(currentUrl);
+            const modelName = extractModelName();
+
+            const bookmark = {
+                id: generateId(),
+                promptText: promptText,
+                responseText: cleanText,
+                responseHtml: snippetHtml || `<p>${escapeHtml(cleanText)}</p>`,
+                conversationUrl: currentUrl,
+                conversationId: conversationId,
+                createdAt: Date.now(),
+                modelName: modelName,
+                isSnippet: true
+            };
+
+            AG.bookmarksList.unshift(bookmark);
+            await this.saveToStorage();
+
+            AG.updateAllBookmarkButtonStates();
+            AG.updateSidebarBadge();
+
+            // Track event
+            if (chrome.runtime && chrome.runtime.sendMessage) {
+                chrome.runtime.sendMessage({
+                    type: 'TRACK_EVENT',
+                    name: 'bookmark_saved',
+                    params: {
+                        total_bookmarks_count: AG.bookmarksList.length,
+                        source: 'snippet_selection',
+                        response_length: cleanText.length,
+                        has_code: cleanText.includes('```'),
+                        prompt_length: promptText.length
+                    }
+                });
+            }
+
+            if (!AG.firstBookmarkBannerShown) {
+                AG.firstBookmarkBannerShown = true;
+                try {
+                    chrome.storage.local.set({ ag_first_bookmark_banner_shown: true });
+                } catch (e) {}
+                AG.showFirstBookmarkBanner();
+            } else {
+                AG.showBookmarkToast('Snippet bookmarked!', 'View', () => {
+                    AG.openBookmarksOverlay();
+                });
+            }
+
+            return bookmark;
+        },
+
         async removeBookmark(bookmarkIdOrEl) {
             let idToRemove = null;
             if (typeof bookmarkIdOrEl === 'string') {
@@ -2521,6 +2578,7 @@ window.AskGemini = window.AskGemini || {};
 
             const timeStr = formatRelativeTime(bm.createdAt);
             const modelBadge = bm.modelName ? `<span class="ag-bookmark-model-tag">${escapeHtml(bm.modelName)}</span>` : '';
+            const snippetBadge = bm.isSnippet ? `<span class="ag-bookmark-model-tag ag-bookmark-snippet-tag">Snippet</span>` : '';
             const displayTitle = getBookmarkDisplayTitle(bm);
 
             card.setAttribute('aria-label', `Quick View bookmark: ${displayTitle}`);
@@ -2541,6 +2599,7 @@ window.AskGemini = window.AskGemini || {};
                             <span class="google-symbols" style="font-size: 15px;" aria-hidden="true">edit</span>
                         </button>
                         <div class="ag-bookmark-meta">
+                            ${snippetBadge}
                             ${modelBadge}
                             <span class="ag-bookmark-time">${escapeHtml(timeStr)}</span>
                         </div>
