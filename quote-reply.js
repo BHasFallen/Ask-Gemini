@@ -593,12 +593,12 @@ window.AskGemini.showSnippetBookmarkButton = function showSnippetBookmarkButton(
 
     AG.snippetBookmarkBtn.innerHTML = `
         <span class="mat-mdc-button-persistent-ripple mdc-button__ripple"></span>
-        <span class="mdc-button__label">
-            <span class="gem-button-content ng-star-inserted">
-                <span class="gem-button-icon-container menu-entry-with-badge ng-star-inserted">
-                    <span class="ag-snippet-bm-icon">${bmOutlineSvg}</span>
+        <span class="mdc-button__label" style="display:inline-flex!important;align-items:center!important;justify-content:center!important;vertical-align:middle!important;margin:0!important;padding:0!important;">
+            <span class="gem-button-content ng-star-inserted" style="display:inline-flex!important;align-items:center!important;justify-content:center!important;gap:8px!important;vertical-align:middle!important;margin:0!important;padding:0!important;">
+                <span class="gem-button-icon-container menu-entry-with-badge ng-star-inserted" style="display:inline-flex!important;align-items:center!important;justify-content:center!important;vertical-align:middle!important;margin:0!important;padding:0!important;line-height:0!important;">
+                    <span class="ag-snippet-bm-icon" style="display:inline-flex!important;align-items:center!important;justify-content:center!important;vertical-align:middle!important;width:18px!important;height:18px!important;margin:0!important;padding:0!important;line-height:0!important;">${bmOutlineSvg}</span>
                 </span>
-                <span class="gds-body-m">Bookmark</span>
+                <span class="gds-body-m" style="display:inline-flex!important;align-items:center!important;vertical-align:middle!important;margin:0!important;padding:0!important;line-height:1!important;">Bookmark</span>
             </span>
         </span>
         <span class="mat-focus-indicator"></span>
@@ -658,6 +658,8 @@ window.AskGemini.showSnippetBookmarkButton = function showSnippetBookmarkButton(
         btnStyle.setProperty('white-space', 'nowrap', 'important');
         btnStyle.setProperty('display', 'inline-flex', 'important');
         btnStyle.setProperty('align-items', 'center', 'important');
+        btnStyle.setProperty('justify-content', 'center', 'important');
+        btnStyle.setProperty('text-align', 'center', 'important');
         btnStyle.setProperty('box-sizing', 'border-box', 'important');
         btnStyle.setProperty('gap', '8px', 'important');
         btnStyle.setProperty('transition', 'background-color 0.15s ease, color 0.15s ease', 'important');

@@ -98,6 +98,7 @@ gem-button#ask-gemini-snippet-bm-btn button,
   white-space: nowrap !important;
   display: inline-flex !important;
   align-items: center !important;
+  justify-content: center !important;
   gap: 8px !important;
   box-shadow: none !important;
   transition: background-color 0.15s ease, color 0.15s ease !important;
@@ -118,9 +119,30 @@ gem-button#ask-gemini-snippet-bm-btn button:active,
   background-color: #3f4244 !important;
 }
 
-/* Clean typography */
-#ask-gemini-snippet-bm-btn .gds-body-m,
+/* Center alignment for button wrappers */
 #ask-gemini-snippet-bm-btn .mdc-button__label,
+gem-button#ask-gemini-snippet-bm-btn .mdc-button__label {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  vertical-align: middle !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+#ask-gemini-snippet-bm-btn .gem-button-content,
+gem-button#ask-gemini-snippet-bm-btn .gem-button-content {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 8px !important;
+  vertical-align: middle !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* Clean typography aligned with icon */
+#ask-gemini-snippet-bm-btn .gds-body-m,
 gem-button#ask-gemini-snippet-bm-btn .gds-body-m,
 .ask-gemini-snippet-bm-btn .gds-body-m,
 .ag-snippet-bm-label {
@@ -130,6 +152,11 @@ gem-button#ask-gemini-snippet-bm-btn .gds-body-m,
   font-weight: 500 !important;
   letter-spacing: normal !important;
   line-height: 1 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  vertical-align: middle !important;
+  margin: 0 !important;
+  padding: 0 !important;
 }
 
 /* Crisp SVG icon handling without broken font ligatures */
@@ -141,11 +168,14 @@ gem-button#ask-gemini-snippet-bm-btn mat-icon,
   display: inline-flex !important;
   align-items: center !important;
   justify-content: center !important;
+  vertical-align: middle !important;
   font-family: inherit !important;
   font-size: 0 !important;
   line-height: 0 !important;
   width: 18px !important;
   height: 18px !important;
+  margin: 0 !important;
+  padding: 0 !important;
   color: #c4c7c5 !important;
   transition: color 0.15s ease !important;
 }
@@ -165,6 +195,7 @@ gem-button#ask-gemini-snippet-bm-btn svg,
   height: 18px !important;
   fill: currentColor !important;
   display: block !important;
+  margin: 0 !important;
 }
 
 /* Standalone / Fallback styling if rendered outside Gemini's native menu */
