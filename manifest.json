@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Quote Reply for Gemini",
-  "version": "2.8.2",
-  "description": "Highlight any Google Gemini response and quote-reply with full context. Sharper follow-ups, fewer hallucinations.",
+  "version": "2.8.3",
+  "description": "Highlight any Gemini reply to quote it in your follow-up. Plus Smart Paste, Table of Contents, Bookmarks and Auto Mode.",
   "permissions": [
     "storage",
     "unlimitedStorage",

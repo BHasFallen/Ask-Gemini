@@ -10,7 +10,7 @@ describe('Version Patch Suppression (What\'s New Gating)', () => {
         (globalThis as any).self = globalThis;
         (globalThis as any).chrome = {
             runtime: {
-                getManifest: () => ({ version: '2.8.2', update_url: 'https://clients2.google.com/service/update2/crx' }),
+                getManifest: () => ({ version: '2.8.3', update_url: 'https://clients2.google.com/service/update2/crx' }),
                 onInstalled: { addListener: () => {} },
                 onStartup: { addListener: () => {} },
                 onMessage: { addListener: () => {} },
