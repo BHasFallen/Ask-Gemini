@@ -180,7 +180,7 @@ gem-button#ask-gemini-snippet-bm-btn mat-icon,
   height: 18px !important;
   margin: 0 !important;
   padding: 0 !important;
-  color: #c4c7c5 !important;
+  color: #7c4dff !important;
   transition: color 0.15s ease !important;
 }
 
@@ -189,7 +189,7 @@ gem-button#ask-gemini-snippet-bm-btn mat-icon,
 gem-button#ask-gemini-snippet-bm-btn button:hover gem-icon,
 gem-button#ask-gemini-snippet-bm-btn button:hover mat-icon,
 #ask-gemini-snippet-bm-btn:hover .ag-snippet-bm-icon {
-  color: #ffffff !important;
+  color: #9e75ff !important;
 }
 
 #ask-gemini-snippet-bm-btn svg,

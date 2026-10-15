@@ -248,5 +248,14 @@ describe('Native Quote Reply Coexistence & Detection', () => {
         expect(menu.contains(btn)).toBe(true);
         expect(btn.querySelector('.gds-body-m')?.textContent).toContain('Bookmark');
         expect(btn.getAttribute('aria-label')).toBe('Bookmark highlighted text');
+
+        // Check brand purple icon color (#7c4dff -> rgb(124, 77, 255))
+        const iconWrap = btn.querySelector('.ag-snippet-bm-icon') as HTMLElement;
+        expect(iconWrap).not.toBeNull();
+        expect(iconWrap.style.color).toBe('rgb(124, 77, 255)');
+
+        // After hide, button is removed from menu leaving only native contents
+        AG.hideSnippetBookmarkButton();
+        expect(menu.querySelector('#ask-gemini-snippet-bm-btn')).toBeNull();
     });
 });

@@ -610,12 +610,15 @@ window.AskGemini.showSnippetBookmarkButton = function showSnippetBookmarkButton(
     AG.snippetBookmarkBtn._savedResponseEl = responseEl;
     AG.snippetBookmarkBtn._isSaving = false;
 
+    AG.snippetBookmarkBtn.style.removeProperty('opacity');
+    AG.snippetBookmarkBtn.style.removeProperty('transform');
+
     AG.snippetBookmarkBtn.innerHTML = `
         <span class="mat-mdc-button-persistent-ripple mdc-button__ripple"></span>
         <span class="mdc-button__label" style="display:inline-flex!important;align-items:center!important;justify-content:center!important;vertical-align:middle!important;margin:0!important;padding:0!important;">
             <span class="gem-button-content ng-star-inserted" style="display:inline-flex!important;align-items:center!important;justify-content:center!important;gap:8px!important;vertical-align:middle!important;margin:0!important;padding:0!important;">
                 <span class="gem-button-icon-container menu-entry-with-badge ng-star-inserted" style="display:inline-flex!important;align-items:center!important;justify-content:center!important;vertical-align:middle!important;margin:0!important;padding:0!important;line-height:0!important;">
-                    <span class="ag-snippet-bm-icon" style="display:inline-flex!important;align-items:center!important;justify-content:center!important;vertical-align:middle!important;width:18px!important;height:18px!important;margin:0!important;padding:0!important;line-height:0!important;">${bmOutlineSvg}</span>
+                    <span class="ag-snippet-bm-icon" style="display:inline-flex!important;align-items:center!important;justify-content:center!important;vertical-align:middle!important;width:18px!important;height:18px!important;margin:0!important;padding:0!important;line-height:0!important;color:#7c4dff!important;">${bmOutlineSvg}</span>
                 </span>
                 <span class="gds-body-m" style="display:inline-flex!important;align-items:center!important;vertical-align:middle!important;margin:0!important;padding:0!important;line-height:1!important;">Bookmark</span>
             </span>
@@ -732,11 +735,11 @@ window.AskGemini.showSnippetBookmarkButton = function showSnippetBookmarkButton(
 
         if (label) {
             label.textContent = 'Saved!';
-            label.style.setProperty('color', '#8ab4f8', 'important');
+            label.style.setProperty('color', '#b388ff', 'important');
         }
         if (iconWrap) {
             iconWrap.innerHTML = bmFilledSvg;
-            iconWrap.style.setProperty('color', '#8ab4f8', 'important');
+            iconWrap.style.setProperty('color', '#7c4dff', 'important');
         }
 
         const snippetToSave = (
@@ -759,10 +762,24 @@ window.AskGemini.showSnippetBookmarkButton = function showSnippetBookmarkButton(
             }
         }
 
+        // Smoothly fade out the bookmark pill and remove it, leaving only Ask Gemini
+        const fadeTimer = setTimeout(function() {
+            if (AG.snippetBookmarkBtn) {
+                AG.snippetBookmarkBtn.style.setProperty('transition', 'opacity 0.2s ease, transform 0.2s ease', 'important');
+                AG.snippetBookmarkBtn.style.setProperty('opacity', '0', 'important');
+                AG.snippetBookmarkBtn.style.setProperty('transform', 'scale(0.88)', 'important');
+            }
+        }, 550);
+        if (AG._snippetBmTimers) AG._snippetBmTimers.push(fadeTimer);
+
         const hideTimer = setTimeout(function() {
             AG.hideSnippetBookmarkButton();
-            if (AG.snippetBookmarkBtn) AG.snippetBookmarkBtn._isSaving = false;
-        }, 1100);
+            if (AG.snippetBookmarkBtn) {
+                AG.snippetBookmarkBtn._isSaving = false;
+                AG.snippetBookmarkBtn.style.removeProperty('opacity');
+                AG.snippetBookmarkBtn.style.removeProperty('transform');
+            }
+        }, 750);
         if (AG._snippetBmTimers) AG._snippetBmTimers.push(hideTimer);
     }
 
@@ -932,6 +949,11 @@ window.AskGemini.hideSnippetBookmarkButton = function hideSnippetBookmarkButton(
     if (AG.snippetBookmarkBtn) {
         AG.snippetBookmarkBtn.style.display = 'none';
         AG.snippetBookmarkBtn._isSaving = false;
+        AG.snippetBookmarkBtn.style.removeProperty('opacity');
+        AG.snippetBookmarkBtn.style.removeProperty('transform');
+        if (AG.snippetBookmarkBtn.parentNode && AG.snippetBookmarkBtn.parentNode.tagName === 'HIGHLIGHT-TO-ASK-MENU') {
+            AG.snippetBookmarkBtn.parentNode.removeChild(AG.snippetBookmarkBtn);
+        }
         const label = AG.snippetBookmarkBtn.querySelector('.gds-body-m');
         if (label) {
             label.textContent = 'Bookmark';
@@ -941,7 +963,7 @@ window.AskGemini.hideSnippetBookmarkButton = function hideSnippetBookmarkButton(
         if (iconWrap) {
             const bmOutlineSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M17 3H7c-1.1 0-2 .9-2 2v14.55c0 .91 1.01 1.44 1.77.96L12 17.29l5.23 3.22c.76.47 1.77-.05 1.77-.96V5c0-1.1-.9-2-2-2zm0 13.97-4.46-2.75c-.33-.2-.75-.2-1.08 0L7 16.97V5h10v11.97z"/></svg>';
             iconWrap.innerHTML = bmOutlineSvg;
-            iconWrap.style.color = '';
+            iconWrap.style.setProperty('color', '#7c4dff', 'important');
         }
     }
 };
