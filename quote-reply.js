@@ -589,20 +589,17 @@ window.AskGemini.showSnippetBookmarkButton = function showSnippetBookmarkButton(
         AG.snippetBookmarkBtn.setAttribute('fonticonname', 'bookmark');
         AG.snippetBookmarkBtn.setAttribute('size', 'medium');
         AG.snippetBookmarkBtn.setAttribute('theme', 'lm');
-        AG.snippetBookmarkBtn.setAttribute('type', 'bright');
         AG.snippetBookmarkBtn.setAttribute('arialabel', 'Bookmark highlighted text');
-        AG.snippetBookmarkBtn.className = 'ask-gemini-snippet-bm-btn gem-button gem-button-badge-size-small gem-button-size-medium gem-button-type-bright lm-enabled has-icon';
+        AG.snippetBookmarkBtn.className = 'ask-gemini-button ask-gemini-snippet-bm-btn gem-button gem-button-badge-size-small gem-button-size-medium lm-enabled has-icon';
     }
 
     AG.snippetBookmarkBtn.innerHTML = `
-        <button type="button" matbadgeposition="after" class="mdc-button mat-mdc-button-base mat-badge mdc-button--unelevated mat-mdc-unelevated-button mat-unthemed mat-badge-overlap mat-badge-above mat-badge-after mat-badge-small mat-badge-hidden ng-star-inserted" aria-label="Bookmark highlighted text">
+        <button type="button" matbadgeposition="after" class="mdc-button mat-mdc-button-base mat-badge mdc-button--unelevated mat-mdc-unelevated-button mat-unthemed ng-star-inserted" aria-label="Bookmark highlighted text">
             <span class="mat-mdc-button-persistent-ripple mdc-button__ripple"></span>
             <span class="mdc-button__label">
                 <span class="gem-button-content ng-star-inserted">
                     <span class="gem-button-icon-container menu-entry-with-badge ng-star-inserted">
-                        <gem-icon>
-                            <mat-icon role="img" class="mat-icon notranslate lm-icon-l lumi-symbols mat-ligature-font mat-icon-no-color ng-star-inserted" aria-hidden="true" data-mat-icon-type="font" data-mat-icon-name="bookmark" data-mat-icon-namespace="lumi-symbols" fonticon="bookmark">${bmOutlineSvg}</mat-icon>
-                        </gem-icon>
+                        <gem-icon class="ag-snippet-bm-icon">${bmOutlineSvg}</gem-icon>
                     </span>
                     <span class="gds-body-m"> Bookmark</span>
                 </span>
@@ -619,7 +616,7 @@ window.AskGemini.showSnippetBookmarkButton = function showSnippetBookmarkButton(
         }
 
         const label = AG.snippetBookmarkBtn.querySelector('.gds-body-m');
-        const iconWrap = AG.snippetBookmarkBtn.querySelector('mat-icon') || AG.snippetBookmarkBtn.querySelector('gem-icon');
+        const iconWrap = AG.snippetBookmarkBtn.querySelector('gem-icon');
 
         if (label) {
             label.textContent = ' Saved!';

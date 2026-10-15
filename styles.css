@@ -71,23 +71,87 @@ highlight-to-ask-menu {
   width: auto !important;
 }
 
-gem-button#ask-gemini-snippet-bm-btn {
-  display: inline-flex;
-  align-items: center;
-  box-sizing: border-box;
-  vertical-align: middle;
+gem-button#ask-gemini-snippet-bm-btn,
+.ask-gemini-snippet-bm-btn {
+  display: inline-flex !important;
+  align-items: center !important;
+  box-sizing: border-box !important;
+  vertical-align: middle !important;
 }
 
-gem-button#ask-gemini-snippet-bm-btn button {
-  cursor: pointer;
-  user-select: none;
-  white-space: nowrap;
+/* Force dark surface colors matching Ask Gemini native pill (overriding bright blue theme) */
+highlight-to-ask-menu gem-button#ask-gemini-snippet-bm-btn button,
+gem-button#ask-gemini-snippet-bm-btn button,
+.ask-gemini-snippet-bm-btn button {
+  background-color: #1F1F1F !important;
+  color: #E3E3E3 !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  border-radius: 9999px !important;
+  padding: 0 12px !important;
+  height: 32px !important;
+  min-height: 32px !important;
+  box-sizing: border-box !important;
+  cursor: pointer !important;
+  user-select: none !important;
+  white-space: nowrap !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35) !important;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease !important;
 }
 
-gem-button#ask-gemini-snippet-bm-btn .gem-button-icon-container svg {
-  display: block;
-  width: 16px;
-  height: 16px;
+highlight-to-ask-menu gem-button#ask-gemini-snippet-bm-btn button:hover,
+gem-button#ask-gemini-snippet-bm-btn button:hover,
+.ask-gemini-snippet-bm-btn button:hover {
+  background-color: #2D2E30 !important;
+  border-color: rgba(255, 255, 255, 0.25) !important;
+  color: #FFFFFF !important;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.45) !important;
+}
+
+gem-button#ask-gemini-snippet-bm-btn button:active,
+.ask-gemini-snippet-bm-btn button:active {
+  background-color: #383A3C !important;
+}
+
+/* Clean typography */
+gem-button#ask-gemini-snippet-bm-btn .gds-body-m,
+.ask-gemini-snippet-bm-btn .gds-body-m,
+.ag-snippet-bm-label {
+  color: inherit !important;
+  font-family: 'Google Sans Text', 'Google Sans', Roboto, sans-serif !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  letter-spacing: 0.1px !important;
+  line-height: 1 !important;
+}
+
+/* Crisp SVG icon handling without broken font ligatures */
+gem-button#ask-gemini-snippet-bm-btn gem-icon,
+gem-button#ask-gemini-snippet-bm-btn mat-icon,
+.ag-snippet-bm-icon {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-family: inherit !important;
+  font-size: 0 !important;
+  line-height: 0 !important;
+  width: 16px !important;
+  height: 16px !important;
+  color: #C4C7C5 !important;
+  transition: color 0.15s ease !important;
+}
+
+gem-button#ask-gemini-snippet-bm-btn button:hover gem-icon,
+gem-button#ask-gemini-snippet-bm-btn button:hover mat-icon,
+#ask-gemini-snippet-bm-btn:hover .ag-snippet-bm-icon {
+  color: #FFFFFF !important;
+}
+
+gem-button#ask-gemini-snippet-bm-btn svg,
+.ag-snippet-bm-icon svg {
+  width: 15px !important;
+  height: 15px !important;
+  fill: currentColor !important;
+  display: block !important;
 }
 
 /* Standalone / Fallback styling if rendered outside Gemini's native menu */
@@ -96,61 +160,6 @@ gem-button#ask-gemini-snippet-bm-btn.ag-standalone-pill,
   position: absolute;
   z-index: 9999;
   display: none;
-  align-items: center;
-  gap: 5px;
-  background-color: #1F1F1F;
-  color: #E3E3E3;
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 9999px;
-  padding: 0 10px;
-  height: 28px;
-  min-height: 28px;
-  box-sizing: border-box;
-  font-family: 'Google Sans Text', 'Google Sans', Roboto, sans-serif;
-  font-size: 12px;
-  font-weight: 500;
-  cursor: pointer;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
-  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
-  animation: ask-gemini-fade-in 0.15s ease-out;
-  user-select: none;
-  white-space: nowrap;
-  line-height: 1;
-}
-
-#ask-gemini-snippet-bm-btn:hover {
-  background-color: #2D2E30;
-  border-color: rgba(255, 255, 255, 0.25);
-  color: #FFFFFF;
-  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.45);
-}
-
-#ask-gemini-snippet-bm-btn:active {
-  background-color: #383A3C;
-}
-
-.ag-snippet-bm-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #C4C7C5;
-  transition: color 0.15s ease;
-}
-
-#ask-gemini-snippet-bm-btn:hover .ag-snippet-bm-icon {
-  color: #FFFFFF;
-}
-
-.ag-snippet-bm-icon svg {
-  width: 14px;
-  height: 14px;
-}
-
-.ag-snippet-bm-label {
-  line-height: 1;
-  font-size: 12px;
-  font-weight: 500;
-  letter-spacing: 0.1px;
 }
 
 .ag-bookmark-snippet-tag {
