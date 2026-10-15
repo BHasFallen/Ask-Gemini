@@ -3,124 +3,171 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Quote Reply for Gemini</title>
+    <title>Quote Reply for Gemini — Welcome</title>
     <link rel="stylesheet" href="onboarding.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&family=Google+Sans+Display:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Google+Sans:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
 </head>
 <body class="mode-install">
 
+    <div class="ob-bg-glow"></div>
+
     <main class="ob-page">
 
-        <!-- Header -->
+        <!-- Top Header Navigation -->
         <header class="ob-header">
-            <div class="ob-logo">
-                <img src="icons/icon48.png" width="28" height="28" alt="Quote Reply" />
+            <div class="ob-brand">
+                <div class="ob-logo">
+                    <img src="icons/icon48.png" width="32" height="32" alt="Quote Reply for Gemini" />
+                </div>
+                <div class="ob-brand-text">
+                    <span class="ob-logo-name">Quote Reply for Gemini</span>
+                    <span id="ob-version" class="ob-version-badge">v2.8.3</span>
+                </div>
             </div>
-            <span class="ob-logo-name">Quote Reply for Gemini</span>
-            <span id="ob-version" class="ob-version-badge">v2.8.3</span>
+
+            <div class="ob-header-badges">
+                <span class="ob-status-badge">
+                    <span class="ob-status-pulse"></span> Active on Gemini
+                </span>
+                <span class="ob-free-badge">100% Free</span>
+            </div>
         </header>
 
-        <!-- ══════════ INSTALL MODE ══════════ -->
+        <!-- ══════════════════════════════════════════════════════════ -->
+        <!-- INSTALL MODE (REFRESHING ONE-SCREEN HERO DASHBOARD)        -->
+        <!-- ══════════════════════════════════════════════════════════ -->
         <div class="show-on-install">
-            <div class="ob-install-layout">
+            <section class="ob-hero-screen">
+                
+                <!-- Hero Top: Headline, Subtitle, and Primary CTA -->
+                <div class="ob-hero-top">
+                    <div class="ob-hero-eyebrow">
+                        <span class="ob-eyebrow-dot"></span> CHROME EXTENSION FOR GOOGLE GEMINI
+                    </div>
+                    <h1 class="ob-install-headline">
+                        Welcome to <span class="ob-gradient-text">Quote Reply.</span><br />
+                        Reply to <span class="ob-highlight-box">exactly what you highlight.</span>
+                    </h1>
+                    <span id="ob-version-install" class="ob-install-version" style="display:none;">v2.8.3</span>
+                    <p class="ob-install-sub">
+                        Select text in any Gemini response to quote it in your follow-up, save instant snippet bookmarks, jump with the Table of Contents, and auto-route models — all at zero latency.
+                    </p>
 
-                <!-- Left: headline + CTA -->
-                <div class="ob-install-left">
-                    <h1 class="ob-install-headline">Welcome to<br><span class="ob-gradient-text">Quote Reply.</span></h1>
-                    <span id="ob-version-install" class="ob-install-version">v2.8.3</span>
-                    <p class="ob-install-sub">Quote any part of Gemini's response, bookmark favorites, auto-switch models, and chat faster.</p>
-                    <button id="ob-open-gemini-install" class="ob-btn-primary ob-btn-primary--lg ob-install-cta">
-                        Open Gemini &amp; try it
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
-                    </button>
+                    <div class="ob-cta-action-bar">
+                        <button id="ob-open-gemini-install" class="ob-btn-primary ob-btn-primary--lg ob-install-cta">
+                            <span>Open Gemini &amp; try it</span>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+                        </button>
+                        <div class="ob-shortcut-hint">
+                            <span class="ob-key-icon">💡</span> Tip: Press <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>B</kbd> on Gemini for Bookmarks
+                        </div>
+                    </div>
                 </div>
 
-                <!-- Right: steps + other features -->
-                <div class="ob-install-right">
-                    <section class="ob-steps ob-steps--compact">
-                        <div class="ob-step">
-                            <div class="ob-step-num">1</div>
-                            <div class="ob-step-body">
-                                <h3 class="ob-step-title">Highlight target text</h3>
-                                <p class="ob-step-desc">Select any text in Gemini's response you want to reply to.</p>
-                            </div>
+                <!-- Hero Bento Grid: Everything At A Glance In One Screen -->
+                <div class="ob-bento-grid">
+                    
+                    <!-- Card 1: 3-Step Core Quote Reply Workflow (Wide Feature Card) -->
+                    <div class="ob-bento-card ob-bento-card--workflow">
+                        <div class="ob-card-header">
+                            <div class="ob-card-badge">Core Superpower</div>
+                            <h2 class="ob-card-title">How Quote Reply Works in 3 Quick Steps</h2>
                         </div>
-                        <div class="ob-step-connector"></div>
-                        <div class="ob-step">
-                            <div class="ob-step-num">2</div>
-                            <div class="ob-step-body">
-                                <h3 class="ob-step-title">Click "Ask Gemini"</h3>
-                                <p class="ob-step-desc">A floating button appears. Click it to lock in your context.</p>
-                            </div>
-                        </div>
-                        <div class="ob-step-connector"></div>
-                        <div class="ob-step">
-                            <div class="ob-step-num">3</div>
-                            <div class="ob-step-body">
-                                <h3 class="ob-step-title">Type &amp; Send</h3>
-                                <p class="ob-step-desc">Write your follow-up and press enter. Context is sent automatically.</p>
-                            </div>
-                        </div>
-                    </section>
 
-                    <section class="ob-other-features ob-other-features--compact">
-                        <h3 class="ob-other-title">Other features</h3>
-                        <ul class="ob-other-list">
-                            <li class="ob-other-item">
-                                <span class="ob-other-icon">⚡</span>
-                                <div class="ob-other-body">
-                                    <span class="ob-other-name">Auto Mode</span>
-                                    <span class="ob-other-desc">Automatically switch between Gemini models based on the task given.</span>
+                        <div class="ob-steps">
+                            <div class="ob-step">
+                                <div class="ob-step-num">1</div>
+                                <div class="ob-step-body">
+                                    <h3 class="ob-step-title">Highlight target text</h3>
+                                    <p class="ob-step-desc">Select any sentence or code block in Gemini's response.</p>
                                 </div>
-                            </li>
-                            <li class="ob-other-item">
-                                <span class="ob-other-icon">🔖</span>
-                                <div class="ob-other-body">
-                                    <span class="ob-other-name">Bookmarks</span>
-                                    <span class="ob-other-desc">Pin, search, and revisit your favorite Gemini responses anytime.</span>
+                            </div>
+                            <div class="ob-step-arrow">→</div>
+                            <div class="ob-step">
+                                <div class="ob-step-num">2</div>
+                                <div class="ob-step-body">
+                                    <h3 class="ob-step-title">Click "Ask Gemini"</h3>
+                                    <p class="ob-step-desc">The native pill pops up with Bookmark right next to it.</p>
                                 </div>
-                            </li>
-                            <li class="ob-other-item">
-                                <span class="ob-other-icon">🚀</span>
-                                <div class="ob-other-body">
-                                    <span class="ob-other-name">Lighter &amp; Faster</span>
-                                    <span class="ob-other-desc">Zero-freeze streaming and instant response with minimal memory footprint.</span>
+                            </div>
+                            <div class="ob-step-arrow">→</div>
+                            <div class="ob-step">
+                                <div class="ob-step-num">3</div>
+                                <div class="ob-step-body">
+                                    <h3 class="ob-step-title">Type &amp; Send</h3>
+                                    <p class="ob-step-desc">Context is automatically attached to your follow-up reply.</p>
                                 </div>
-                            </li>
-                            <li class="ob-other-item">
-                                <span class="ob-other-icon">❝</span>
-                                <div class="ob-other-body">
-                                    <span class="ob-other-name">Multi-Quote</span>
-                                    <span class="ob-other-desc">Queue multiple excerpts into one focused follow-up.</span>
+                            </div>
+                        </div>
+
+                        <!-- Live Visual Pill Simulation -->
+                        <div class="ob-pill-preview-bar">
+                            <span class="ob-preview-label">Live pill preview:</span>
+                            <div class="ob-pill-group">
+                                <div class="ob-mock-native-pill">
+                                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5M4 9h10a6 6 0 0 1 6 6v3"/></svg>
+                                    <span>Ask Gemini</span>
                                 </div>
-                            </li>
-                            <li class="ob-other-item">
-                                <span class="ob-other-icon">📋</span>
-                                <div class="ob-other-body">
-                                    <span class="ob-other-name">Table of Contents</span>
-                                    <span class="ob-other-desc">Jump between prompts and turns in your chat history instantly.</span>
+                                <div class="ob-mock-bm-pill">
+                                    <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M17 3H7c-1.1 0-2 .9-2 2v14.55c0 .91 1.01 1.44 1.77.96L12 17.29l5.23 3.22c.76.47 1.77-.05 1.77-.96V5c0-1.1-.9-2-2-2zm0 13.97-4.46-2.75c-.33-.2-.75-.2-1.08 0L7 16.97V5h10v11.97z"/></svg>
+                                    <span>Bookmark</span>
                                 </div>
-                            </li>
-                            <li class="ob-other-item">
-                                <span class="ob-other-icon">🧠</span>
-                                <div class="ob-other-body">
-                                    <span class="ob-other-name">Smart Paste</span>
-                                    <span class="ob-other-desc">Large pastes offered as neat file attachments automatically.</span>
-                                </div>
-                            </li>
-                        </ul>
-                    </section>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Card 2: Response & Snippet Bookmarks -->
+                    <div class="ob-bento-card ob-bento-card--bookmarks">
+                        <div class="ob-bento-icon ob-icon-purple">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/></svg>
+                        </div>
+                        <h3 class="ob-bento-title">Response &amp; Snippet Bookmarks</h3>
+                        <p class="ob-bento-desc">Bookmark entire responses or highlighted snippets with one click. Instant search, export, and drawer navigation anytime.</p>
+                        <div class="ob-bento-chip">Shortcut: Ctrl+Shift+B</div>
+                    </div>
+
+                    <!-- Card 3: Table of Contents -->
+                    <div class="ob-bento-card ob-bento-card--toc">
+                        <div class="ob-bento-icon ob-icon-blue">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+                        </div>
+                        <h3 class="ob-bento-title">Table of Contents</h3>
+                        <p class="ob-bento-desc">Browse long chat threads effortlessly. A live sidebar maps every question turn so you can jump to any prompt instantly.</p>
+                        <div class="ob-bento-chip">Sidebar Navigation</div>
+                    </div>
+
+                    <!-- Card 4: Auto Mode Model Routing -->
+                    <div class="ob-bento-card ob-bento-card--auto">
+                        <div class="ob-bento-icon ob-icon-amber">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z"/></svg>
+                        </div>
+                        <h3 class="ob-bento-title">Smart Auto Mode</h3>
+                        <p class="ob-bento-desc">Intelligently selects the best Gemini model per query for lightning-fast speeds on simple queries and deep reasoning on complex tasks.</p>
+                        <div class="ob-bento-chip">Google Smart Routing</div>
+                    </div>
+
+                    <!-- Card 5: Smart Paste & Multi-Quote -->
+                    <div class="ob-bento-card ob-bento-card--smartpaste">
+                        <div class="ob-bento-icon ob-icon-cyan">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                        </div>
+                        <h3 class="ob-bento-title">Smart Paste &amp; Multi-Quote</h3>
+                        <p class="ob-bento-desc">Converts giant code/text pastes into clean file attachments automatically, and queue multiple quotes into a single follow-up.</p>
+                        <div class="ob-bento-chip">Zero Chat Freezes</div>
+                    </div>
+
                 </div>
 
-            </div>
+            </section>
         </div>
 
 
-        <!-- ══════════ UPDATE MODE ══════════ -->
+        <!-- ══════════════════════════════════════════════════════════ -->
+        <!-- UPDATE MODE (FOR EXISTING USERS ON EXTENSION UPGRADE)      -->
+        <!-- ══════════════════════════════════════════════════════════ -->
         <div class="show-on-update">
-
-            <!-- Update hero -->
             <section class="ob-update-hero">
                 <div class="ob-update-eyebrow">
                     <span>✦ What's New</span>
@@ -163,7 +210,7 @@
             <!-- CTA right after features with Opt-Out toggle -->
             <div class="ob-cta-row ob-cta--update">
                 <button id="ob-open-gemini-update" class="ob-btn-primary ob-btn-primary--lg">
-                    Open Gemini &amp; Explore
+                    <span>Open Gemini &amp; Explore</span>
                     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
                 </button>
                 <label class="ob-optout-control" id="ob-optout-container" title="Stop showing What's New tabs when the extension updates">
@@ -197,22 +244,18 @@
                     </div>
                 </div>
             </section>
-
-            <!-- Feedback -->
-            <section class="ob-feedback-card">
-                <h2 class="ob-section-title">Have feedback or feature requests?</h2>
-                <p class="ob-feedback-text">Help shape Quote Reply! Let us know what you want to see next or report any issues.</p>
-                <div class="ob-feedback-buttons">
-                    <a href="https://docs.google.com/forms/d/e/1FAIpQLSfr82mMdRgwSPY9ZsQkdRp_HXKKwmVuWO7GmjeZ3fS9XHpqsA/viewform" target="_blank" class="ob-btn-secondary">Submit Feature Request</a>
-                    <a href="https://docs.google.com/forms/d/e/1FAIpQLSfr82mMdRgwSPY9ZsQkdRp_HXKKwmVuWO7GmjeZ3fS9XHpqsA/viewform" target="_blank" class="ob-btn-secondary">Report an Issue</a>
-                </div>
-            </section>
         </div>
 
+        <!-- Footer -->
         <footer class="ob-footer">
-            <a href="https://docs.google.com/forms/d/e/1FAIpQLSfr82mMdRgwSPY9ZsQkdRp_HXKKwmVuWO7GmjeZ3fS9XHpqsA/viewform" target="_blank">Send feedback</a>
-            <span>·</span>
-            <a href="https://chromewebstore.google.com/detail/jhkodgigeemnmdmdikdkpcbmgbbopgni" target="_blank">Chrome Web Store</a>
+            <div class="ob-footer-left">
+                <span>Quote Reply for Gemini is an independent browser extension. 100% Free &amp; Private.</span>
+            </div>
+            <div class="ob-footer-links">
+                <a href="https://docs.google.com/forms/d/e/1FAIpQLSfr82mMdRgwSPY9ZsQkdRp_HXKKwmVuWO7GmjeZ3fS9XHpqsA/viewform" target="_blank" rel="noopener noreferrer">Send feedback</a>
+                <span>·</span>
+                <a href="https://chromewebstore.google.com/detail/quote-reply-for-gemini/ngnijpaanicgokfccoaljfdpmnnjllah" target="_blank" rel="noopener noreferrer">Chrome Web Store</a>
+            </div>
         </footer>
 
     </main>

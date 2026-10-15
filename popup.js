@@ -94,6 +94,7 @@ class PopupController {
         this.toggleGuideBtn = document.getElementById('toggle-guide-btn');
         this.guideBody = document.getElementById('guide-body');
         this.rateBtn = document.getElementById('rate-extension-btn');
+        this.openWelcomeGuide = document.getElementById('open-welcome-guide');
         this.openGeminiLink = document.getElementById('open-gemini-link');
         this.copyDebugLink = document.getElementById('copy-debug-info');
         this.copyDebugLabel = document.getElementById('copy-debug-label');
@@ -410,6 +411,14 @@ class PopupController {
             this.reportProblemLink.addEventListener('click', (e) => {
                 e.preventDefault();
                 this.reportProblem();
+            });
+        }
+
+        // Open Welcome Guide / Feature Tour
+        if (this.openWelcomeGuide) {
+            this.openWelcomeGuide.addEventListener('click', (e) => {
+                e.preventDefault();
+                chrome.tabs.create({ url: chrome.runtime.getURL('onboarding.html?reason=install') });
             });
         }
 
