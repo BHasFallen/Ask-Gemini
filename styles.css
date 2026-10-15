@@ -56,7 +56,43 @@
   color: var(--ask-gemini-primary);
 }
 
-#ask-gemini-snippet-bm-btn {
+/* ── Native Highlight Menu & Snippet Bookmark Integration ───────────────── */
+highlight-to-ask-menu {
+  display: inline-flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  gap: 6px !important;
+}
+
+.cdk-overlay-pane:has(highlight-to-ask-menu) {
+  display: inline-flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  width: auto !important;
+}
+
+gem-button#ask-gemini-snippet-bm-btn {
+  display: inline-flex;
+  align-items: center;
+  box-sizing: border-box;
+  vertical-align: middle;
+}
+
+gem-button#ask-gemini-snippet-bm-btn button {
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+}
+
+gem-button#ask-gemini-snippet-bm-btn .gem-button-icon-container svg {
+  display: block;
+  width: 16px;
+  height: 16px;
+}
+
+/* Standalone / Fallback styling if rendered outside Gemini's native menu */
+gem-button#ask-gemini-snippet-bm-btn.ag-standalone-pill,
+#ask-gemini-snippet-bm-btn:not(gem-button) {
   position: absolute;
   z-index: 9999;
   display: none;

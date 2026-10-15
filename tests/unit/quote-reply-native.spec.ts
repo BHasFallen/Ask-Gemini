@@ -217,4 +217,36 @@ describe('Native Quote Reply Coexistence & Detection', () => {
         expect(found.btn).toBe(nativePill);
         expect(found.rect.height).toBe(32);
     });
+
+    it('nests gem-button snippet bookmark button directly inside highlight-to-ask-menu', () => {
+        const AG = (globalThis as any).AskGemini;
+        const boundingBox = document.createElement('div');
+        boundingBox.className = 'cdk-overlay-connected-position-bounding-box';
+        const pane = document.createElement('div');
+        pane.className = 'cdk-overlay-pane';
+        const menu = document.createElement('highlight-to-ask-menu');
+        pane.appendChild(menu);
+        boundingBox.appendChild(pane);
+        document.body.appendChild(boundingBox);
+
+        const mockRange = {
+            getBoundingClientRect: () => ({ left: 100, right: 200, top: 300, bottom: 320, width: 100, height: 20 })
+        };
+        const mockSelection = {
+            rangeCount: 1,
+            getRangeAt: () => mockRange
+        };
+
+        const responseEl = document.createElement('model-response');
+        document.body.appendChild(responseEl);
+
+        AG.showSnippetBookmarkButton(mockSelection, 'Important quote', responseEl, true);
+
+        const btn = menu.querySelector('#ask-gemini-snippet-bm-btn') as HTMLElement;
+        expect(btn).not.toBeNull();
+        expect(btn.tagName.toLowerCase()).toBe('gem-button');
+        expect(menu.contains(btn)).toBe(true);
+        expect(btn.querySelector('.gds-body-m')?.textContent).toContain('Bookmark');
+        expect(btn.querySelector('button')?.getAttribute('aria-label')).toBe('Bookmark highlighted text');
+    });
 });

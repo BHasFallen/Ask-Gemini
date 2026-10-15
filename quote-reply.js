@@ -580,32 +580,55 @@ window.AskGemini.showSnippetBookmarkButton = function showSnippetBookmarkButton(
     if (AG.bookmarksEnabled === false) return;
     if (!selection || selection.rangeCount === 0) return;
 
+    const bmOutlineSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M17 3H7c-1.1 0-2 .9-2 2v14.55c0 .91 1.01 1.44 1.77.96L12 17.29l5.23 3.22c.76.47 1.77-.05 1.77-.96V5c0-1.1-.9-2-2-2zm0 13.97-4.46-2.75c-.33-.2-.75-.2-1.08 0L7 16.97V5h10v11.97z"/></svg>';
+    const bmFilledSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M17 3H7c-1.1 0-2 .9-2 2v14.55c0 .91 1.01 1.44 1.77.96L12 17.29l5.23 3.22c.76.47 1.77-.05 1.77-.96V5c0-1.1-.9-2-2-2z"/></svg>';
+
     if (!AG.snippetBookmarkBtn) {
-        AG.snippetBookmarkBtn = document.createElement('button');
+        AG.snippetBookmarkBtn = document.createElement('gem-button');
         AG.snippetBookmarkBtn.id = 'ask-gemini-snippet-bm-btn';
-        AG.snippetBookmarkBtn.setAttribute('type', 'button');
-        AG.snippetBookmarkBtn.setAttribute('aria-label', 'Bookmark selected text');
-        document.body.appendChild(AG.snippetBookmarkBtn);
+        AG.snippetBookmarkBtn.setAttribute('fonticonname', 'bookmark');
+        AG.snippetBookmarkBtn.setAttribute('size', 'medium');
+        AG.snippetBookmarkBtn.setAttribute('theme', 'lm');
+        AG.snippetBookmarkBtn.setAttribute('type', 'bright');
+        AG.snippetBookmarkBtn.setAttribute('arialabel', 'Bookmark highlighted text');
+        AG.snippetBookmarkBtn.className = 'ask-gemini-snippet-bm-btn gem-button gem-button-badge-size-small gem-button-size-medium gem-button-type-bright lm-enabled has-icon';
     }
 
-    const bmOutline = (AG.ICONS && (AG.ICONS.bookmarkOutline || AG.ICONS.bookmark_outline)) ||
-        '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M17 3H7c-1.1 0-2 .9-2 2v14.55c0 .91 1.01 1.44 1.77.96L12 17.29l5.23 3.22c.76.47 1.77-.05 1.77-.96V5c0-1.1-.9-2-2-2zm0 13.97-4.46-2.75c-.33-.2-.75-.2-1.08 0L7 16.97V5h10v11.97z"/></svg>';
-    const bmFilled = (AG.ICONS && (AG.ICONS.bookmarkFilled || AG.ICONS.bookmark_filled)) ||
-        '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M17 3H7c-1.1 0-2 .9-2 2v14.55c0 .91 1.01 1.44 1.77.96L12 17.29l5.23 3.22c.76.47 1.77-.05 1.77-.96V5c0-1.1-.9-2-2-2z"/></svg>';
-
     AG.snippetBookmarkBtn.innerHTML = `
-        <span class="ag-snippet-bm-icon">${bmOutline}</span>
-        <span class="ag-snippet-bm-label">Bookmark</span>
+        <button type="button" matbadgeposition="after" class="mdc-button mat-mdc-button-base mat-badge mdc-button--unelevated mat-mdc-unelevated-button mat-unthemed mat-badge-overlap mat-badge-above mat-badge-after mat-badge-small mat-badge-hidden ng-star-inserted" aria-label="Bookmark highlighted text">
+            <span class="mat-mdc-button-persistent-ripple mdc-button__ripple"></span>
+            <span class="mdc-button__label">
+                <span class="gem-button-content ng-star-inserted">
+                    <span class="gem-button-icon-container menu-entry-with-badge ng-star-inserted">
+                        <gem-icon>
+                            <mat-icon role="img" class="mat-icon notranslate lm-icon-l lumi-symbols mat-ligature-font mat-icon-no-color ng-star-inserted" aria-hidden="true" data-mat-icon-type="font" data-mat-icon-name="bookmark" data-mat-icon-namespace="lumi-symbols" fonticon="bookmark">${bmOutlineSvg}</mat-icon>
+                        </gem-icon>
+                    </span>
+                    <span class="gds-body-m"> Bookmark</span>
+                </span>
+            </span>
+            <span class="mat-focus-indicator"></span>
+            <span class="mat-mdc-button-touch-target"></span>
+        </button>
     `;
 
-    AG.snippetBookmarkBtn.onclick = function(e) {
-        e.preventDefault();
-        e.stopPropagation();
+    const triggerClick = function(e) {
+        if (e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
 
-        AG.snippetBookmarkBtn.innerHTML = `
-            <span class="ag-snippet-bm-icon" style="color: #8ab4f8;">${bmFilled}</span>
-            <span class="ag-snippet-bm-label" style="color: #8ab4f8;">Saved!</span>
-        `;
+        const label = AG.snippetBookmarkBtn.querySelector('.gds-body-m');
+        const iconWrap = AG.snippetBookmarkBtn.querySelector('mat-icon') || AG.snippetBookmarkBtn.querySelector('gem-icon');
+
+        if (label) {
+            label.textContent = ' Saved!';
+            label.style.color = '#8ab4f8';
+        }
+        if (iconWrap) {
+            iconWrap.innerHTML = bmFilledSvg;
+            iconWrap.style.color = '#8ab4f8';
+        }
 
         if (AG.BookmarkManager && AG.BookmarkManager.addSnippetBookmark) {
             Promise.resolve(AG.BookmarkManager.addSnippetBookmark(text, responseEl)).catch(console.error);
@@ -616,8 +639,45 @@ window.AskGemini.showSnippetBookmarkButton = function showSnippetBookmarkButton(
         }, 1200);
     };
 
-    function alignButton() {
-        if (!AG.snippetBookmarkBtn || AG.snippetBookmarkBtn.style.display === 'none') return false;
+    const innerBtn = AG.snippetBookmarkBtn.querySelector('button');
+    if (innerBtn) innerBtn.onclick = triggerClick;
+    AG.snippetBookmarkBtn.onclick = triggerClick;
+
+    function attachOrAlign() {
+        if (!AG.snippetBookmarkBtn) return false;
+
+        // Priority 1: Nest directly inside Google's native highlight-to-ask-menu container
+        const menu = document.querySelector('highlight-to-ask-menu');
+        if (menu) {
+            if (!menu.contains(AG.snippetBookmarkBtn)) {
+                menu.appendChild(AG.snippetBookmarkBtn);
+            }
+            AG.snippetBookmarkBtn.classList.remove('ag-standalone-pill');
+            AG.snippetBookmarkBtn.style.position = 'static';
+            AG.snippetBookmarkBtn.style.transform = 'none';
+            AG.snippetBookmarkBtn.style.display = 'inline-flex';
+            return true;
+        }
+
+        // Priority 2: Check for .cdk-overlay-pane container
+        const overlayPane = document.querySelector('.cdk-overlay-pane:has([fonticonname="prompt_suggestion"]), .cdk-overlay-pane:has(.ask-gemini-button)');
+        if (overlayPane) {
+            if (!overlayPane.contains(AG.snippetBookmarkBtn)) {
+                overlayPane.appendChild(AG.snippetBookmarkBtn);
+            }
+            AG.snippetBookmarkBtn.classList.remove('ag-standalone-pill');
+            AG.snippetBookmarkBtn.style.position = 'static';
+            AG.snippetBookmarkBtn.style.transform = 'none';
+            AG.snippetBookmarkBtn.style.display = 'inline-flex';
+            return true;
+        }
+
+        // Priority 3: Fallback standalone positioning on document.body
+        if (!document.body.contains(AG.snippetBookmarkBtn)) {
+            document.body.appendChild(AG.snippetBookmarkBtn);
+        }
+        AG.snippetBookmarkBtn.classList.add('ag-standalone-pill');
+        AG.snippetBookmarkBtn.style.position = 'absolute';
 
         const native = AG.findGoogleNativePill(selection);
         if (native && native.rect.width > 0 && native.rect.height > 0) {
@@ -629,9 +689,7 @@ window.AskGemini.showSnippetBookmarkButton = function showSnippetBookmarkButton(
             }
             AG.snippetBookmarkBtn.style.left = `${Math.max(8, left)}px`;
             AG.snippetBookmarkBtn.style.top = `${nRect.top + window.scrollY}px`;
-            if (nRect.height >= 24 && nRect.height <= 44) {
-                AG.snippetBookmarkBtn.style.height = `${nRect.height}px`;
-            }
+            AG.snippetBookmarkBtn.style.display = 'inline-flex';
             return true;
         }
 
@@ -644,36 +702,29 @@ window.AskGemini.showSnippetBookmarkButton = function showSnippetBookmarkButton(
             }
             AG.snippetBookmarkBtn.style.left = `${Math.max(8, left)}px`;
             AG.snippetBookmarkBtn.style.top = `${fRect.top + window.scrollY}px`;
-            if (fRect.height >= 24 && fRect.height <= 44) {
-                AG.snippetBookmarkBtn.style.height = `${fRect.height}px`;
-            }
+            AG.snippetBookmarkBtn.style.display = 'inline-flex';
             return true;
         }
 
+        const range = selection.getRangeAt(0);
+        const rect = range.getBoundingClientRect();
+        const centerX = rect.left + window.scrollX + (rect.width / 2);
+        let fallbackLeft = centerX + 58;
+        let fallbackTop = rect.bottom + window.scrollY + 8;
+        if (fallbackTop + 36 > window.scrollY + window.innerHeight) {
+            fallbackTop = rect.top + window.scrollY - 36;
+        }
+        AG.snippetBookmarkBtn.style.left = `${Math.max(8, fallbackLeft)}px`;
+        AG.snippetBookmarkBtn.style.top = `${Math.max(8, fallbackTop)}px`;
+        AG.snippetBookmarkBtn.style.display = 'inline-flex';
         return false;
     }
 
-    const range = selection.getRangeAt(0);
-    const rect = range.getBoundingClientRect();
-    const centerX = rect.left + window.scrollX + (rect.width / 2);
-
-    // Initial fallback positioning: directly below selection where Google's pill docks
-    let fallbackLeft = centerX + 58;
-    let fallbackTop = rect.bottom + window.scrollY + 8;
-    if (fallbackTop + 36 > window.scrollY + window.innerHeight) {
-        fallbackTop = rect.top + window.scrollY - 36;
-    }
-
-    AG.snippetBookmarkBtn.style.left = `${Math.max(8, fallbackLeft)}px`;
-    AG.snippetBookmarkBtn.style.top = `${Math.max(8, fallbackTop)}px`;
-    AG.snippetBookmarkBtn.style.height = '28px';
-    AG.snippetBookmarkBtn.style.display = 'inline-flex';
-
-    // Run alignment immediately and re-check across subsequent render frames
-    alignButton();
-    [15, 40, 80, 160, 300, 500].forEach(function(delay) {
+    // Try immediately and across subsequent animation frames
+    attachOrAlign();
+    [15, 35, 75, 120, 200, 350, 500].forEach(function(delay) {
         setTimeout(function() {
-            alignButton();
+            attachOrAlign();
         }, delay);
     });
 };
@@ -682,6 +733,17 @@ window.AskGemini.showSnippetBookmarkButton = function showSnippetBookmarkButton(
 window.AskGemini.hideSnippetBookmarkButton = function hideSnippetBookmarkButton() {
     if (window.AskGemini.snippetBookmarkBtn) {
         window.AskGemini.snippetBookmarkBtn.style.display = 'none';
+        const label = window.AskGemini.snippetBookmarkBtn.querySelector('.gds-body-m');
+        if (label) {
+            label.textContent = ' Bookmark';
+            label.style.color = '';
+        }
+        const iconWrap = window.AskGemini.snippetBookmarkBtn.querySelector('mat-icon') || window.AskGemini.snippetBookmarkBtn.querySelector('gem-icon');
+        if (iconWrap) {
+            const bmOutlineSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M17 3H7c-1.1 0-2 .9-2 2v14.55c0 .91 1.01 1.44 1.77.96L12 17.29l5.23 3.22c.76.47 1.77-.05 1.77-.96V5c0-1.1-.9-2-2-2zm0 13.97-4.46-2.75c-.33-.2-.75-.2-1.08 0L7 16.97V5h10v11.97z"/></svg>';
+            iconWrap.innerHTML = bmOutlineSvg;
+            iconWrap.style.color = '';
+        }
     }
 };
 
