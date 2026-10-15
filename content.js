@@ -499,7 +499,16 @@ document.addEventListener('click', (e) => {
     }
 }, true);
 
-document.addEventListener('mouseup', () => window.AskGemini.handleSelection());
+let _selectionTimer = null;
+document.addEventListener('mouseup', () => {
+    if (_selectionTimer) clearTimeout(_selectionTimer);
+    _selectionTimer = setTimeout(() => {
+        _selectionTimer = null;
+        if (window.AskGemini && window.AskGemini.handleSelection) {
+            window.AskGemini.handleSelection();
+        }
+    }, 10);
+});
 
 let _transformDebounceTimer = null;
 const observer = new MutationObserver((mutations) => {

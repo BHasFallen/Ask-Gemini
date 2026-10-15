@@ -420,6 +420,7 @@ window.AskGemini.isNativeQuoteReplyActive = function isNativeQuoteReplyActive() 
 window.AskGemini.handleSelection = function handleSelection() {
     var AG = window.AskGemini;
     if (!AG.quoteReplyEnabled && !AG.bookmarksEnabled) return; // master toggles off
+    if (AG.snippetBookmarkBtn && AG.snippetBookmarkBtn._isSaving) return;
 
     const selection = window.getSelection();
     if (!selection || selection.rangeCount === 0 || selection.isCollapsed) {
@@ -574,11 +575,24 @@ window.AskGemini.findGoogleNativePill = function findGoogleNativePill(selection)
 
 // ─── Snippet Bookmark Button ─────────────────────────────────────────────────
 window.AskGemini.snippetBookmarkBtn = null;
+window.AskGemini._snippetBmTimers = [];
+window.AskGemini._snippetBmObserver = null;
 
 window.AskGemini.showSnippetBookmarkButton = function showSnippetBookmarkButton(selection, text, responseEl, isNative) {
     var AG = window.AskGemini;
     if (AG.bookmarksEnabled === false) return;
     if (!selection || selection.rangeCount === 0) return;
+
+    // Clear any pending timers or observers from previous selection cycles
+    if (Array.isArray(AG._snippetBmTimers)) {
+        AG._snippetBmTimers.forEach(clearTimeout);
+    }
+    AG._snippetBmTimers = [];
+
+    if (AG._snippetBmObserver) {
+        AG._snippetBmObserver.disconnect();
+        AG._snippetBmObserver = null;
+    }
 
     const bmOutlineSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M17 3H7c-1.1 0-2 .9-2 2v14.55c0 .91 1.01 1.44 1.77.96L12 17.29l5.23 3.22c.76.47 1.77-.05 1.77-.96V5c0-1.1-.9-2-2-2zm0 13.97-4.46-2.75c-.33-.2-.75-.2-1.08 0L7 16.97V5h10v11.97z"/></svg>';
     const bmFilledSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M17 3H7c-1.1 0-2 .9-2 2v14.55c0 .91 1.01 1.44 1.77.96L12 17.29l5.23 3.22c.76.47 1.77-.05 1.77-.96V5c0-1.1-.9-2-2-2z"/></svg>';
@@ -590,6 +604,11 @@ window.AskGemini.showSnippetBookmarkButton = function showSnippetBookmarkButton(
         AG.snippetBookmarkBtn.setAttribute('aria-label', 'Bookmark highlighted text');
         AG.snippetBookmarkBtn.className = 'mdc-button mat-mdc-button-base mat-badge mdc-button--unelevated mat-mdc-unelevated-button mat-unthemed ng-star-inserted';
     }
+
+    // Persist snippet text and response element directly on the button instance
+    AG.snippetBookmarkBtn._savedSnippetText = (text || (selection ? selection.toString() : '') || '').trim();
+    AG.snippetBookmarkBtn._savedResponseEl = responseEl;
+    AG.snippetBookmarkBtn._isSaving = false;
 
     AG.snippetBookmarkBtn.innerHTML = `
         <span class="mat-mdc-button-persistent-ripple mdc-button__ripple"></span>
@@ -698,11 +717,15 @@ window.AskGemini.showSnippetBookmarkButton = function showSnippetBookmarkButton(
         this.style.setProperty('border', 'none', 'important');
     };
 
-    AG.snippetBookmarkBtn.onclick = function(e) {
+    function handleSaveSnippet(e) {
         if (e) {
             e.preventDefault();
             e.stopPropagation();
+            if (e.stopImmediatePropagation) e.stopImmediatePropagation();
         }
+
+        if (AG.snippetBookmarkBtn._isSaving) return;
+        AG.snippetBookmarkBtn._isSaving = true;
 
         const label = AG.snippetBookmarkBtn.querySelector('.gds-body-m');
         const iconWrap = AG.snippetBookmarkBtn.querySelector('.ag-snippet-bm-icon');
@@ -716,16 +739,59 @@ window.AskGemini.showSnippetBookmarkButton = function showSnippetBookmarkButton(
             iconWrap.style.setProperty('color', '#8ab4f8', 'important');
         }
 
-        if (AG.BookmarkManager && AG.BookmarkManager.addSnippetBookmark) {
-            Promise.resolve(AG.BookmarkManager.addSnippetBookmark(text, responseEl)).catch(console.error);
+        const snippetToSave = (
+            AG.snippetBookmarkBtn._savedSnippetText ||
+            text ||
+            (window.getSelection && window.getSelection().toString()) ||
+            ''
+        ).trim();
+        const targetResponseEl = AG.snippetBookmarkBtn._savedResponseEl || responseEl;
+
+        if (snippetToSave) {
+            try {
+                if (AG.BookmarkManager && AG.BookmarkManager.addSnippetBookmark) {
+                    Promise.resolve(AG.BookmarkManager.addSnippetBookmark(snippetToSave, targetResponseEl)).catch(console.error);
+                } else if (AG.addSnippetBookmark) {
+                    Promise.resolve(AG.addSnippetBookmark(snippetToSave, targetResponseEl)).catch(console.error);
+                }
+            } catch (err) {
+                console.error('Ask Gemini: Failed to save snippet bookmark', err);
+            }
         }
 
-        setTimeout(function() {
+        const hideTimer = setTimeout(function() {
             AG.hideSnippetBookmarkButton();
-        }, 1200);
+            if (AG.snippetBookmarkBtn) AG.snippetBookmarkBtn._isSaving = false;
+        }, 1100);
+        if (AG._snippetBmTimers) AG._snippetBmTimers.push(hideTimer);
+    }
+
+    // Critical Event Wiring:
+    // 1. pointerdown: DO NOT preventDefault! Doing so cancels subsequent mousedown, mouseup, and click in Chromium.
+    //    We stopPropagation so Angular CDK or other document listeners don't dismiss the container prematurely.
+    AG.snippetBookmarkBtn.onpointerdown = function(e) {
+        e.stopPropagation();
     };
 
-    function attachOrAlign() {
+    // 2. mousedown: preventDefault prevents losing the current text selection and focus.
+    AG.snippetBookmarkBtn.onmousedown = function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (e.stopImmediatePropagation) e.stopImmediatePropagation();
+    };
+
+    // 3. click: handles saving snippet reliably
+    AG.snippetBookmarkBtn.onclick = function(e) {
+        handleSaveSnippet(e);
+    };
+
+    // Capture phase listener guarantees our handler executes before Angular's host listeners
+    AG.snippetBookmarkBtn.removeEventListener('click', handleSaveSnippet, true);
+    AG.snippetBookmarkBtn.addEventListener('click', handleSaveSnippet, true);
+
+    const isRealGemini = typeof window !== 'undefined' && window.location && window.location.hostname && window.location.hostname.includes('gemini');
+
+    function attachOrAlign(forceFallback) {
         if (!AG.snippetBookmarkBtn) return false;
 
         // Priority 1: Nest directly inside Google's native highlight-to-ask-menu container
@@ -756,7 +822,14 @@ window.AskGemini.showSnippetBookmarkButton = function showSnippetBookmarkButton(
             return true;
         }
 
-        // Priority 3: Fallback standalone positioning on document.body
+        // When Google's native quote reply is active on gemini.google.com, wait for highlight-to-ask-menu
+        // to mount so Ask Gemini and Bookmark appear together simultaneously (eliminating premature popup)
+        if (isNative && isRealGemini && !forceFallback) {
+            AG.snippetBookmarkBtn.style.display = 'none';
+            return false;
+        }
+
+        // Priority 3: Fallback standalone positioning near selection or floating button
         if (!document.body.contains(AG.snippetBookmarkBtn)) {
             document.body.appendChild(AG.snippetBookmarkBtn);
         }
@@ -804,27 +877,69 @@ window.AskGemini.showSnippetBookmarkButton = function showSnippetBookmarkButton(
         return false;
     }
 
-    // Try immediately and across subsequent animation frames
-    attachOrAlign();
-    [15, 35, 75, 120, 200, 350, 500].forEach(function(delay) {
-        setTimeout(function() {
-            attachOrAlign();
+    // Fast mutation observer to attach in the exact microtask Google mounts highlight-to-ask-menu
+    if (typeof MutationObserver !== 'undefined' && isNative) {
+        AG._snippetBmObserver = new MutationObserver(function() {
+            if (attachOrAlign(false)) {
+                if (AG._snippetBmObserver) {
+                    AG._snippetBmObserver.disconnect();
+                    AG._snippetBmObserver = null;
+                }
+            }
+        });
+        AG._snippetBmObserver.observe(document.body, { childList: true, subtree: true });
+
+        const disconnectTimer = setTimeout(function() {
+            if (AG._snippetBmObserver) {
+                AG._snippetBmObserver.disconnect();
+                AG._snippetBmObserver = null;
+            }
+            // If after 350ms native menu didn't mount and selection is still active, show fallback
+            const sel = window.getSelection ? window.getSelection() : null;
+            if (sel && !sel.isCollapsed && AG.snippetBookmarkBtn && AG.snippetBookmarkBtn.style.display === 'none') {
+                attachOrAlign(true);
+            }
+        }, 350);
+        AG._snippetBmTimers.push(disconnectTimer);
+    }
+
+    // Attempt initial dock synchronously
+    attachOrAlign(false);
+
+    // Also poll short micro-delays for cases where Angular paints right after selection
+    [15, 40, 80, 130, 200].forEach(function(delay) {
+        const t = setTimeout(function() {
+            attachOrAlign(false);
         }, delay);
+        AG._snippetBmTimers.push(t);
     });
 };
 
 // ─── hideSnippetBookmarkButton ───────────────────────────────────────────────
 window.AskGemini.hideSnippetBookmarkButton = function hideSnippetBookmarkButton() {
-    if (window.AskGemini.snippetBookmarkBtn) {
-        window.AskGemini.snippetBookmarkBtn.style.display = 'none';
-        const label = window.AskGemini.snippetBookmarkBtn.querySelector('.gds-body-m');
+    var AG = window.AskGemini;
+    if (!AG) return;
+
+    if (Array.isArray(AG._snippetBmTimers)) {
+        AG._snippetBmTimers.forEach(clearTimeout);
+        AG._snippetBmTimers = [];
+    }
+    if (AG._snippetBmObserver) {
+        AG._snippetBmObserver.disconnect();
+        AG._snippetBmObserver = null;
+    }
+
+    if (AG.snippetBookmarkBtn) {
+        AG.snippetBookmarkBtn.style.display = 'none';
+        AG.snippetBookmarkBtn._isSaving = false;
+        const label = AG.snippetBookmarkBtn.querySelector('.gds-body-m');
         if (label) {
-            label.textContent = ' Bookmark';
+            label.textContent = 'Bookmark';
             label.style.color = '';
         }
-        const iconWrap = window.AskGemini.snippetBookmarkBtn.querySelector('mat-icon') || window.AskGemini.snippetBookmarkBtn.querySelector('gem-icon');
+        const iconWrap = AG.snippetBookmarkBtn.querySelector('.ag-snippet-bm-icon');
         if (iconWrap) {
-            const bmOutlineSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M17 3H7c-1.1 0-2 .9-2 2v14.55c0 .91 1.01 1.44 1.77.96L12 17.29l5.23 3.22c.76.47 1.77-.05 1.77-.96V5c0-1.1-.9-2-2-2zm0 13.97-4.46-2.75c-.33-.2-.75-.2-1.08 0L7 16.97V5h10v11.97z"/></svg>';
+            const bmOutlineSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M17 3H7c-1.1 0-2 .9-2 2v14.55c0 .91 1.01 1.44 1.77.96L12 17.29l5.23 3.22c.76.47 1.77-.05 1.77-.96V5c0-1.1-.9-2-2-2zm0 13.97-4.46-2.75c-.33-.2-.75-.2-1.08 0L7 16.97V5h10v11.97z"/></svg>';
             iconWrap.innerHTML = bmOutlineSvg;
             iconWrap.style.color = '';
         }

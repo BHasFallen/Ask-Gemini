@@ -773,11 +773,16 @@ window.AskGemini = window.AskGemini || {};
                 isSnippet: true
             };
 
+            if (!Array.isArray(AG.bookmarksList)) AG.bookmarksList = [];
             AG.bookmarksList.unshift(bookmark);
             await this.saveToStorage();
 
-            AG.updateAllBookmarkButtonStates();
-            AG.updateSidebarBadge();
+            if (typeof AG.updateAllBookmarkButtonStates === 'function') {
+                try { AG.updateAllBookmarkButtonStates(); } catch (e) {}
+            }
+            if (typeof AG.updateSidebarBadge === 'function') {
+                try { AG.updateSidebarBadge(); } catch (e) {}
+            }
 
             // Track event
             if (chrome.runtime && chrome.runtime.sendMessage) {
@@ -987,6 +992,7 @@ window.AskGemini = window.AskGemini || {};
             reader.readAsText(file);
         }
     };
+    AG.addSnippetBookmark = AG.BookmarkManager.addSnippetBookmark.bind(AG.BookmarkManager);
 
     // ─── Find Bookmark For Given Response DOM ───────────────────────────────────
     AG.findBookmarkForResponse = function (responseEl) {

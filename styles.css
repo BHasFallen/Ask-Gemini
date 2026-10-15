@@ -104,6 +104,10 @@ gem-button#ask-gemini-snippet-bm-btn button,
   transition: background-color 0.15s ease, color 0.15s ease !important;
 }
 
+#ask-gemini-snippet-bm-btn * {
+  pointer-events: none !important;
+}
+
 #ask-gemini-snippet-bm-btn:hover,
 highlight-to-ask-menu #ask-gemini-snippet-bm-btn:hover,
 highlight-to-ask-menu gem-button#ask-gemini-snippet-bm-btn button:hover,
