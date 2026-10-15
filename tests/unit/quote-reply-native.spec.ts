@@ -104,7 +104,7 @@ describe('Native Quote Reply Coexistence & Detection', () => {
         expect(document.querySelector('#ask-gemini-float-btn')).toBeNull();
     });
 
-    it('records has_native_quote_reply user property and dispatches native_quote_detected event', () => {
+    it('records has_native_quote_reply user property without dispatching events', () => {
         const AG = (globalThis as any).AskGemini;
         const sendMsgSpy = vi.fn();
         (globalThis as any).chrome.runtime.sendMessage = sendMsgSpy;
@@ -122,14 +122,11 @@ describe('Native Quote Reply Coexistence & Detection', () => {
             properties: { has_native_quote_reply: true }
         }));
 
-        // Verify TRACK_EVENT was dispatched with native_quote_detected
-        expect(sendMsgSpy).toHaveBeenCalledWith(expect.objectContaining({
-            type: 'TRACK_EVENT',
-            name: 'native_quote_detected',
-            params: { detection_method: 'dom_quote' }
-        }));
+        // Verify no TRACK_EVENT was dispatched
+        const trackEventCalls = sendMsgSpy.mock.calls.filter(([arg]: any) => arg && arg.type === 'TRACK_EVENT');
+        expect(trackEventCalls).toHaveLength(0);
 
-        // Calling it again should not re-dispatch duplicate telemetry (once per session)
+        // Calling it again should not re-dispatch duplicate user property (once per session)
         const callsCount = sendMsgSpy.mock.calls.length;
         AG.isNativeQuoteReplyActive();
         expect(sendMsgSpy.mock.calls.length).toBe(callsCount);

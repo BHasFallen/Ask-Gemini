@@ -361,13 +361,6 @@ window.AskGemini.recordNativeQuoteDetection = function recordNativeQuoteDetectio
                     has_native_quote_reply: true
                 }
             });
-            chrome.runtime.sendMessage({
-                type: 'TRACK_EVENT',
-                name: 'native_quote_detected',
-                params: {
-                    detection_method: method
-                }
-            });
         }
     } catch (_) {}
 };
@@ -447,13 +440,6 @@ window.AskGemini.handleSelection = function handleSelection() {
     // If Google's native quote reply is active on this account/page, yield gracefully to prevent double-button collisions
     if (AG.isNativeQuoteReplyActive()) {
         AG.hideFloatButton();
-        if (AG.trackEvent && !AG._yieldThrottle) {
-            AG._yieldThrottle = true;
-            setTimeout(function() { AG._yieldThrottle = false; }, 3000);
-            AG.trackEvent('quote_button_yielded_to_native', {
-                selection_length: text.length
-            });
-        }
         return;
     }
 
