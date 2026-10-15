@@ -514,6 +514,64 @@ window.AskGemini.hideFloatButton = function hideFloatButton() {
     if (window.AskGemini.floatButton) window.AskGemini.floatButton.style.display = 'none';
 };
 
+// ─── Native Google Floating Pill Detection ──────────────────────────────────
+window.AskGemini.findGoogleNativePill = function findGoogleNativePill(selection) {
+    if (!selection && typeof window !== 'undefined' && window.getSelection) {
+        selection = window.getSelection();
+    }
+    let rRect = null;
+    if (selection && selection.rangeCount > 0) {
+        try {
+            rRect = selection.getRangeAt(0).getBoundingClientRect();
+        } catch (_) {}
+    }
+
+    // 1. Check known selectors
+    const selectors = [
+        '[fonticonname="prompt_suggestion"]',
+        'mat-icon[fonticon*="prompt_suggestion"]',
+        'mat-icon[data-mat-icon-name*="prompt_suggestion"]',
+        '.prompt-suggestion-button',
+        '.chat-selection-toolbar button',
+        '.cdk-overlay-pane button'
+    ];
+    for (const sel of selectors) {
+        const matches = document.querySelectorAll(sel);
+        for (const m of matches) {
+            if (m.closest('#ask-gemini-float-btn, #ask-gemini-snippet-bm-btn, .input-area-container, rich-textarea, footer, header, mat-nav-list, bard-sidenav, .ag-bookmark-btn')) continue;
+            const btn = m.closest('button, [role="button"], .mat-mdc-button-base') || m;
+            const rect = btn.getBoundingClientRect();
+            if (rect.width >= 35 && rect.width <= 220 && rect.height >= 20 && rect.height <= 48 && rect.top > 0) {
+                if (rRect && (rRect.width > 0 || rRect.height > 0)) {
+                    const vDist = Math.min(Math.abs(rect.top - rRect.bottom), Math.abs(rect.bottom - rRect.top));
+                    const hDist = Math.min(Math.abs(rect.left - rRect.left), Math.abs(rect.right - rRect.right), Math.abs((rect.left + rect.width / 2) - (rRect.left + rRect.width / 2)));
+                    if (vDist > 120 || hDist > 400) continue;
+                }
+                return { btn, rect };
+            }
+        }
+    }
+
+    // 2. Search visible buttons containing "Ask Gemini"
+    const allButtons = document.querySelectorAll('button, [role="button"], .mat-mdc-button-base');
+    for (const b of allButtons) {
+        if (b.closest('#ask-gemini-float-btn, #ask-gemini-snippet-bm-btn, .input-area-container, rich-textarea, footer, header, mat-nav-list, bard-sidenav, .ag-bookmark-btn')) continue;
+        const txt = (b.textContent || '').trim();
+        if (txt.includes('Ask Gemini')) {
+            const rect = b.getBoundingClientRect();
+            if (rect.width >= 35 && rect.width <= 220 && rect.height >= 20 && rect.height <= 48 && rect.top > 0) {
+                if (rRect && (rRect.width > 0 || rRect.height > 0)) {
+                    const vDist = Math.min(Math.abs(rect.top - rRect.bottom), Math.abs(rect.bottom - rRect.top));
+                    const hDist = Math.min(Math.abs(rect.left - rRect.left), Math.abs(rect.right - rRect.right), Math.abs((rect.left + rect.width / 2) - (rRect.left + rRect.width / 2)));
+                    if (vDist > 120 || hDist > 400) continue;
+                }
+                return { btn: b, rect };
+            }
+        }
+    }
+    return null;
+};
+
 // ─── Snippet Bookmark Button ─────────────────────────────────────────────────
 window.AskGemini.snippetBookmarkBtn = null;
 
@@ -531,9 +589,9 @@ window.AskGemini.showSnippetBookmarkButton = function showSnippetBookmarkButton(
     }
 
     const bmOutline = (AG.ICONS && (AG.ICONS.bookmarkOutline || AG.ICONS.bookmark_outline)) ||
-        '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M17 3H7c-1.1 0-2 .9-2 2v14.55c0 .91 1.01 1.44 1.77.96L12 17.29l5.23 3.22c.76.47 1.77-.05 1.77-.96V5c0-1.1-.9-2-2-2zm0 13.97-4.46-2.75c-.33-.2-.75-.2-1.08 0L7 16.97V5h10v11.97z"/></svg>';
+        '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M17 3H7c-1.1 0-2 .9-2 2v14.55c0 .91 1.01 1.44 1.77.96L12 17.29l5.23 3.22c.76.47 1.77-.05 1.77-.96V5c0-1.1-.9-2-2-2zm0 13.97-4.46-2.75c-.33-.2-.75-.2-1.08 0L7 16.97V5h10v11.97z"/></svg>';
     const bmFilled = (AG.ICONS && (AG.ICONS.bookmarkFilled || AG.ICONS.bookmark_filled)) ||
-        '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M17 3H7c-1.1 0-2 .9-2 2v14.55c0 .91 1.01 1.44 1.77.96L12 17.29l5.23 3.22c.76.47 1.77-.05 1.77-.96V5c0-1.1-.9-2-2-2z"/></svg>';
+        '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M17 3H7c-1.1 0-2 .9-2 2v14.55c0 .91 1.01 1.44 1.77.96L12 17.29l5.23 3.22c.76.47 1.77-.05 1.77-.96V5c0-1.1-.9-2-2-2z"/></svg>';
 
     AG.snippetBookmarkBtn.innerHTML = `
         <span class="ag-snippet-bm-icon">${bmOutline}</span>
@@ -546,7 +604,7 @@ window.AskGemini.showSnippetBookmarkButton = function showSnippetBookmarkButton(
 
         AG.snippetBookmarkBtn.innerHTML = `
             <span class="ag-snippet-bm-icon" style="color: #8ab4f8;">${bmFilled}</span>
-            <span class="ag-snippet-bm-label" style="color: #8ab4f8;">Bookmarked!</span>
+            <span class="ag-snippet-bm-label" style="color: #8ab4f8;">Saved!</span>
         `;
 
         if (AG.BookmarkManager && AG.BookmarkManager.addSnippetBookmark) {
@@ -558,40 +616,66 @@ window.AskGemini.showSnippetBookmarkButton = function showSnippetBookmarkButton(
         }, 1200);
     };
 
+    function alignButton() {
+        if (!AG.snippetBookmarkBtn || AG.snippetBookmarkBtn.style.display === 'none') return false;
+
+        const native = AG.findGoogleNativePill(selection);
+        if (native && native.rect.width > 0 && native.rect.height > 0) {
+            const nRect = native.btn.getBoundingClientRect();
+            const btnWidth = AG.snippetBookmarkBtn.offsetWidth || 86;
+            let left = nRect.right + window.scrollX + 6;
+            if (left + btnWidth > window.innerWidth - 12) {
+                left = nRect.left + window.scrollX - btnWidth - 6;
+            }
+            AG.snippetBookmarkBtn.style.left = `${Math.max(8, left)}px`;
+            AG.snippetBookmarkBtn.style.top = `${nRect.top + window.scrollY}px`;
+            if (nRect.height >= 24 && nRect.height <= 44) {
+                AG.snippetBookmarkBtn.style.height = `${nRect.height}px`;
+            }
+            return true;
+        }
+
+        if (AG.floatButton && AG.floatButton.style.display !== 'none') {
+            const fRect = AG.floatButton.getBoundingClientRect();
+            const btnWidth = AG.snippetBookmarkBtn.offsetWidth || 86;
+            let left = fRect.right + window.scrollX + 6;
+            if (left + btnWidth > window.innerWidth - 12) {
+                left = fRect.left + window.scrollX - btnWidth - 6;
+            }
+            AG.snippetBookmarkBtn.style.left = `${Math.max(8, left)}px`;
+            AG.snippetBookmarkBtn.style.top = `${fRect.top + window.scrollY}px`;
+            if (fRect.height >= 24 && fRect.height <= 44) {
+                AG.snippetBookmarkBtn.style.height = `${fRect.height}px`;
+            }
+            return true;
+        }
+
+        return false;
+    }
+
     const range = selection.getRangeAt(0);
     const rect = range.getBoundingClientRect();
     const centerX = rect.left + window.scrollX + (rect.width / 2);
-    const topY = rect.top + window.scrollY - 45;
 
-    let targetLeft, targetTop;
-
-    if (isNative) {
-        // Look for Google's native quote suggestion button in the DOM
-        const btnSelector = (AG.getSelector && AG.getSelector('nativeQuoteButton')) || '[fonticonname="prompt_suggestion"], [aria-label*="quote" i]';
-        const nativeIcon = document.querySelector(btnSelector);
-        const nativeBtn = nativeIcon ? (nativeIcon.closest('button, .prompt-suggestion-button, [role="button"]') || nativeIcon) : null;
-
-        if (nativeBtn && nativeBtn.getBoundingClientRect().width > 0) {
-            const nRect = nativeBtn.getBoundingClientRect();
-            targetLeft = nRect.right + window.scrollX + 8;
-            targetTop = nRect.top + window.scrollY;
-        } else {
-            targetLeft = centerX + 40;
-            targetTop = topY;
-        }
-    } else {
-        // Place right next to Ask Gemini floating pill
-        targetLeft = centerX + 65;
-        targetTop = topY;
+    // Initial fallback positioning: directly below selection where Google's pill docks
+    let fallbackLeft = centerX + 58;
+    let fallbackTop = rect.bottom + window.scrollY + 8;
+    if (fallbackTop + 36 > window.scrollY + window.innerHeight) {
+        fallbackTop = rect.top + window.scrollY - 36;
     }
 
-    if (targetTop < window.scrollY + 10) {
-        targetTop = rect.bottom + window.scrollY + 10;
-    }
-
-    AG.snippetBookmarkBtn.style.left = `${Math.max(10, targetLeft)}px`;
-    AG.snippetBookmarkBtn.style.top = `${Math.max(10, targetTop)}px`;
+    AG.snippetBookmarkBtn.style.left = `${Math.max(8, fallbackLeft)}px`;
+    AG.snippetBookmarkBtn.style.top = `${Math.max(8, fallbackTop)}px`;
+    AG.snippetBookmarkBtn.style.height = '28px';
     AG.snippetBookmarkBtn.style.display = 'inline-flex';
+
+    // Run alignment immediately and re-check across subsequent render frames
+    alignButton();
+    [15, 40, 80, 160, 300, 500].forEach(function(delay) {
+        setTimeout(function() {
+            alignButton();
+        }, delay);
+    });
 };
 
 // ─── hideSnippetBookmarkButton ───────────────────────────────────────────────

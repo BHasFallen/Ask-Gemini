@@ -186,6 +186,35 @@ describe('Native Quote Reply Coexistence & Detection', () => {
         // Click the snippet bookmark button
         btn.click();
         expect(addSnippetSpy).toHaveBeenCalledWith('Key quote excerpt', responseEl);
-        expect(btn.textContent).toContain('Bookmarked!');
+        expect(btn.textContent).toContain('Saved!');
+    });
+
+    it('findGoogleNativePill accurately docks beside native Ask Gemini button near selection', () => {
+        const AG = (globalThis as any).AskGemini;
+        const nativePill = document.createElement('button');
+        nativePill.className = 'mat-mdc-button-base prompt-suggestion-button';
+        nativePill.textContent = 'Ask Gemini';
+        nativePill.getBoundingClientRect = () => ({
+            left: 150,
+            right: 250,
+            top: 325,
+            bottom: 357,
+            width: 100,
+            height: 32
+        } as any);
+        document.body.appendChild(nativePill);
+
+        const mockRange = {
+            getBoundingClientRect: () => ({ left: 100, right: 200, top: 300, bottom: 320, width: 100, height: 20 })
+        };
+        const mockSelection = {
+            rangeCount: 1,
+            getRangeAt: () => mockRange
+        };
+
+        const found = AG.findGoogleNativePill(mockSelection);
+        expect(found).not.toBeNull();
+        expect(found.btn).toBe(nativePill);
+        expect(found.rect.height).toBe(32);
     });
 });
