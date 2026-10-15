@@ -27,7 +27,6 @@ const filesToCopy = [
     'content.js',
     'debug-bridge.js',
     'selectors.js',
-    'rpc-client.js',
     'quote-reply.js',
     'smart-paste.js',
     'paste-stats.js',
@@ -94,11 +93,12 @@ if (fs.existsSync(srcConfig)) {
     }
 }
 
-// 5. Ensure manifest.json version is 2.8.0
+// 5. Ensure manifest.json version is synced with root manifest
 const manifestPath = path.join(distDir, 'manifest.json');
 if (fs.existsSync(manifestPath)) {
+    const rootManifest = JSON.parse(fs.readFileSync(path.join(rootDir, 'manifest.json'), 'utf8'));
     const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
-    manifest.version = '2.8.0';
+    manifest.version = rootManifest.version;
     fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
 }
 

@@ -1,5 +1,5 @@
 /**
- * Ask Gemini: Auto Mode Module (v2.8.0)
+ * Ask Gemini: Auto Mode Module (v2.8.2)
  * Enables and manages Google's native Auto model routing (a74ec8485b3b5ce4)
  * on gemini.google.com.
  *

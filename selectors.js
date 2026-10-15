@@ -19,7 +19,9 @@
         composerTextArea: 'rich-textarea, div[contenteditable="true"]',
         modelResponse: 'model-response, .model-response, message-content',
         userQuery: 'user-query',
-        scroller: 'infinite-scroller'
+        scroller: 'infinite-scroller',
+        nativeQuoteReply: '.submitted-quote-container, .submitted-quote-in-query, blockquote[aria-label="Submitted quote"]',
+        nativeQuoteButton: '[fonticonname="prompt_suggestion"], [aria-label*="quote" i]'
     };
 
     var REMOTE_CONFIG_URL = 'https://raw.githubusercontent.com/BHasFallen/Ask-Gemini/main/config/selectors.json';

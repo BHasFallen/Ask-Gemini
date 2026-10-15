@@ -1,368 +1,75 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    
-    <!-- SEO Optimization -->
-    <title>Quote Reply for Gemini – Chrome Extension</title>
-    <meta name="google-site-verification" content="QRD60Av9IPL_c8_2h1tZlcUD5f4ExZm1gxWwVvmlH50">
-    <meta name="description" content="Highlight text on Google Gemini and ask follow-up questions with exact context locked in. True contextual replies to prevent AI hallucinations.">
-    <meta name="keywords" content="Gemini, Google Gemini, Chrome Extension, Quote Reply, Gemini replies, AI assistant extension, productivity tool">
-    <meta name="author" content="Devxtools">
-    
-    <!-- Open Graph/Social Meta Tags -->
-    <meta property="og:title" content="Quote Reply for Gemini – Chrome Extension">
-    <meta property="og:description" content="Add contextual replies directly inside your Google Gemini chats. Highlight, quote, and reply instantly.">
-    <meta property="og:type" content="website">
-    <meta property="og:url" content="https://bhasfallen.github.io/Ask-Gemini/">
-    
-    <link rel="stylesheet" href="landing.css">
-    <style>
-        /* Hidden on desktop by default */
-        .mobile-bottom-nav, .hero-mobile-app-icon {
-            display: none;
-        }
-    </style>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <!-- Primary SEO Meta Tags -->
+  <title>Quote Reply for Gemini — Reply, Save &amp; Browse Chats Easily</title>
+  <meta name="title" content="Quote Reply for Gemini — Reply, Save &amp; Browse Chats Easily">
+  <meta name="description" content="Highlight any text on Google Gemini to reply directly, save your favorite answers with bookmarks, and browse long chats with a handy sidebar. 100% Free and Private.">
+  <meta name="keywords" content="Google Gemini, Gemini extension, Quote Reply for Gemini, Gemini bookmarks, Gemini table of contents, Gemini auto mode, AI chat navigation, chat with Gemini, Gemini Chrome extension">
+  <meta name="author" content="Devxtools">
+  <meta name="robots" content="index, follow">
+  <link rel="canonical" href="https://bhasfallen.github.io/Ask-Gemini/">
+
+  <!-- Open Graph / Social -->
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://bhasfallen.github.io/Ask-Gemini/">
+  <meta property="og:title" content="Quote Reply for Gemini — Reply, Save &amp; Browse Chats Easily">
+  <meta property="og:description" content="Highlight any text on Google Gemini to reply directly, save your favorite answers, and jump through long chats easily.">
+  <meta property="og:image" content="https://bhasfallen.github.io/Ask-Gemini/icons/icon128.png">
+
+  <!-- Twitter Card -->
+  <meta property="twitter:card" content="summary_large_image">
+  <meta property="twitter:url" content="https://bhasfallen.github.io/Ask-Gemini/">
+  <meta property="twitter:title" content="Quote Reply for Gemini — Reply, Save &amp; Browse Chats Easily">
+  <meta property="twitter:description" content="Reply directly to quotes, save helpful answers, and browse long chats easily on Google Gemini.">
+  <meta property="twitter:image" content="https://bhasfallen.github.io/Ask-Gemini/icons/icon128.png">
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" href="icons/icon48.png">
+
+  <!-- Google Fonts -->
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=JetBrains+Mono:wght@400..700&display=swap" rel="stylesheet">
+
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      background: #0A1030;
+      color: #F2F5FF;
+      font-family: 'Bricolage Grotesque', system-ui, -apple-system, sans-serif;
+      overflow-x: hidden;
+      line-height: 1.4;
+    }
+    a { transition: opacity 0.15s ease, transform 0.15s ease; }
+    a:hover { opacity: 0.85; }
+    img { max-width: 100%; height: auto; }
+    ::selection { background: #2B59FF; color: #FFFFFF; }
+  </style>
+
+  <!-- Structured Data (JSON-LD) -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "Quote Reply for Gemini",
+    "operatingSystem": "Chrome, Edge, Brave, Opera",
+    "applicationCategory": "BrowserExtension",
+    "offers": {
+      "@type": "Offer",
+      "price": "0",
+      "priceCurrency": "USD"
+    },
+    "description": "Highlight any Google Gemini response and quote-reply with full context. Sharper follow-ups, fewer hallucinations."
+  }
+  </script>
 </head>
 <body>
-
-    <!-- Header Navigation -->
-    <header>
-        <div class="nav-container">
-            <a href="#" class="logo">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/>
-                </svg>
-                Quote Reply
-            </a>
-            <div class="nav-right">
-                <button class="theme-toggle" id="theme-toggle-btn" aria-label="Toggle dark/light mode">
-                    <svg class="sun-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/>
-                    </svg>
-                    <svg class="moon-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>
-                    </svg>
-                </button>
-                <a href="https://chromewebstore.google.com/detail/jhkodgigeemnmdmdikdkpcbmgbbopgni" target="_blank" class="btn-cta">
-                    Add to Chrome
-                </a>
-            </div>
-        </div>
-    </header>
-
-    <!-- Mobile Sticky Bottom Tab Bar -->
-    <nav class="mobile-bottom-nav">
-        <a href="#hero" class="bottom-nav-item active" onclick="setActiveNav(this)">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-            </svg>
-            <span>Home</span>
-        </a>
-        <a href="#how-it-works" class="bottom-nav-item" onclick="setActiveNav(this)">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
-            </svg>
-            <span>How-To</span>
-        </a>
-        <a href="#faq" class="bottom-nav-item" onclick="setActiveNav(this)">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <span>FAQ</span>
-        </a>
-        <a href="https://chromewebstore.google.com/detail/jhkodgigeemnmdmdikdkpcbmgbbopgni" target="_blank" class="bottom-nav-item bottom-nav-item-cta">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-            </svg>
-            <span>Install</span>
-        </a>
-    </nav>
-
-    <!-- Hero Section -->
-    <section class="hero" id="hero">
-        <div class="section-container">
-            <div class="hero-mobile-app-icon">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/>
-                </svg>
-            </div>
-            <h1>True Contextual Replies<br>for Google Gemini</h1>
-            <p>Highlight any text on Gemini to quote-reply instantly. Keep discussions on track, prevent hallucinations, and skip copy-pasting.</p>
-            <div class="hero-ctas">
-                <a href="https://chromewebstore.google.com/detail/jhkodgigeemnmdmdikdkpcbmgbbopgni" target="_blank" class="btn-cta">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/>
-                    </svg>
-                    Get the Extension
-                </a>
-                <a href="#how-it-works" class="btn-secondary">See How it Works</a>
-            </div>
-        </div>
-    </section>
-
-    <!-- Stats Banner -->
-    <section class="stats-banner">
-        <div class="stats-grid">
-            <div class="stat-item">
-                <h3>4.8★</h3>
-                <p>Chrome Web Store Rating</p>
-            </div>
-            <div class="stat-item">
-                <h3>85k+</h3>
-                <p>Words Analyzed & Quote-Replied</p>
-            </div>
-            <div class="stat-item">
-                <h3>1,400+</h3>
-                <p>Hours Saved for Users</p>
-            </div>
-        </div>
-    </sect    <!-- How It Works Timeline Section -->
-    <section id="how-it-works">
-        <div class="section-container">
-            <h2 class="section-title">How It Works</h2>
-            <p class="section-subtitle">A seamless, native three-step process built directly into your Google Gemini interface.</p>
-            
-            <!-- Mobile-only Step Switcher Tabs -->
-            <div class="mobile-step-tabs">
-                <button class="mobile-step-tab active" onclick="setMobileStep(0)">1. Highlight</button>
-                <button class="mobile-step-tab" onclick="setMobileStep(1)">2. Quote</button>
-                <button class="mobile-step-tab" onclick="setMobileStep(2)">3. Reply</button>
-            </div>
-
-            <div class="timeline">
-                <!-- Step 1 -->
-                <div class="timeline-step active">
-                    <div class="timeline-dot"></div>
-                    <div class="timeline-content">
-                        <h3>1. Highlight Any Text</h3>
-                        <p>Select any portion of a Gemini response. A floating "Ask Gemini" button immediately appears right above your selection.</p>
-                        
-                        <!-- Step 1 Mock -->
-                        <div class="mock-chat-bubble">
-                            Here is the detailed project summary you asked for. The budget has been set to <span class="mock-selection">$10,000 for phase one</span>.
-                            <div class="mock-float-btn">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>
-                                Ask Gemini
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Step 2 -->
-                <div class="timeline-step">
-                    <div class="timeline-dot"></div>
-                    <div class="timeline-content">
-                        <h3>2. Lock in the Context</h3>
-                        <p>Clicking the button pins that text to your prompt bar as an elegant context chip. Now your follow-up is locked onto that reference.</p>
-                        
-                        <!-- Step 2 Mock -->
-                        <div class="mock-reply-container">
-                            <div class="mock-context-chip">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 14 4 9 9 4"></polyline><path d="M20 20v-7a4 4 0 0 0-4-4H4"></path></svg>
-                                <span>Replying to: "$10,000 for phase one"</span>
-                            </div>
-                            <div class="mock-input">Can we divide this across three milestones?</div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Step 3 -->
-                <div class="timeline-step">
-                    <div class="timeline-dot"></div>
-                    <div class="timeline-content">
-                        <h3>3. Reply Cleanly</h3>
-                        <p>Your follow-up is processed with the quote embedded. In your chat history, the technical details are hidden, replaced by a beautiful context preview block.</p>
-                        
-                        <!-- Step 3 Mock -->
-                        <div class="mock-proxy-content">
-                            <div class="mock-reply-preview">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 14 4 9 9 4"></polyline><path d="M20 20v-7a4 4 0 0 0-4-4H4"></path></svg>
-                                <span>"$10,000 for phase one"</span>
-                            </div>
-                            <div class="mock-message-bubble">
-                                Can we divide this across three milestones?
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Testimonials Section -->
-    <section class="testimonials-slider">
-        <div class="section-container">
-            <h2 class="section-title">What Users Say</h2>
-            <p class="section-subtitle">Real feedback from developers, writers, and students using the extension.</p>
-            
-            <div class="testimonial-container">
-                <!-- Slide 1 -->
-                <div class="testimonial-slide active">
-                    <div class="stars">★★★★★</div>
-                    <p class="quote-text">"An absolute game changer for doing research. I don't have to copy-paste passages from long responses anymore just to clarify one sentence."</p>
-                    <div class="quote-author">Daniel K.</div>
-                    <div class="quote-title">Verified CWS Reviewer</div>
-                </div>
-                <!-- Slide 2 -->
-                <div class="testimonial-slide">
-                    <div class="stars">★★★★★</div>
-                    <p class="quote-text">"Super intuitive. It integrates so cleanly that you forget it's not a native feature of Google Gemini."</p>
-                    <div class="quote-author">Sarah L.</div>
-                    <div class="quote-title">Web Developer</div>
-                </div>
-                <!-- Slide 3 -->
-                <div class="testimonial-slide">
-                    <div class="stars">★★★★★</div>
-                    <p class="quote-text">"Solves the hallucination issue. By explicitly anchoring the next question to the quote, the replies are noticeably more accurate."</p>
-                    <div class="quote-author">James R.</div>
-                    <div class="quote-title">Software Engineer</div>
-                </div>
-            </div>
-            
-            <div class="slider-dots">
-                <span class="dot active" onclick="setSlide(0)"></span>
-                <span class="dot" onclick="setSlide(1)"></span>
-                <span class="dot" onclick="setSlide(2)"></span>
-            </div>
-        </div>
-    </section>
-
-    <!-- FAQ Section -->
-    <section id="faq">
-        <div class="section-container">
-            <h2 class="section-title">Frequently Asked Questions</h2>
-            <p class="section-subtitle">Everything you need to know about Quote Reply for Gemini.</p>
-            
-            <div class="faq-list">
-                <div class="faq-item">
-                    <div class="faq-question" onclick="toggleFaq(this)">Is this extension free? <span>+</span></div>
-                    <div class="faq-answer" style="display: none; padding-top: 10px;">Yes, Quote Reply is 100% free to use. There are no paid tiers, ads, or premium subscriptions.</div>
-                </div>
-                <div class="faq-item">
-                    <div class="faq-question" onclick="toggleFaq(this)">How does it protect my privacy? <span>+</span></div>
-                    <div class="faq-answer" style="display: none; padding-top: 10px;">All text processing occurs locally on your browser. Your conversations and highlighted quotes are never sent to our servers. Optional, anonymous usage telemetry is used to help improve the extension and can be toggled off at any time.</div>
-                </div>
-                <div class="faq-item">
-                    <div class="faq-question" onclick="toggleFaq(this)">Does it work on other websites? <span>+</span></div>
-                    <div class="faq-answer" style="display: none; padding-top: 10px;">No, this extension is custom-built specifically for Google Gemini (gemini.google.com) to provide a deeply integrated, native-feeling user experience.</div>
-                </div>
-                <div class="faq-item">
-                    <div class="faq-question" onclick="toggleFaq(this)">How do I access settings or view my stats? <span>+</span></div>
-                    <div class="faq-answer" style="display: none; padding-top: 10px;">Click the extension icon in your Chrome toolbar. A clean dashboard popup will open showing your usage stats, time saved, and developer mode/telemetry toggles.</div>
-                </div>
-                <div class="faq-item">
-                    <div class="faq-question" onclick="toggleFaq(this)">Does this work with Gemini Advanced/Workspace? <span>+</span></div>
-                    <div class="faq-answer" style="display: none; padding-top: 10px;">Yes, the extension supports all Gemini tiers, including Gemini Advanced, Workspace versions, and dark/light themes.</div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Footer -->
-    <footer>
-        <div class="footer-logo">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/>
-            </svg>
-            Quote Reply
-        </div>
-        <div class="footer-links">
-            <a href="https://chromewebstore.google.com/detail/jhkodgigeemnmdmdikdkpcbmgbbopgni" target="_blank">Chrome Web Store</a>
-            <a href="privacy-policy.html">Privacy Policy</a>
-            <a href="https://github.com/BHasFallen/Ask-Gemini" target="_blank">GitHub</a>
-        </div>
-        <div class="copyright">
-            &copy; 2026 Devxtools. Released under the MIT License.
-        </div>
-    </footer>
-
-    <!-- Interactive Logic Scripts -->
-    <script>
-        // Theme Toggle
-        const themeBtn = document.getElementById('theme-toggle-btn');
-        themeBtn.addEventListener('click', () => {
-            const html = document.documentElement;
-            const currentTheme = html.getAttribute('data-theme');
-            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-            html.setAttribute('data-theme', newTheme);
-        });
-
-        // Testimonial Slider
-        let currentSlide = 0;
-        const slides = document.querySelectorAll('.testimonial-slide');
-        const dots = document.querySelectorAll('.dot');
-
-        function setSlide(index) {
-            slides[currentSlide].classList.remove('active');
-            dots[currentSlide].classList.remove('active');
-            currentSlide = index;
-            slides[currentSlide].classList.add('active');
-            dots[currentSlide].classList.add('active');
-        }
-
-        // Auto transition testimonials
-        setInterval(() => {
-            let nextSlide = (currentSlide + 1) % slides.length;
-            setSlide(nextSlide);
-        }, 8000);
-
-        // Mobile steps controller
-        function setMobileStep(index) {
-            const steps = document.querySelectorAll('.timeline-step');
-            const tabs = document.querySelectorAll('.mobile-step-tab');
-            
-            steps.forEach((step, i) => {
-                if (i === index) {
-                    step.classList.add('active');
-                } else {
-                    step.classList.remove('active');
-                }
-            });
-
-            tabs.forEach((tab, i) => {
-                if (i === index) {
-                    tab.classList.add('active');
-                } else {
-                    tab.classList.remove('active');
-                }
-            });
-        }
-
-        // Handle browser window resize to restore desktop timeline visibility
-        window.addEventListener('resize', () => {
-            if (window.innerWidth > 768) {
-                document.querySelectorAll('.timeline-step').forEach(step => {
-                    step.classList.add('active');
-                });
-            } else {
-                // If switching back to mobile, activate the currently selected tab step
-                const activeTabIdx = Array.from(document.querySelectorAll('.mobile-step-tab'))
-                                          .findIndex(tab => tab.classList.contains('active'));
-                setMobileStep(activeTabIdx !== -1 ? activeTabIdx : 0);
-            }
-        });
-
-        // Mobile active navigation highlighting
-        function setActiveNav(selectedLink) {
-            const items = document.querySelectorAll('.bottom-nav-item');
-            items.forEach(item => item.classList.remove('active'));
-            selectedLink.classList.add('active');
-        }
-
-        // Accordion FAQ Toggle
-        function toggleFaq(element) {
-            const answer = element.nextElementSibling;
-            const symbol = element.querySelector('span');
-            if (answer.style.display === "none") {
-                answer.style.display = "block";
-                symbol.textContent = "−";
-            } else {
-                answer.style.display = "none";
-                symbol.textContent = "+";
-            }
-        }
-    </script>
+<div style="font-family:'Bricolage Grotesque',system-ui,sans-serif;color:#F2F5FF;background:#0A1030"><div style="max-width:1120px;margin:0 auto;padding:0 24px;box-sizing:border-box;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px;padding-top:22px;padding-bottom:22px"><a href="index.html" style="display:flex;align-items:center;gap:12px;text-decoration:none;color:#F2F5FF;font-weight:700;font-size:18px"><svg width="34" height="34" viewBox="0 0 128 128" aria-hidden="true"><defs><linearGradient id="gi" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4C84FF"></stop><stop offset="1" stop-color="#2253EA"></stop></linearGradient></defs><rect width="128" height="128" rx="28" fill="url(#gi)"></rect><path d="M64 25C64 50 78 64 103 64C78 64 64 78 64 103C64 78 50 64 25 64C50 64 64 50 64 25Z" fill="#fff"></path></svg>Quote Reply for Gemini</a><div style="display:flex;align-items:center;gap:26px;font-family:'JetBrains Mono',ui-monospace,monospace;font-size:14px"><a href="features.html" style="color:#9AA7DB;text-decoration:none">Features</a><a href="privacy-policy.html" style="color:#9AA7DB;text-decoration:none">Privacy</a><a href="https://chromewebstore.google.com/detail/quote-reply-for-gemini/ngnijpaanicgokfccoaljfdpmnnjllah" target="_blank" rel="noopener noreferrer" style="color:#fff;text-decoration:none;border:1px solid #26306A;border-radius:999px;padding:8px 16px">Add to Chrome</a></div></div><div style="max-width:1120px;margin:0 auto;padding:0 24px;box-sizing:border-box;padding-top:72px;padding-bottom:72px;display:flex;flex-direction:column;gap:30px;align-items:flex-start"><div style="font-family:'JetBrains Mono',ui-monospace,monospace;font-size:13px;letter-spacing:2px;color:#9AA7DB">CHROME EXTENSION FOR GEMINI</div><h1 style="margin:0;font-size:clamp(44px,8vw,96px);line-height:1.02;font-weight:800;letter-spacing:-3px;max-width:980px">Reply to <span style="background:#2B59FF;color:#fff;padding:0 .1em;-webkit-box-decoration-break:clone;box-decoration-break:clone">exactly what you highlighted.</span></h1><div style="display:inline-flex;align-items:center;gap:10px;background:#2A2B32;color:#EDEDF2;border-radius:999px;padding:11px 20px;font-weight:600;font-size:17px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#EDEDF2" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 14 4 9l5-5M4 9h10a6 6 0 0 1 6 6v3"></path></svg>Ask Gemini</div><div style="max-width:620px;font-size:21px;line-height:1.55;color:#9AA7DB">Select text in any Gemini response, click once, and your follow-up goes out with that exact passage locked in. No copy-pasting, no restating.</div><div style="display:flex;gap:12px;flex-wrap:wrap"><a href="https://chromewebstore.google.com/detail/quote-reply-for-gemini/ngnijpaanicgokfccoaljfdpmnnjllah" target="_blank" rel="noopener noreferrer" style="display:inline-block;padding:15px 26px;border-radius:999px;font-weight:700;font-size:17px;text-decoration:none;background:#fff;color:#0A1030">Add to Chrome</a><a href="features.html" style="display:inline-block;padding:15px 26px;border-radius:999px;font-weight:700;font-size:17px;text-decoration:none;border:1px solid #26306A;color:#F2F5FF">See features</a></div><div style="width:100%;margin-top:24px"><img src="assets/dd380de9-b179-4fb5-9638-dfafbe33b2ad.png" alt="" style="width:100%;height:auto;display:block;border-radius:14px;border:1px solid #26306A"></div></div><div style="max-width:1120px;margin:0 auto;padding:0 24px;box-sizing:border-box;padding-top:48px;padding-bottom:48px"><div style="font-size:clamp(34px,5vw,56px);line-height:1.05;font-weight:800;letter-spacing:-2px;max-width:820px;margin-bottom:40px">Gemini always knows which part you mean.</div><div style="display:flex;gap:56px;align-items:center;flex-wrap:wrap;flex-direction:row;padding:40px 0;border-top:1px solid #26306A"><div style="flex:1 1 320px;display:flex;flex-direction:column;gap:14px"><div style="font-family:'JetBrains Mono',ui-monospace,monospace;font-size:13px;letter-spacing:2px;color:#9AA7DB">01 / PIN</div><div style="font-size:38px;line-height:1.1;font-weight:800;letter-spacing:-1px">Your quote rides along.</div><div style="font-size:19px;line-height:1.55;color:#9AA7DB">A context chip pins the passage above your reply bar, so Gemini never loses track of what you are asking about.</div></div><div style="flex:1.3 1 400px"><img src="assets/3f182af7-832a-490b-8ac1-4b30425fd0d5.png" alt="" style="width:100%;height:auto;display:block;border-radius:14px;border:1px solid #26306A"></div></div><div style="display:flex;gap:56px;align-items:center;flex-wrap:wrap;flex-direction:row-reverse;padding:40px 0;border-top:1px solid #26306A"><div style="flex:1 1 320px;display:flex;flex-direction:column;gap:14px"><div style="font-family:'JetBrains Mono',ui-monospace,monospace;font-size:13px;letter-spacing:2px;color:#9AA7DB">02 / TRACE</div><div style="font-size:38px;line-height:1.1;font-weight:800;letter-spacing:-1px">Every reply keeps its source.</div><div style="font-size:19px;line-height:1.55;color:#9AA7DB">The quoted text stays inline in your chat, so long conversations stay easy to follow.</div></div><div style="flex:1.3 1 400px"><img src="assets/d51ac8b5-cba1-4b05-9fb6-589e809b47c6.png" alt="" style="width:100%;height:auto;display:block;border-radius:14px;border:1px solid #26306A"></div></div></div><div style="max-width:1120px;margin:0 auto;padding:0 24px;box-sizing:border-box;padding-top:48px;padding-bottom:72px"><div style="font-family:'JetBrains Mono',ui-monospace,monospace;font-size:13px;letter-spacing:2px;color:#9AA7DB">THE REST OF THE TOOLKIT</div><div style="height:24px"></div><div style="display:flex;align-items:baseline;gap:24px;flex-wrap:wrap;padding:22px 0;border-top:1px solid #26306A"><div style="flex:1 1 280px;font-size:34px;font-weight:700;letter-spacing:-1px">Multi-Quote</div><div style="flex:1.2 1 320px;font-size:18px;line-height:1.5;color:#9AA7DB">Highlight several passages and reply to all of them at once.</div><div style="font-family:'JetBrains Mono',ui-monospace,monospace;font-size:12px;letter-spacing:1px;color:#F2F5FF;border:1px solid #26306A;border-radius:999px;padding:5px 12px">ON / OFF</div></div><div style="display:flex;align-items:baseline;gap:24px;flex-wrap:wrap;padding:22px 0;border-top:1px solid #26306A"><div style="flex:1 1 280px;font-size:34px;font-weight:700;letter-spacing:-1px">Smart Paste</div><div style="flex:1.2 1 320px;font-size:18px;line-height:1.5;color:#9AA7DB">Paste a huge block of text or code and send it as a file instead.</div><div style="font-family:'JetBrains Mono',ui-monospace,monospace;font-size:12px;letter-spacing:1px;color:#F2F5FF;border:1px solid #26306A;border-radius:999px;padding:5px 12px">AUTO / ASK / OFF</div></div><div style="display:flex;align-items:baseline;gap:24px;flex-wrap:wrap;padding:22px 0;border-top:1px solid #26306A"><div style="flex:1 1 280px;font-size:34px;font-weight:700;letter-spacing:-1px">Table of Contents</div><div style="flex:1.2 1 320px;font-size:18px;line-height:1.5;color:#9AA7DB">A live index of every prompt, so long chats stay easy to navigate.</div><div style="font-family:'JetBrains Mono',ui-monospace,monospace;font-size:12px;letter-spacing:1px;color:#F2F5FF;border:1px solid #26306A;border-radius:999px;padding:5px 12px">ON / OFF</div></div><div style="display:flex;align-items:baseline;gap:24px;flex-wrap:wrap;padding:22px 0;border-top:1px solid #26306A"><div style="flex:1 1 280px;font-size:34px;font-weight:700;letter-spacing:-1px">Bookmarks</div><div style="flex:1.2 1 320px;font-size:18px;line-height:1.5;color:#9AA7DB">Save responses directly to your library.</div><div style="font-family:'JetBrains Mono',ui-monospace,monospace;font-size:12px;letter-spacing:1px;color:#F2F5FF;border:1px solid #26306A;border-radius:999px;padding:5px 12px">ON / OFF</div></div><div style="display:flex;align-items:baseline;gap:24px;flex-wrap:wrap;padding:22px 0;border-top:1px solid #26306A"><div style="flex:1 1 280px;font-size:34px;font-weight:700;letter-spacing:-1px">Usage limits</div><div style="flex:1.2 1 320px;font-size:18px;line-height:1.5;color:#9AA7DB">See your Gemini usage and reset time in the sidebar.</div><div style="font-family:'JetBrains Mono',ui-monospace,monospace;font-size:12px;letter-spacing:1px;color:#F2F5FF;border:1px solid #26306A;border-radius:999px;padding:5px 12px">ON / OFF</div></div><div style="display:flex;align-items:baseline;gap:24px;flex-wrap:wrap;padding:22px 0;border-top:1px solid #26306A"><div style="flex:1 1 280px;font-size:34px;font-weight:700;letter-spacing:-1px">Auto Mode</div><div style="flex:1.2 1 320px;font-size:18px;line-height:1.5;color:#9AA7DB">Automatic model switching for speed and reasoning.</div><div style="font-family:'JetBrains Mono',ui-monospace,monospace;font-size:12px;letter-spacing:1px;color:#F2F5FF;border:1px solid #26306A;border-radius:999px;padding:5px 12px">ON / OFF</div></div></div><div style="max-width:1120px;margin:0 auto;padding:0 24px;box-sizing:border-box;padding-top:56px;padding-bottom:88px;display:flex;flex-direction:column;gap:28px;align-items:flex-start;border-top:1px solid #26306A"><div style="font-size:clamp(52px,10vw,132px);line-height:.98;font-weight:800;letter-spacing:-4px"><span style="background:#2B59FF;color:#fff;padding:0 .1em;-webkit-box-decoration-break:clone;box-decoration-break:clone">Highlight.</span><br>Reply.</div><a href="https://chromewebstore.google.com/detail/quote-reply-for-gemini/ngnijpaanicgokfccoaljfdpmnnjllah" target="_blank" rel="noopener noreferrer" style="display:inline-block;padding:15px 26px;border-radius:999px;font-weight:700;font-size:17px;text-decoration:none;background:#fff;color:#0A1030">Add to Chrome</a></div><div style="border-top:1px solid #26306A;padding:32px 0;font-size:14px;line-height:1.6;color:#9AA7DB"><div style="max-width:1120px;margin:0 auto;padding:0 24px;box-sizing:border-box;display:flex;justify-content:space-between;flex-wrap:wrap;gap:24px"><div style="max-width:560px">Quote Reply for Gemini is an independent browser extension and is not affiliated with, endorsed by, or sponsored by Google LLC or Google Gemini.</div><div style="display:flex;gap:24px"><a href="features.html" style="color:#F2F5FF">Features</a><a href="privacy-policy.html" style="color:#F2F5FF">Privacy</a><a href="support.html" style="color:#F2F5FF">Support</a></div></div></div></div>
 </body>
 </html>

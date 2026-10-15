@@ -26,6 +26,34 @@ test.describe('Onboarding & Interactive Tour Suite', () => {
     await page.goto(`chrome-extension://${extensionId}/onboarding.html?reason=update`);
     await expect(page.locator('.ob-update-headline')).toContainText("The upgrade you've");
     await expect(page.locator('#ob-open-gemini-update')).toBeVisible();
+
+    // Verify consumer-facing top update feature cards
+    const featureCards = page.locator('.show-on-update .ob-feature-card');
+    expect(await featureCards.count()).toBe(3);
+    await expect(featureCards.nth(0)).toContainText('Response Bookmarks');
+    await expect(featureCards.nth(1)).toContainText('Table of Contents');
+    await expect(featureCards.nth(2)).toContainText('Smart Auto Mode');
+
+    // Verify Opt-Out checkbox toggle and storage persistence
+    const optoutCheckbox = page.locator('#ob-optout-checkbox');
+    await expect(optoutCheckbox).toBeAttached();
+    expect(await optoutCheckbox.isChecked()).toBe(false);
+
+    // Toggle opt-out to true
+    await page.locator('#ob-optout-container').click();
+    await page.waitForTimeout(100);
+    expect(await optoutCheckbox.isChecked()).toBe(true);
+
+    // Verify storage reflects opt-out preference
+    const optOutStored = await page.evaluate(async () => {
+      const res = await chrome.storage.local.get(['opt_out_update_screen']);
+      return res.opt_out_update_screen;
+    });
+    expect(optOutStored).toBe(true);
+
+    // Reload page to verify checked state persists
+    await page.reload();
+    await expect(optoutCheckbox).toBeChecked();
   });
 
   test('verifies interactive guided tour overlay on Gemini', async ({ page, extensionId }) => {

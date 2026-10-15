@@ -337,10 +337,95 @@ window.AskGemini.isSelectionInsideAiResponse = function isSelectionInsideAiRespo
     return true;
 };
 
+// ─── Native Quote Reply Detection & Telemetry ──────────────────────────────
+window.AskGemini.recordNativeQuoteDetection = function recordNativeQuoteDetection(method) {
+    var AG = window.AskGemini;
+    if (AG._hasRecordedNativeQuote) return;
+    AG._hasRecordedNativeQuote = true;
+
+    try {
+        if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+            chrome.storage.local.get(['has_native_quote_reply'], function(res) {
+                if (!res || !res.has_native_quote_reply) {
+                    chrome.storage.local.set({
+                        has_native_quote_reply: true,
+                        native_quote_detected_at: Date.now()
+                    });
+                }
+            });
+        }
+        if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
+            chrome.runtime.sendMessage({
+                type: 'SET_USER_PROPERTY',
+                properties: {
+                    has_native_quote_reply: true
+                }
+            });
+            chrome.runtime.sendMessage({
+                type: 'TRACK_EVENT',
+                name: 'native_quote_detected',
+                params: {
+                    detection_method: method
+                }
+            });
+        }
+    } catch (_) {}
+};
+
+window.AskGemini.isNativeQuoteReplyActive = function isNativeQuoteReplyActive() {
+    var AG = window.AskGemini;
+    // 1. Check for submitted native quotes in current conversation
+    var selector = (AG.getSelector && AG.getSelector('nativeQuoteReply')) || '.submitted-quote-container, .submitted-quote-in-query, blockquote[aria-label="Submitted quote"]';
+    if (document.querySelector(selector)) {
+        if (AG.recordNativeQuoteDetection) AG.recordNativeQuoteDetection('dom_quote');
+        return true;
+    }
+
+    // 2. Check for active/visible native prompt suggestion icon or quote buttons
+    var btnSelector = (AG.getSelector && AG.getSelector('nativeQuoteButton')) || '[fonticonname="prompt_suggestion"]';
+    var nativeIcons = document.querySelectorAll(btnSelector);
+    for (var i = 0; i < nativeIcons.length; i++) {
+        var icon = nativeIcons[i];
+        if (icon.closest('#ask-gemini-float-btn, .ask-gemini-reply-preview, #ask-gemini-context-box')) continue;
+        if (AG.recordNativeQuoteDetection) AG.recordNativeQuoteDetection('prompt_suggestion_icon');
+        return true;
+    }
+
+    // 3. Inspect stylesheets for Google's native submitted-quote rules
+    if (AG._nativeQuoteStyleDetected !== undefined) {
+        if (AG._nativeQuoteStyleDetected && AG.recordNativeQuoteDetection) {
+            AG.recordNativeQuoteDetection('stylesheet_rule');
+        }
+        return AG._nativeQuoteStyleDetected;
+    }
+
+    try {
+        for (var s = 0; s < document.styleSheets.length; s++) {
+            var sheet = document.styleSheets[s];
+            try {
+                var rules = sheet.cssRules || sheet.rules;
+                if (!rules) continue;
+                for (var r = 0; r < rules.length; r++) {
+                    var rule = rules[r];
+                    if (rule.selectorText && rule.selectorText.indexOf('submitted-quote-container') !== -1) {
+                        AG._nativeQuoteStyleDetected = true;
+                        if (AG.recordNativeQuoteDetection) AG.recordNativeQuoteDetection('stylesheet_rule');
+                        return true;
+                    }
+                }
+            } catch (_) {}
+        }
+    } catch (_) {}
+
+    AG._nativeQuoteStyleDetected = false;
+    return false;
+};
+
 // ─── handleSelection ──────────────────────────────────────────────────────────
 window.AskGemini.handleSelection = function handleSelection() {
     var AG = window.AskGemini;
     if (!AG.quoteReplyEnabled) return; // master toggle off
+
     const selection = window.getSelection();
     if (!selection || selection.rangeCount === 0 || selection.isCollapsed) {
         AG.hideFloatButton();
@@ -356,6 +441,19 @@ window.AskGemini.handleSelection = function handleSelection() {
     // Only show button if selection is strictly inside an AI response
     if (!AG.isSelectionInsideAiResponse(selection)) {
         AG.hideFloatButton();
+        return;
+    }
+
+    // If Google's native quote reply is active on this account/page, yield gracefully to prevent double-button collisions
+    if (AG.isNativeQuoteReplyActive()) {
+        AG.hideFloatButton();
+        if (AG.trackEvent && !AG._yieldThrottle) {
+            AG._yieldThrottle = true;
+            setTimeout(function() { AG._yieldThrottle = false; }, 3000);
+            AG.trackEvent('quote_button_yielded_to_native', {
+                selection_length: text.length
+            });
+        }
         return;
     }
 

@@ -5,7 +5,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.body.className = `mode-${reason}`;
 
     // ── Version badge ────────────────────────────────────────────────────────
-    let version = '2.8.0';
+    let version = '2.8.2';
     try {
         if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.getManifest) {
             const manifest = chrome.runtime.getManifest();
@@ -42,6 +42,37 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     });
+
+    // ── Opt-out from future update screens ────────────────────────────────────
+    const optoutCheckbox = document.getElementById('ob-optout-checkbox');
+    if (optoutCheckbox) {
+        if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+            chrome.storage.local.get(['opt_out_update_screen'], (res) => {
+                if (res && res.opt_out_update_screen) {
+                    optoutCheckbox.checked = true;
+                }
+            });
+        }
+
+        optoutCheckbox.addEventListener('change', () => {
+            const isOptedOut = optoutCheckbox.checked;
+            if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+                chrome.storage.local.set({ opt_out_update_screen: isOptedOut });
+            }
+
+            // Track opt-out action
+            if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
+                chrome.runtime.sendMessage({
+                    type: 'TRACK_EVENT',
+                    name: 'update_screen_opt_out_toggled',
+                    params: {
+                        opted_out: isOptedOut,
+                        version: version
+                    }
+                });
+            }
+        });
+    }
 
     // ── Analytics ────────────────────────────────────────────────────────────
     if (chrome.runtime && chrome.runtime.sendMessage) {

@@ -63,129 +63,6 @@ window.AskGemini.extractCleanPromptText = function extractCleanPromptText(prompt
     return cleaned;
 };
 
-window.AskGemini.cachedRpcTurns = [];
-window.AskGemini.lastHydratedConvoId = null;
-window.AskGemini.isHydratingRpc = false;
-
-// ─── hydrateTOCFromRpc ───────────────────────────────────────────────────────
-window.AskGemini.hydrateTOCFromRpc = function hydrateTOCFromRpc(targetConvoId, attempt) {
-    attempt = attempt || 1;
-    var AG = window.AskGemini;
-    if (!AG.tocEnabled || !AG.rpc || typeof AG.rpc.fetchConversationTurns !== 'function') return;
-
-    var convoId = targetConvoId || AG.rpc.extractConvoId();
-    if (!convoId) {
-        if (attempt <= 3) {
-            setTimeout(function() {
-                AG.hydrateTOCFromRpc(null, attempt + 1);
-            }, 600);
-        }
-        return;
-    }
-
-    if (AG.isHydratingRpc && AG.lastHydratedConvoId === convoId) return;
-    AG.isHydratingRpc = true;
-
-    AG.rpc.fetchConversationTurns(convoId).then(function(res) {
-        AG.isHydratingRpc = false;
-        if (res && res.success && Array.isArray(res.turns) && res.turns.length > 0) {
-            AG.cachedRpcTurns = res.turns;
-            AG.lastHydratedConvoId = convoId;
-            AG.scheduleTOCBuild();
-        } else if (attempt <= 3) {
-            setTimeout(function() {
-                AG.hydrateTOCFromRpc(convoId, attempt + 1);
-            }, 1000);
-        }
-    }).catch(function() {
-        AG.isHydratingRpc = false;
-    });
-};
-
-// ─── getPromptElements ───────────────────────────────────────────────────────
-window.AskGemini.getPromptElements = function getPromptElements() {
-    var AG = window.AskGemini;
-    var sel = (AG.selectors && AG.selectors.get('userQuery')) || 'user-query';
-    var raw = Array.from(document.querySelectorAll(sel));
-
-    // Fallback if configured selector matched nothing
-    if (raw.length === 0 && sel !== 'user-query') {
-        raw = Array.from(document.querySelectorAll('user-query'));
-    }
-    if (raw.length === 0) {
-        raw = Array.from(document.querySelectorAll('.user-query-container'));
-    }
-
-    // Strict deduplication: discard any elements that are descendants of another matched element
-    if (raw.length > 1) {
-        raw = raw.filter(function(el) {
-            return !raw.some(function(other) {
-                return other !== el && other.contains(el);
-            });
-        });
-    }
-
-    return raw;
-};
-
-// ─── mapDomPromptsToTurns ───────────────────────────────────────────────────
-function mapDomPromptsToTurns(domPrompts, rpcTurns) {
-    var AG = window.AskGemini;
-    if (!domPrompts || domPrompts.length === 0) return {};
-    if (!rpcTurns || rpcTurns.length === 0) {
-        var simpleMap = {};
-        for (var i = 0; i < domPrompts.length; i++) {
-            simpleMap[i] = domPrompts[i];
-        }
-        return simpleMap;
-    }
-
-    // Exact count match: 1-to-1 sequential alignment
-    if (domPrompts.length === rpcTurns.length) {
-        var countMap = {};
-        for (var j = 0; j < domPrompts.length; j++) {
-            countMap[j] = domPrompts[j];
-        }
-        return countMap;
-    }
-
-    // When DOM has fewer elements than total turns (Gemini virtual/infinite scroller):
-    // Align DOM elements by text content matching against rpcTurns
-    var matchedMap = {};
-    var usedIndices = new Set();
-
-    domPrompts.forEach(function(el) {
-        var cleanText = (AG.extractCleanPromptText(el) || '').toLowerCase().trim();
-        if (!cleanText) return;
-
-        var bestIdx = -1;
-        for (var k = 0; k < rpcTurns.length; k++) {
-            if (usedIndices.has(k)) continue;
-            var rpcPrompt = (rpcTurns[k].userPrompt || '').toLowerCase().trim();
-            if (rpcPrompt && (rpcPrompt === cleanText || rpcPrompt.startsWith(cleanText) || cleanText.startsWith(rpcPrompt))) {
-                bestIdx = k;
-                break;
-            }
-        }
-
-        if (bestIdx !== -1) {
-            matchedMap[bestIdx] = el;
-            usedIndices.add(bestIdx);
-        }
-    });
-
-    // If partial DOM elements didn't text-match, fallback to tail alignment
-    // (since Gemini conversations typically mount starting from the most recent bottom turns)
-    if (Object.keys(matchedMap).length === 0 && domPrompts.length < rpcTurns.length) {
-        var offset = rpcTurns.length - domPrompts.length;
-        for (var m = 0; m < domPrompts.length; m++) {
-            matchedMap[offset + m] = domPrompts[m];
-        }
-    }
-
-    return matchedMap;
-}
-
 // ─── buildTableOfContents ─────────────────────────────────────────────────────
 window.AskGemini.buildTableOfContents = function buildTableOfContents() {
     var AG = window.AskGemini;
@@ -194,45 +71,28 @@ window.AskGemini.buildTableOfContents = function buildTableOfContents() {
         return;
     }
 
-    const domPrompts = AG.getPromptElements();
-    const rpcTurns = AG.cachedRpcTurns || [];
-
-    // If DOM has no prompts AND we have no cached RPC turns, hide widget
-    if (domPrompts.length === 0 && rpcTurns.length === 0) {
+    const prompts = document.querySelectorAll('user-query');
+    if (!prompts || prompts.length === 0) {
         AG.removeTOCWidget();
         return;
     }
 
-    const totalCount = Math.max(domPrompts.length, rpcTurns.length);
-    const domElMap = mapDomPromptsToTurns(domPrompts, rpcTurns);
     const items = [];
-
-    for (let index = 0; index < totalCount; index++) {
+    prompts.forEach((promptEl, index) => {
+        // Always assign sequential ID based on current DOM position to avoid duplicate IDs during lazy-loading
         const anchorId = `ag-toc-prompt-${index}`;
-        const domEl = domElMap[index];
-        if (domEl && domEl.id !== anchorId) {
-            domEl.id = anchorId;
-        }
+        promptEl.id = anchorId;
 
-        let snippet = '';
-        if (rpcTurns[index] && rpcTurns[index].userPrompt) {
-            const rpcPrompt = rpcTurns[index].userPrompt;
-            snippet = rpcPrompt.length > 55 ? rpcPrompt.slice(0, 55) + '...' : (rpcPrompt || `Prompt ${index + 1}`);
-        } else if (domEl) {
-            const cleanedText = AG.extractCleanPromptText(domEl);
-            snippet = cleanedText.length > 55 ? cleanedText.slice(0, 55) + '...' : (cleanedText || `Prompt ${index + 1}`);
-        } else {
-            snippet = `Prompt ${index + 1}`;
-        }
+        const cleanedText = AG.extractCleanPromptText(promptEl);
+        const snippet = cleanedText.length > 55 ? cleanedText.slice(0, 55) + '...' : (cleanedText || `Prompt ${index + 1}`);
 
         items.push({
             index: index,
             num: index + 1,
             anchorId: anchorId,
-            title: snippet,
-            hasDomNode: Boolean(domEl)
+            title: snippet
         });
-    }
+    });
 
     // Attach ScrollSpy IntersectionObserver to user-query elements
     AG.setupTOCScrollSpy();
@@ -366,7 +226,7 @@ window.AskGemini.setupTOCScrollSpy = function setupTOCScrollSpy() {
         AG.tocIntersectionObserver.disconnect();
     }
 
-    const prompts = AG.getPromptElements();
+    const prompts = document.querySelectorAll('user-query');
     if (!prompts || prompts.length === 0) return;
 
     // Window Bottom Scroll Detection (Guarantees bottom line is highlighted when at bottom of page)
@@ -380,7 +240,7 @@ window.AskGemini.setupTOCScrollSpy = function setupTOCScrollSpy() {
                 const scrollPosition = window.innerHeight + window.scrollY;
                 const bodyHeight = Math.max(document.body.scrollHeight, document.documentElement.scrollHeight);
                 if (scrollPosition >= bodyHeight - 120) {
-                    const currentPrompts = AG.getPromptElements();
+                    const currentPrompts = document.querySelectorAll('user-query');
                     if (currentPrompts.length > 0) {
                         const lastIdx = currentPrompts.length - 1;
                         if (AG.activePromptIndex !== lastIdx) {
@@ -394,15 +254,13 @@ window.AskGemini.setupTOCScrollSpy = function setupTOCScrollSpy() {
         }, { passive: true });
     }
 
-    if (typeof IntersectionObserver === 'undefined') return;
-
     AG.tocIntersectionObserver = new IntersectionObserver((entries) => {
         entries.forEach(entry => {
             if (entry.isIntersecting) {
                 const id = entry.target.id;
                 if (id && id.startsWith('ag-toc-prompt-')) {
                     const promptEl = entry.target;
-                    const allPrompts = AG.getPromptElements();
+                    const allPrompts = Array.from(document.querySelectorAll('user-query'));
                     const idx = allPrompts.indexOf(promptEl);
                     if (idx !== -1 && idx !== AG.activePromptIndex) {
                         AG.activePromptIndex = idx;
@@ -443,20 +301,10 @@ window.AskGemini.removeTOCWidget = function removeTOCWidget() {
 // ─── scrollToPrompt ───────────────────────────────────────────────────────────
 window.AskGemini.scrollToPrompt = function scrollToPrompt(targetId, index) {
     var AG = window.AskGemini;
-    const prompts = AG.getPromptElements();
+    const prompts = document.querySelectorAll('user-query');
     let target = (typeof index === 'number' && prompts[index]) ? prompts[index] : document.getElementById(targetId);
 
-    if (!target) {
-        // If element is not yet rendered by Gemini's virtual scroller, scroll up to hydrate
-        const scrollerSel = (AG.selectors && AG.selectors.get('scroller')) || 'infinite-scroller';
-        const scroller = document.querySelector(scrollerSel) || document.documentElement || document.body;
-        if (scroller && typeof index === 'number' && AG.cachedRpcTurns && AG.cachedRpcTurns.length > 0) {
-            const ratio = index / AG.cachedRpcTurns.length;
-            const targetScroll = (scroller.scrollHeight || 10000) * ratio;
-            scroller.scrollTo({ top: targetScroll, behavior: 'smooth' });
-        }
-        return;
-    }
+    if (!target) return;
 
     try {
         target.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -469,34 +317,9 @@ window.AskGemini.scrollToPrompt = function scrollToPrompt(targetId, index) {
 // ─── setupTOCObserver ─────────────────────────────────────────────────────────
 window.AskGemini.setupTOCObserver = function setupTOCObserver() {
     var AG = window.AskGemini;
-
-    // Route and conversation navigation watcher
-    function checkConvoChange() {
-        if (!AG.rpc || typeof AG.rpc.extractConvoId !== 'function') return;
-        var currentConvoId = AG.rpc.extractConvoId();
-        if (currentConvoId && currentConvoId !== AG.lastHydratedConvoId && !AG.isHydratingRpc) {
-            AG.hydrateTOCFromRpc(currentConvoId);
-        }
-    }
-
-    if (!AG.hasRouteListener) {
-        AG.hasRouteListener = true;
-        document.addEventListener('AG_ROUTE_CHANGED', checkConvoChange);
-        window.addEventListener('popstate', checkConvoChange);
-        if (typeof setInterval !== 'undefined') {
-            setInterval(checkConvoChange, 1500);
-        }
-    }
-
-    // Trigger initial RPC turn hydration if viewing an existing conversation
-    if (AG.hydrateTOCFromRpc) {
-        AG.hydrateTOCFromRpc();
-    }
-
     if (AG.tocObserver) return;
 
-    const scrollerSel = (AG.selectors && AG.selectors.get('scroller')) || 'infinite-scroller';
-    const targetNode = document.querySelector(scrollerSel) || document.body;
+    const targetNode = document.querySelector('infinite-scroller') || document.body;
     AG.tocObserver = new MutationObserver((mutations) => {
         // Filter out self-mutations originating inside the TOC widget
         const isSelfMutation = mutations.every(m => {

@@ -112,7 +112,8 @@ class AmplitudeWizard {
             'bookmarks_enabled',
             'bookmarks_count',
             'reply_count_lifetime',
-            'auto_mode_enabled'
+            'auto_mode_enabled',
+            'has_native_quote_reply'
         ]);
         const userId = storageResult.user_email || null;
         const userName = storageResult.user_name || null;
@@ -147,7 +148,8 @@ class AmplitudeWizard {
                     bookmarks_enabled: storageResult.bookmarks_enabled !== false,
                     bookmarks_count: storageResult.bookmarks_count || 0,
                     reply_count_lifetime: storageResult.reply_count_lifetime || 0,
-                    auto_mode_enabled: storageResult.auto_mode_enabled !== false
+                    auto_mode_enabled: storageResult.auto_mode_enabled !== false,
+                    has_native_quote_reply: !!storageResult.has_native_quote_reply
                 }
             }
         };
@@ -790,6 +792,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                 break;
 
             case 'SET_USER_PROPERTY':
+                if (message.properties && typeof message.properties === 'object') {
+                    chrome.storage.local.set(message.properties);
+                }
                 AmplitudeWizard.setUserProperties(message.properties || {});
                 sendResponse({ success: true });
                 break;
@@ -884,6 +889,23 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 });
 
 /**
+ * Helper to determine if an update is a patch release (x.x.x where major and minor are unchanged)
+ */
+function isPatchUpdate(previousVersion, currentVersion) {
+    if (!previousVersion || !currentVersion) return false;
+    const prev = String(previousVersion).split('.').map(n => parseInt(n, 10) || 0);
+    const curr = String(currentVersion).split('.').map(n => parseInt(n, 10) || 0);
+    if (prev.length >= 2 && curr.length >= 2) {
+        return prev[0] === curr[0] && prev[1] === curr[1];
+    }
+    return false;
+}
+
+if (typeof globalThis !== 'undefined') {
+    globalThis.isPatchUpdate = isPatchUpdate;
+}
+
+/**
  * Handle extension installation/update
  */
 chrome.runtime.onInstalled.addListener(async (details) => {
@@ -926,12 +948,28 @@ chrome.runtime.onInstalled.addListener(async (details) => {
         const uninstallUrl = `${feedbackFormUrl}?entry.648517234=${deviceId}&device_id=${deviceId}`;
         chrome.runtime.setUninstallURL(uninstallUrl);
 
-        // 3. Launch Onboarding page (on fresh INSTALL, dev reloads, or UPDATE)
+        // 3. Launch Onboarding page (on fresh INSTALL, dev reloads, or major/minor UPDATE)
         const isUnpacked = !('update_url' in chrome.runtime.getManifest());
-        if (details.reason === chrome.runtime.OnInstalledReason.INSTALL || isUnpacked) {
+        if (details.reason === chrome.runtime.OnInstalledReason.INSTALL || (isUnpacked && details.reason !== chrome.runtime.OnInstalledReason.UPDATE)) {
             await chrome.tabs.create({ url: chrome.runtime.getURL('onboarding.html?reason=install') });
         } else if (details.reason === chrome.runtime.OnInstalledReason.UPDATE) {
-            await chrome.tabs.create({ url: chrome.runtime.getURL('onboarding.html?reason=update') });
+            const currentVersion = chrome.runtime.getManifest().version;
+            const previousVersion = details.previousVersion || '';
+            const isPatch = isPatchUpdate(previousVersion, currentVersion);
+
+            if (isPatch) {
+                logBackgroundEvent('UPDATE_PAGE_SKIPPED_FOR_PATCH', {
+                    currentVersion,
+                    previousVersion
+                });
+            } else {
+                const { opt_out_update_screen } = await chrome.storage.local.get(['opt_out_update_screen']);
+                if (!opt_out_update_screen) {
+                    await chrome.tabs.create({ url: chrome.runtime.getURL('onboarding.html?reason=update') });
+                } else {
+                    logBackgroundEvent('UPDATE_PAGE_SKIPPED_DUE_TO_OPT_OUT');
+                }
+            }
         }
 
         // Initialize default settings

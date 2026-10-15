@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Quote Reply for Gemini",
-  "version": "2.8.0",
+  "version": "2.8.2",
   "description": "Highlight any Google Gemini response and quote-reply with full context. Sharper follow-ups, fewer hallucinations.",
   "permissions": [
     "storage",
@@ -26,7 +26,6 @@
       ],
       "js": [
         "selectors.js",
-        "rpc-client.js",
         "quote-reply.js",
         "smart-paste.js",
         "toc.js",
@@ -56,6 +55,7 @@
   ],
   "icons": {
     "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
     "48": "icons/icon48.png",
     "128": "icons/icon128.png"
   },

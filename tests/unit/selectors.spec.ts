@@ -58,6 +58,8 @@ describe('Dynamic Selectors Registry', () => {
         expect(defaults.sidebarMoreItem).toContain('overflow-side-nav-entry-button');
         expect(defaults.userQuery).toContain('user-query');
         expect(defaults.modelResponse).toContain('model-response');
+        expect(defaults.nativeQuoteReply).toContain('.submitted-quote-container');
+        expect(defaults.nativeQuoteButton).toContain('prompt_suggestion');
 
         expect(AG.selectors.get('sidebarStudentsItem')).toBe(defaults.sidebarStudentsItem);
     });

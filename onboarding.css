@@ -532,10 +532,94 @@ body.mode-update .ob-page {
     font-weight: 600;
 }
 
-/* ── CTA update variant ───────────────────────────────────────── */
+/* ── CTA update variant & Opt-out row ────────────────────────── */
 .ob-cta--update {
-    justify-content: flex-start;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 16px;
     margin-bottom: 40px;
+}
+
+.ob-optout-control {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    user-select: none;
+    font-size: 13.5px;
+    color: var(--ob-text-dim);
+    transition: color 0.15s ease;
+    padding: 6px 4px;
+}
+
+.ob-optout-control:hover {
+    color: var(--ob-text);
+}
+
+.ob-optout-checkbox {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+    width: 0;
+    height: 0;
+}
+
+.ob-optout-custom-box {
+    width: 18px;
+    height: 18px;
+    border-radius: 5px;
+    border: 1.5px solid rgba(255, 255, 255, 0.22);
+    background: var(--ob-surface-2);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    flex-shrink: 0;
+}
+
+.ob-optout-control:hover .ob-optout-custom-box {
+    border-color: rgba(168, 199, 250, 0.6);
+}
+
+.ob-optout-check-icon {
+    width: 12px;
+    height: 12px;
+    stroke: #1c1b1f;
+    opacity: 0;
+    transform: scale(0.6);
+    transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.ob-optout-checkbox:checked + .ob-optout-custom-box {
+    background: var(--ob-primary);
+    border-color: var(--ob-primary);
+}
+
+.ob-optout-checkbox:checked + .ob-optout-custom-box .ob-optout-check-icon {
+    opacity: 1;
+    transform: scale(1);
+}
+
+.ob-optout-checkbox:focus-visible + .ob-optout-custom-box {
+    outline: 2px solid var(--ob-primary);
+    outline-offset: 2px;
+}
+
+.ob-optout-text {
+    line-height: 1.4;
+    font-weight: 500;
+}
+
+kbd {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: 4px;
+    padding: 1px 5px;
+    font-size: 11px;
+    font-family: inherit;
+    color: var(--ob-primary);
 }
 
 .ob-btn-primary--lg {
