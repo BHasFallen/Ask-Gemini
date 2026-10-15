@@ -580,8 +580,8 @@ window.AskGemini.showSnippetBookmarkButton = function showSnippetBookmarkButton(
     if (AG.bookmarksEnabled === false) return;
     if (!selection || selection.rangeCount === 0) return;
 
-    const bmOutlineSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M17 3H7c-1.1 0-2 .9-2 2v14.55c0 .91 1.01 1.44 1.77.96L12 17.29l5.23 3.22c.76.47 1.77-.05 1.77-.96V5c0-1.1-.9-2-2-2zm0 13.97-4.46-2.75c-.33-.2-.75-.2-1.08 0L7 16.97V5h10v11.97z"/></svg>';
-    const bmFilledSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M17 3H7c-1.1 0-2 .9-2 2v14.55c0 .91 1.01 1.44 1.77.96L12 17.29l5.23 3.22c.76.47 1.77-.05 1.77-.96V5c0-1.1-.9-2-2-2z"/></svg>';
+    const bmOutlineSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M17 3H7c-1.1 0-2 .9-2 2v14.55c0 .91 1.01 1.44 1.77.96L12 17.29l5.23 3.22c.76.47 1.77-.05 1.77-.96V5c0-1.1-.9-2-2-2zm0 13.97-4.46-2.75c-.33-.2-.75-.2-1.08 0L7 16.97V5h10v11.97z"/></svg>';
+    const bmFilledSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M17 3H7c-1.1 0-2 .9-2 2v14.55c0 .91 1.01 1.44 1.77.96L12 17.29l5.23 3.22c.76.47 1.77-.05 1.77-.96V5c0-1.1-.9-2-2-2z"/></svg>';
 
     if (!AG.snippetBookmarkBtn) {
         AG.snippetBookmarkBtn = document.createElement('button');
@@ -598,25 +598,102 @@ window.AskGemini.showSnippetBookmarkButton = function showSnippetBookmarkButton(
                 <span class="gem-button-icon-container menu-entry-with-badge ng-star-inserted">
                     <span class="ag-snippet-bm-icon">${bmOutlineSvg}</span>
                 </span>
-                <span class="gds-body-m"> Bookmark</span>
+                <span class="gds-body-m">Bookmark</span>
             </span>
         </span>
         <span class="mat-focus-indicator"></span>
         <span class="mat-mdc-button-touch-target"></span>
     `;
 
-    // Explicit inline styles guaranteeing exact size, dark surface, and font
-    AG.snippetBookmarkBtn.style.cssText = 'background-color: #1F1F1F !important; color: #E3E3E3 !important; border: 1px solid rgba(255, 255, 255, 0.15) !important; border-radius: 9999px !important; padding: 0 12px !important; height: 32px !important; min-height: 32px !important; box-sizing: border-box !important; cursor: pointer !important; user-select: none !important; white-space: nowrap !important; display: inline-flex !important; align-items: center !important; gap: 6px !important; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35) !important; font-family: "Google Sans Text", "Google Sans", Roboto, sans-serif !important; font-size: 13px !important; font-weight: 500 !important;';
+    function syncWithNativeDesign() {
+        if (!AG.snippetBookmarkBtn) return;
+        var nativeBtn = document.querySelector('highlight-to-ask-menu button, .ask-gemini-button button, [fonticonname="prompt_suggestion"] button');
+        if (!nativeBtn) {
+            var native = AG.findGoogleNativePill(selection);
+            if (native && native.btn) nativeBtn = native.btn.querySelector('button') || native.btn;
+        }
+
+        var btnStyle = AG.snippetBookmarkBtn.style;
+        if (nativeBtn) {
+            try {
+                var comp = window.getComputedStyle(nativeBtn);
+                if (comp) {
+                    if (comp.height && comp.height !== 'auto' && comp.height !== '0px') {
+                        btnStyle.setProperty('height', comp.height, 'important');
+                        btnStyle.setProperty('min-height', comp.height, 'important');
+                    }
+                    if (comp.backgroundColor && comp.backgroundColor !== 'transparent' && comp.backgroundColor !== 'rgba(0, 0, 0, 0)') {
+                        btnStyle.setProperty('background-color', comp.backgroundColor, 'important');
+                        AG.snippetBookmarkBtn._baseBg = comp.backgroundColor;
+                    }
+                    if (comp.color) {
+                        btnStyle.setProperty('color', comp.color, 'important');
+                        AG.snippetBookmarkBtn._baseColor = comp.color;
+                    }
+                    if (comp.borderRadius) {
+                        btnStyle.setProperty('border-radius', comp.borderRadius, 'important');
+                    }
+                    if (comp.paddingLeft && comp.paddingRight) {
+                        btnStyle.setProperty('padding', '0 ' + comp.paddingRight + ' 0 ' + comp.paddingLeft, 'important');
+                    }
+                    if (comp.fontFamily) {
+                        btnStyle.setProperty('font-family', comp.fontFamily, 'important');
+                    }
+                    if (comp.fontSize) {
+                        btnStyle.setProperty('font-size', comp.fontSize, 'important');
+                    }
+                    if (comp.fontWeight) {
+                        btnStyle.setProperty('font-weight', comp.fontWeight, 'important');
+                    }
+                }
+            } catch (err) {}
+        }
+
+        // Guarantee core filled-pill geometry with absolutely NO border and NO drop shadow
+        btnStyle.setProperty('border', 'none', 'important');
+        btnStyle.setProperty('outline', 'none', 'important');
+        btnStyle.setProperty('box-shadow', 'none', 'important');
+        btnStyle.setProperty('cursor', 'pointer', 'important');
+        btnStyle.setProperty('user-select', 'none', 'important');
+        btnStyle.setProperty('white-space', 'nowrap', 'important');
+        btnStyle.setProperty('display', 'inline-flex', 'important');
+        btnStyle.setProperty('align-items', 'center', 'important');
+        btnStyle.setProperty('box-sizing', 'border-box', 'important');
+        btnStyle.setProperty('gap', '8px', 'important');
+        btnStyle.setProperty('transition', 'background-color 0.15s ease, color 0.15s ease', 'important');
+
+        if (!AG.snippetBookmarkBtn._baseBg) {
+            btnStyle.setProperty('background-color', '#282a2c', 'important');
+            btnStyle.setProperty('color', '#e3e3e3', 'important');
+            btnStyle.setProperty('height', '38px', 'important');
+            btnStyle.setProperty('min-height', '38px', 'important');
+            btnStyle.setProperty('border-radius', '9999px', 'important');
+            btnStyle.setProperty('padding', '0 16px', 'important');
+            btnStyle.setProperty('font-family', '"Google Sans Text", "Google Sans", Roboto, sans-serif', 'important');
+            btnStyle.setProperty('font-size', '14px', 'important');
+            btnStyle.setProperty('font-weight', '500', 'important');
+            AG.snippetBookmarkBtn._baseBg = '#282a2c';
+            AG.snippetBookmarkBtn._baseColor = '#e3e3e3';
+        }
+    }
+
+    syncWithNativeDesign();
 
     AG.snippetBookmarkBtn.onmouseenter = function() {
-        this.style.setProperty('background-color', '#2D2E30', 'important');
-        this.style.setProperty('color', '#FFFFFF', 'important');
-        this.style.setProperty('border-color', 'rgba(255, 255, 255, 0.25)', 'important');
+        var base = this._baseBg || '#282a2c';
+        if (base.includes('28, 2a, 2c') || base.includes('40, 42, 44') || base === '#282a2c' || base === '#1F1F1F') {
+            this.style.setProperty('background-color', '#353739', 'important');
+        } else {
+            this.style.setProperty('filter', 'brightness(0.95)', 'important');
+        }
+        this.style.setProperty('color', '#ffffff', 'important');
+        this.style.setProperty('border', 'none', 'important');
     };
     AG.snippetBookmarkBtn.onmouseleave = function() {
-        this.style.setProperty('background-color', '#1F1F1F', 'important');
-        this.style.setProperty('color', '#E3E3E3', 'important');
-        this.style.setProperty('border-color', 'rgba(255, 255, 255, 0.15)', 'important');
+        this.style.setProperty('background-color', this._baseBg || '#282a2c', 'important');
+        this.style.setProperty('color', this._baseColor || '#e3e3e3', 'important');
+        this.style.removeProperty('filter');
+        this.style.setProperty('border', 'none', 'important');
     };
 
     AG.snippetBookmarkBtn.onclick = function(e) {
@@ -629,7 +706,7 @@ window.AskGemini.showSnippetBookmarkButton = function showSnippetBookmarkButton(
         const iconWrap = AG.snippetBookmarkBtn.querySelector('.ag-snippet-bm-icon');
 
         if (label) {
-            label.textContent = ' Saved!';
+            label.textContent = 'Saved!';
             label.style.setProperty('color', '#8ab4f8', 'important');
         }
         if (iconWrap) {
@@ -659,6 +736,7 @@ window.AskGemini.showSnippetBookmarkButton = function showSnippetBookmarkButton(
             AG.snippetBookmarkBtn.style.position = 'static';
             AG.snippetBookmarkBtn.style.transform = 'none';
             AG.snippetBookmarkBtn.style.display = 'inline-flex';
+            syncWithNativeDesign();
             return true;
         }
 
@@ -672,6 +750,7 @@ window.AskGemini.showSnippetBookmarkButton = function showSnippetBookmarkButton(
             AG.snippetBookmarkBtn.style.position = 'static';
             AG.snippetBookmarkBtn.style.transform = 'none';
             AG.snippetBookmarkBtn.style.display = 'inline-flex';
+            syncWithNativeDesign();
             return true;
         }
 
