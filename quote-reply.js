@@ -584,47 +584,57 @@ window.AskGemini.showSnippetBookmarkButton = function showSnippetBookmarkButton(
     const bmFilledSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M17 3H7c-1.1 0-2 .9-2 2v14.55c0 .91 1.01 1.44 1.77.96L12 17.29l5.23 3.22c.76.47 1.77-.05 1.77-.96V5c0-1.1-.9-2-2-2z"/></svg>';
 
     if (!AG.snippetBookmarkBtn) {
-        AG.snippetBookmarkBtn = document.createElement('gem-button');
+        AG.snippetBookmarkBtn = document.createElement('button');
         AG.snippetBookmarkBtn.id = 'ask-gemini-snippet-bm-btn';
-        AG.snippetBookmarkBtn.setAttribute('fonticonname', 'bookmark');
-        AG.snippetBookmarkBtn.setAttribute('size', 'medium');
-        AG.snippetBookmarkBtn.setAttribute('theme', 'lm');
-        AG.snippetBookmarkBtn.setAttribute('arialabel', 'Bookmark highlighted text');
-        AG.snippetBookmarkBtn.className = 'ask-gemini-button ask-gemini-snippet-bm-btn gem-button gem-button-badge-size-small gem-button-size-medium lm-enabled has-icon';
+        AG.snippetBookmarkBtn.setAttribute('type', 'button');
+        AG.snippetBookmarkBtn.setAttribute('aria-label', 'Bookmark highlighted text');
+        AG.snippetBookmarkBtn.className = 'mdc-button mat-mdc-button-base mat-badge mdc-button--unelevated mat-mdc-unelevated-button mat-unthemed ng-star-inserted';
     }
 
     AG.snippetBookmarkBtn.innerHTML = `
-        <button type="button" matbadgeposition="after" class="mdc-button mat-mdc-button-base mat-badge mdc-button--unelevated mat-mdc-unelevated-button mat-unthemed ng-star-inserted" aria-label="Bookmark highlighted text">
-            <span class="mat-mdc-button-persistent-ripple mdc-button__ripple"></span>
-            <span class="mdc-button__label">
-                <span class="gem-button-content ng-star-inserted">
-                    <span class="gem-button-icon-container menu-entry-with-badge ng-star-inserted">
-                        <gem-icon class="ag-snippet-bm-icon">${bmOutlineSvg}</gem-icon>
-                    </span>
-                    <span class="gds-body-m"> Bookmark</span>
+        <span class="mat-mdc-button-persistent-ripple mdc-button__ripple"></span>
+        <span class="mdc-button__label">
+            <span class="gem-button-content ng-star-inserted">
+                <span class="gem-button-icon-container menu-entry-with-badge ng-star-inserted">
+                    <span class="ag-snippet-bm-icon">${bmOutlineSvg}</span>
                 </span>
+                <span class="gds-body-m"> Bookmark</span>
             </span>
-            <span class="mat-focus-indicator"></span>
-            <span class="mat-mdc-button-touch-target"></span>
-        </button>
+        </span>
+        <span class="mat-focus-indicator"></span>
+        <span class="mat-mdc-button-touch-target"></span>
     `;
 
-    const triggerClick = function(e) {
+    // Explicit inline styles guaranteeing exact size, dark surface, and font
+    AG.snippetBookmarkBtn.style.cssText = 'background-color: #1F1F1F !important; color: #E3E3E3 !important; border: 1px solid rgba(255, 255, 255, 0.15) !important; border-radius: 9999px !important; padding: 0 12px !important; height: 32px !important; min-height: 32px !important; box-sizing: border-box !important; cursor: pointer !important; user-select: none !important; white-space: nowrap !important; display: inline-flex !important; align-items: center !important; gap: 6px !important; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35) !important; font-family: "Google Sans Text", "Google Sans", Roboto, sans-serif !important; font-size: 13px !important; font-weight: 500 !important;';
+
+    AG.snippetBookmarkBtn.onmouseenter = function() {
+        this.style.setProperty('background-color', '#2D2E30', 'important');
+        this.style.setProperty('color', '#FFFFFF', 'important');
+        this.style.setProperty('border-color', 'rgba(255, 255, 255, 0.25)', 'important');
+    };
+    AG.snippetBookmarkBtn.onmouseleave = function() {
+        this.style.setProperty('background-color', '#1F1F1F', 'important');
+        this.style.setProperty('color', '#E3E3E3', 'important');
+        this.style.setProperty('border-color', 'rgba(255, 255, 255, 0.15)', 'important');
+    };
+
+    AG.snippetBookmarkBtn.onclick = function(e) {
         if (e) {
             e.preventDefault();
             e.stopPropagation();
         }
 
         const label = AG.snippetBookmarkBtn.querySelector('.gds-body-m');
-        const iconWrap = AG.snippetBookmarkBtn.querySelector('gem-icon');
+        const iconWrap = AG.snippetBookmarkBtn.querySelector('.ag-snippet-bm-icon');
 
         if (label) {
             label.textContent = ' Saved!';
-            label.style.color = '#8ab4f8';
+            label.style.setProperty('color', '#8ab4f8', 'important');
         }
         if (iconWrap) {
             iconWrap.innerHTML = bmFilledSvg;
-            iconWrap.style.color = '#8ab4f8';
+            iconWrap.style.setProperty('color', '#8ab4f8', 'important');
         }
 
         if (AG.BookmarkManager && AG.BookmarkManager.addSnippetBookmark) {
@@ -635,10 +645,6 @@ window.AskGemini.showSnippetBookmarkButton = function showSnippetBookmarkButton(
             AG.hideSnippetBookmarkButton();
         }, 1200);
     };
-
-    const innerBtn = AG.snippetBookmarkBtn.querySelector('button');
-    if (innerBtn) innerBtn.onclick = triggerClick;
-    AG.snippetBookmarkBtn.onclick = triggerClick;
 
     function attachOrAlign() {
         if (!AG.snippetBookmarkBtn) return false;

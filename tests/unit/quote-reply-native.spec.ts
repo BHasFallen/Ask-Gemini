@@ -244,9 +244,9 @@ describe('Native Quote Reply Coexistence & Detection', () => {
 
         const btn = menu.querySelector('#ask-gemini-snippet-bm-btn') as HTMLElement;
         expect(btn).not.toBeNull();
-        expect(btn.tagName.toLowerCase()).toBe('gem-button');
+        expect(btn.tagName.toLowerCase()).toBe('button');
         expect(menu.contains(btn)).toBe(true);
         expect(btn.querySelector('.gds-body-m')?.textContent).toContain('Bookmark');
-        expect(btn.querySelector('button')?.getAttribute('aria-label')).toBe('Bookmark highlighted text');
+        expect(btn.getAttribute('aria-label')).toBe('Bookmark highlighted text');
     });
 });

@@ -80,6 +80,8 @@ gem-button#ask-gemini-snippet-bm-btn,
 }
 
 /* Force dark surface colors matching Ask Gemini native pill (overriding bright blue theme) */
+#ask-gemini-snippet-bm-btn,
+highlight-to-ask-menu #ask-gemini-snippet-bm-btn,
 highlight-to-ask-menu gem-button#ask-gemini-snippet-bm-btn button,
 gem-button#ask-gemini-snippet-bm-btn button,
 .ask-gemini-snippet-bm-btn button {
@@ -94,10 +96,14 @@ gem-button#ask-gemini-snippet-bm-btn button,
   cursor: pointer !important;
   user-select: none !important;
   white-space: nowrap !important;
+  display: inline-flex !important;
+  align-items: center !important;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35) !important;
   transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease !important;
 }
 
+#ask-gemini-snippet-bm-btn:hover,
+highlight-to-ask-menu #ask-gemini-snippet-bm-btn:hover,
 highlight-to-ask-menu gem-button#ask-gemini-snippet-bm-btn button:hover,
 gem-button#ask-gemini-snippet-bm-btn button:hover,
 .ask-gemini-snippet-bm-btn button:hover {
@@ -107,12 +113,15 @@ gem-button#ask-gemini-snippet-bm-btn button:hover,
   box-shadow: 0 3px 8px rgba(0, 0, 0, 0.45) !important;
 }
 
+#ask-gemini-snippet-bm-btn:active,
 gem-button#ask-gemini-snippet-bm-btn button:active,
 .ask-gemini-snippet-bm-btn button:active {
   background-color: #383A3C !important;
 }
 
 /* Clean typography */
+#ask-gemini-snippet-bm-btn .gds-body-m,
+#ask-gemini-snippet-bm-btn .mdc-button__label,
 gem-button#ask-gemini-snippet-bm-btn .gds-body-m,
 .ask-gemini-snippet-bm-btn .gds-body-m,
 .ag-snippet-bm-label {
@@ -125,6 +134,8 @@ gem-button#ask-gemini-snippet-bm-btn .gds-body-m,
 }
 
 /* Crisp SVG icon handling without broken font ligatures */
+#ask-gemini-snippet-bm-btn .ag-snippet-bm-icon,
+#ask-gemini-snippet-bm-btn .gem-button-icon-container,
 gem-button#ask-gemini-snippet-bm-btn gem-icon,
 gem-button#ask-gemini-snippet-bm-btn mat-icon,
 .ag-snippet-bm-icon {
@@ -140,16 +151,19 @@ gem-button#ask-gemini-snippet-bm-btn mat-icon,
   transition: color 0.15s ease !important;
 }
 
+#ask-gemini-snippet-bm-btn:hover .ag-snippet-bm-icon,
+#ask-gemini-snippet-bm-btn:hover .gem-button-icon-container,
 gem-button#ask-gemini-snippet-bm-btn button:hover gem-icon,
 gem-button#ask-gemini-snippet-bm-btn button:hover mat-icon,
 #ask-gemini-snippet-bm-btn:hover .ag-snippet-bm-icon {
   color: #FFFFFF !important;
 }
 
+#ask-gemini-snippet-bm-btn svg,
 gem-button#ask-gemini-snippet-bm-btn svg,
 .ag-snippet-bm-icon svg {
-  width: 15px !important;
-  height: 15px !important;
+  width: 16px !important;
+  height: 16px !important;
   fill: currentColor !important;
   display: block !important;
 }
